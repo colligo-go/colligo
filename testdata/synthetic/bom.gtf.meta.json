@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "valid GTF behind a UTF-8 byte order mark",
+  "size": 162,
+  "sha256": "ce0598631bac983d5184beaf8a91ca4666742ed38536713b3cd485cec037e2ec",
+  "recorded_at": "2026-10-29T14:28:43Z",
+  "expect": {
+    "failed": [
+      "structure_invalid"
+    ]
+  }
+}

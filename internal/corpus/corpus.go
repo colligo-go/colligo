@@ -159,6 +159,7 @@ func Generate() []Fixture {
 		broken("truncated.fastq.gz", "gzip cut at two thirds of its length", truncatedGz[:len(truncatedGz)*2/3], "structure_invalid"),
 		broken("bgzf-no-eof.fastq.bgz", "BGZF without the EOF block", bgzf(bgz.text.Bytes(), false), "structure_invalid"),
 		broken("bgzf-bad-bsize.fastq.bgz", "BGZF whose first block claims five bytes more than it has", withBlockSizeOff(bgzf(bgz.text.Bytes(), true), 5), "structure_invalid"),
+		broken("bom.gtf", "valid GTF behind a UTF-8 byte order mark", append([]byte("\xef\xbb\xbf"), annotation...), "structure_invalid"),
 		broken("html.gtf.gz", "an error page saved under a data name", []byte("<!DOCTYPE html><html><body>503 Service Unavailable</body></html>\n"), "html_body"),
 		broken("not-gzip.fastq.gz", "plain FASTQ text named as gzip", plain.text.Bytes(), "magic_mismatch"),
 		broken("semicolon.fa", "FASTA with an old ';' comment line", []byte(">chr1\n;comment\nACGT\n"), "structure_invalid"),
