@@ -14,10 +14,11 @@ func quickStructureFact(version, label string, valid bool, reason string, offset
 }
 
 func bgzfTailFact(tail []byte) model.Fact {
+	v, _ := format.Lookup(format.ContainerBgzf)
 	if bytes.Equal(tail, format.BGZFEOFBlock()) {
-		return quickStructureFact("bgzf-1", format.ContainerBgzf, true, "", 0)
+		return quickStructureFact(v.Version(), format.ContainerBgzf, true, "", 0)
 	}
-	return quickStructureFact("bgzf-1", format.ContainerBgzf, false, "missing BGZF EOF block", 0)
+	return quickStructureFact(v.Version(), format.ContainerBgzf, false, "missing BGZF EOF block", 0)
 }
 
 func textTailFact(content string, last byte) model.Fact {
