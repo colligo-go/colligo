@@ -287,7 +287,7 @@ func TestDiscover(t *testing.T) {
 	os.Mkdir(sub, 0o755)
 	write(t, sub, "deep.fastq", fastqText("D", 1, "A"))
 
-	names, skipped, err := Discover(context.Background(), secret.NewName(dir), false)
+	names, skipped, _, err := Discover(context.Background(), secret.NewName(dir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestDiscover(t *testing.T) {
 	if len(skipped) != 1 || filepath.Base(skipped[0]) != "notes.txt" {
 		t.Fatalf("skipped %v", skipped)
 	}
-	deep, _, err := Discover(context.Background(), secret.NewName(dir), true)
+	deep, _, _, err := Discover(context.Background(), secret.NewName(dir), true)
 	if err != nil || len(deep) != 4 {
 		t.Fatalf("recursive: %d %v", len(deep), err)
 	}

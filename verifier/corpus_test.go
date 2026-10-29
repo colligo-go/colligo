@@ -41,7 +41,7 @@ func expectations(t *testing.T) map[string]corpus.Expect {
 
 func TestSyntheticCorpusBehavesAsTheGeneratorDeclares(t *testing.T) {
 	want := expectations(t)
-	names, skipped, err := Discover(context.Background(), secret.NewName(synthetic), false)
+	names, skipped, _, err := Discover(context.Background(), secret.NewName(synthetic), false)
 	if err != nil {
 		t.Fatal(err)
 	}
