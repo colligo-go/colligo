@@ -176,9 +176,9 @@ func (r Report) WriteChecksums(sha256sum, b3sum io.Writer) error {
 
 var checksumEscaper = strings.NewReplacer(`\`, `\\`, "\n", `\n`)
 
-func checksumLine(sum, name string) string {
-	if strings.ContainsAny(name, "\\\n") {
-		return `\` + sum + "  " + checksumEscaper.Replace(name) + "\n"
+func checksumLine(sum, shown string) string {
+	if strings.ContainsAny(shown, "\\\n") {
+		return `\` + sum + "  " + checksumEscaper.Replace(shown) + "\n"
 	}
-	return sum + "  " + name + "\n"
+	return sum + "  " + shown + "\n"
 }
