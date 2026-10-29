@@ -6,8 +6,11 @@ Colligo identifies, verifies and watches genomic data from public and private so
 Downloading with an MD5 is a solved problem; knowing what the file *means* is not.
 
 ```
-colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz --source ena
+colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz
+colligo check . --certificate
 ```
+
+Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 interrupted.
 
 - **identify** — which release, assembly and sequence collection this file actually is, from its content
 - **verify** — it is whole, and it is what the source and you declared
