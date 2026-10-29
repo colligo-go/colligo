@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "an error page saved under a data name",
+  "size": 65,
+  "sha256": "ad43fd40f384287dd0457e6126b3f081def313e3389bea5f48de533a96ab7672",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "failed": [
+      "html_body"
+    ]
+  }
+}

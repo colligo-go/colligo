@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "first mate of a consistent pair",
+  "size": 10673,
+  "sha256": "c101a6f63a59947b4891d9beeb3dc8e8a29f05c9a13c5c5fd10e165b467a7838",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 300,
+    "bases": 22800,
+    "failed": []
+  }
+}

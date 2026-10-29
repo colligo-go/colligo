@@ -54,16 +54,17 @@ func corpus() map[string][]byte {
 		fmt.Fprintf(&lengths, "@l%d\n%s\n+\n%s\n", i, strings.Repeat("A", 5+i), strings.Repeat("F", 5+i))
 	}
 	return map[string][]byte{
-		"crlf.fastq":       crlf.Bytes(),
-		"many-lengths.fq":  lengths.Bytes(),
-		"plain.fastq":      fastq("P", 500, 3),
-		"zipped.fastq.gz":  good,
-		"truncated.fq.gz":  good[:len(good)*2/3],
-		"multigroup.fq.gz": gz(large),
-		"genome.fa":        []byte(">chr1\nACGTACGT\nACGT\n>chr2\nGGCC\n"),
-		"genes.gtf":        []byte("1\tsrc\tgene\t1\t10\t.\t+\t.\tgene_id \"g\";\n"),
-		"empty.fastq":      nil,
-		"mystery.bin":      {0, 1, 2, 3, 4, 5},
+		"trailing-blank.fq": append(fastq("T", 30, 10), '\n', '\n', '\n'),
+		"crlf.fastq":        crlf.Bytes(),
+		"many-lengths.fq":   lengths.Bytes(),
+		"plain.fastq":       fastq("P", 500, 3),
+		"zipped.fastq.gz":   good,
+		"truncated.fq.gz":   good[:len(good)*2/3],
+		"multigroup.fq.gz":  gz(large),
+		"genome.fa":         []byte(">chr1\nACGTACGT\nACGT\n>chr2\nGGCC\n"),
+		"genes.gtf":         []byte("1\tsrc\tgene\t1\t10\t.\t+\t.\tgene_id \"g\";\n"),
+		"empty.fastq":       nil,
+		"mystery.bin":       {0, 1, 2, 3, 4, 5},
 	}
 }
 
@@ -168,6 +169,17 @@ func TestIndependentVerifierRejectsTamperedCertificates(t *testing.T) {
 	}
 }
 
+func TestIndependentVerifierCannotJudgeAnUnknownSchema(t *testing.T) {
+	exe := exttool.Python(t)
+	cert := certify(t, t.TempDir(), "s.fastq", fastq("S", 10, 9))
+	tampered := mutate(t, cert, func(d map[string]any) { d["schema_version"] = 99 })
+	out, err := exec.Command(exe, mustAbs(t, "../tools/verify_cert.py"), tampered, strings.TrimSuffix(cert, CertificateSuffix)).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 2 {
+		t.Fatalf("an unknown schema must exit 2 (cannot judge), got %v\n%s", err, out)
+	}
+}
+
 func TestIndependentVerifierRejectsAChangedFile(t *testing.T) {
 	exe := exttool.Python(t)
 	dir := t.TempDir()
@@ -215,5 +227,45 @@ func TestUnreadableAndQuickAreNotCertifiable(t *testing.T) {
 	quick, _ := verifier.CheckFile(context.Background(), secret.NewName(p), verifier.Options{Quick: true})
 	if Certifiable(quick) {
 		t.Fatal("a quick result must not be certifiable")
+	}
+}
+
+func TestIndependentVerifierAgreesOnTheVersionedCorpus(t *testing.T) {
+	exe := exttool.Python(t)
+	metas, err := filepath.Glob("../testdata/synthetic/*.meta.json")
+	if err != nil || len(metas) == 0 {
+		t.Fatalf("no versioned corpus: %v", err)
+	}
+	dir := t.TempDir()
+	checked := 0
+	for _, m := range metas {
+		raw, err := os.ReadFile(m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var doc struct {
+			Expect struct {
+				Skipped bool `json:"skipped"`
+			} `json:"expect"`
+		}
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Fatal(err)
+		}
+		if doc.Expect.Skipped {
+			continue
+		}
+		label := strings.TrimSuffix(filepath.Base(m), ".meta.json")
+		data, err := os.ReadFile(filepath.Join("../testdata/synthetic", label))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cert := certify(t, dir, label, data)
+		if code, out := verify(t, exe, cert); code != 0 {
+			t.Errorf("%s: verifier exit %d\n%s", label, code, out)
+		}
+		checked++
+	}
+	if checked < 10 {
+		t.Fatalf("only %d corpus files certified", checked)
 	}
 }

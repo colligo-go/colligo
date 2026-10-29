@@ -1,0 +1,11 @@
+{
+  "generator": "internal/corpus",
+  "description": "not data: discovery must skip it",
+  "size": 10,
+  "sha256": "8733923cc82534e6968b4f794bb39661b3fcea36f5c97505fda6d127b64ebd06",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "failed": [],
+    "skipped": true
+  }
+}

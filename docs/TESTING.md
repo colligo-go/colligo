@@ -72,6 +72,8 @@ Duas categorias, nunca misturadas.
 
 Mesma **forma** da resposta real, valores inventados. É o que roda no CI e para qualquer colaborador. Contém as sentinelas de vazamento.
 
+Para os validadores de formato, o corpus sintético é produzido por um gerador versionado, `internal/corpus`: `go test ./internal/corpus -record` grava os arquivos e um `.meta.json` irmão com gerador, tamanho, SHA-256, data de gravação e o que o gerador sabe que escreveu — contagem de registros e bases, e quais afirmações devem falhar. Sem a flag, o teste falha se um arquivo divergir do gerador ou se aparecer arquivo que o gerador não produz. O esperado nunca vem de um parser: `check` sobre o diretório e o verificador Python são conferidos contra ele.
+
 ### `testdata/real/` — nunca versionada
 
 Capturas reais. Fica na máquina de quem tem acesso. Bloqueada por `.gitignore` e por check de CI que falha se algum arquivo sob esse caminho estiver rastreado.
@@ -231,7 +233,7 @@ Velocidade é requisito medido, não impressão. Benchmark versionado, rodando n
 
 | Medida | Piso de comparação | Meta |
 | ------ | ------------------ | ---- |
-| `check` completo de `.fastq.gz` | `zcat arquivo \| wc -l` | ≤ 110% do piso |
+| `check` completo de `.fastq.gz` | gunzip em Go puro (`klauspost/compress`), mesmo arquivo e máquina | ≤ 110% do piso; `zcat \| wc -l` medido e reportado |
 | `check` completo de BAM | `samtools view -c` | ≤ 110% do piso |
 | Hash de arquivo não comprimido | `b3sum` | ≤ 120% do piso |
 | Segunda execução, 10 mil arquivos inalterados | — | ≤ 5 s em SSD |

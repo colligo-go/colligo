@@ -377,3 +377,16 @@ func TestFactsDoNotDependOnNamePathOrMtime(t *testing.T) {
 		t.Fatal("facts changed with the name, the path or the mtime")
 	}
 }
+
+func TestTrailingBlankLinesAreAdvisoryAndDoNotFailTheFile(t *testing.T) {
+	dir := t.TempDir()
+	n := write(t, dir, "s.fastq", append(fastqText("SRR1", 5, "ACGT"), '\n', '\n'))
+	rep := run(t, Options{}, n)
+	f := rep.Files[0]
+	if got := failed(f); len(got) != 1 || got[0] != diagnoses.TrailingBlankLines {
+		t.Fatalf("%v", got)
+	}
+	if f.Status != StatusVerified || rep.ExitCode(false) != ExitOK {
+		t.Fatalf("%s exit %d", f.Status, rep.ExitCode(false))
+	}
+}

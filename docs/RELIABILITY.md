@@ -32,6 +32,8 @@ Colligo falha fechado. Três severidades:
 | 3      | Incompleto: `blocking` pendente                                       |
 | 4      | Interrompido: cancelado, estado salvo, retomável                      |
 
+**Alcance do `fatal`.** Falha da própria ferramenta (vetores conhecidos de hash, canário) aborta a execução inteira: nada mais é confiável. Falha `fatal` de um arquivo (ilegível, página HTML, checksum que não confere) encerra a verificação *daquele* arquivo; na porta leve os demais continuam sendo verificados, porque não há estado a salvar e parar esconderia o diagnóstico deles. O código de saída é o da pior severidade encontrada.
+
 Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
 
 ---
@@ -87,8 +89,8 @@ Custo, dito com precisão: para BGZF, BAM e CRAM há marcador de fim, e a verifi
 | bgzf          | `1f 8b` + XLEN  | bloco EOF de 28 bytes presente                              |
 | bam           | `BAM\1` em bgzf | bloco EOF de bgzf presente                                  |
 | cram          | `CRAM`          | contêiner EOF presente                                      |
-| fastq / .gz   | `@`             | contagem de linhas múltipla de 4; última linha completa      |
-| fasta         | `>`             | termina com newline; sem linha de sequência truncada         |
+| fastq / .gz   | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory` |
+| fasta         | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada |
 | vcf / .gz     | `##fileformat`  | header presente; última linha tem contagem de campos válida  |
 | gtf / gff3    | texto           | última linha tem 9 campos separados por tab                  |
 | hdf5 / h5ad   | `\x89HDF\r\n`   | superbloco íntegro; raiz abre                                |

@@ -7,10 +7,11 @@ import (
 )
 
 type structureValue struct {
-	Format string `json:"format"`
-	Valid  bool   `json:"valid"`
-	Reason string `json:"reason"`
-	Offset int64  `json:"offset"`
+	Format             string `json:"format"`
+	Valid              bool   `json:"valid"`
+	Reason             string `json:"reason"`
+	Offset             int64  `json:"offset"`
+	TrailingBlankLines int64  `json:"trailing_blank_lines,omitempty"`
 }
 
 type problem struct {

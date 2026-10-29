@@ -11,7 +11,7 @@ const maxLengthBuckets = 4096
 type fastqValidator struct{}
 
 func (fastqValidator) Format() string          { return ContentFastq }
-func (fastqValidator) Version() string         { return "fastq-1" }
+func (fastqValidator) Version() string         { return "fastq-2" }
 func (fastqValidator) MagicPrefix() []byte     { return []byte{'@'} }
 func (fastqValidator) Compressed() bool        { return false }
 func (fastqValidator) NewExtractor() Extractor { return newFastqExtractor() }
@@ -27,6 +27,8 @@ type fastqExtractor struct {
 	first    []byte
 	last     []byte
 	hasID    bool
+	blank    int64
+	blankAt  int64
 	bad      *problem
 }
 
@@ -53,7 +55,18 @@ func (f *fastqExtractor) line(line []byte, length int, offset int64) {
 	}
 	switch f.state {
 	case 0:
-		if length == 0 || line[0] != '@' {
+		if length == 0 {
+			if f.blank == 0 {
+				f.blankAt = offset
+			}
+			f.blank++
+			return
+		}
+		if f.blank > 0 {
+			f.fail("blank line inside the file", f.blankAt)
+			return
+		}
+		if line[0] != '@' {
 			f.fail("record does not start with '@'", offset)
 			return
 		}
@@ -130,7 +143,11 @@ func (f *fastqExtractor) Finish() ([]model.Fact, error) {
 		}
 	}
 	version := fastqValidator{}.Version()
-	structure, err := structureFact(version, ContentFastq, f.bad)
+	sv := structureValue{Format: ContentFastq, Valid: f.bad == nil, TrailingBlankLines: f.blank}
+	if f.bad != nil {
+		sv.Reason, sv.Offset, sv.TrailingBlankLines = f.bad.reason, f.bad.offset, 0
+	}
+	structure, err := jsonFact("structure", version, sv)
 	if err != nil || f.bad != nil {
 		return []model.Fact{structure}, err
 	}

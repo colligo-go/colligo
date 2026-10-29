@@ -429,3 +429,39 @@ func TestLengthHistogramIsBounded(t *testing.T) {
 		t.Fatalf("records %d buckets %d overflow %d", rec.Records, len(rec.Lengths), rec.Overflow)
 	}
 }
+
+func TestFastqTrailingBlankLinesAreValidButCounted(t *testing.T) {
+	data := fastq(3, "ACGT") + "\n\n"
+	for _, chunk := range []int{1, 7, 4096} {
+		s := structureOf(t, extract(t, fastqValidator{}, data, chunk))
+		if !s.Valid || s.TrailingBlankLines != 2 {
+			t.Fatalf("chunk %d: %+v", chunk, s)
+		}
+	}
+	if s := structureOf(t, extract(t, fastqValidator{}, fastq(3, "ACGT"), 7)); s.TrailingBlankLines != 0 {
+		t.Fatalf("no blank lines but counted %d", s.TrailingBlankLines)
+	}
+}
+
+func TestFastqBlankLineInsideIsInvalid(t *testing.T) {
+	good := fastq(3, "ACGT")
+	for name, data := range map[string]string{
+		"between records":  fastq(1, "ACGT") + "\n" + fastq(2, "ACGT"),
+		"before the first": "\n" + good,
+		"inside a record":  "@r\n\nACGT\n+\nIIII\n",
+	} {
+		s := structureOf(t, extract(t, fastqValidator{}, data, 5))
+		if s.Valid {
+			t.Errorf("%s: accepted", name)
+		}
+	}
+}
+
+func TestFastaSemicolonLinesAreRejected(t *testing.T) {
+	for _, data := range []string{">chr1\n;old comment\nACGT\n", ";header comment\n>chr1\nACGT\n"} {
+		s := structureOf(t, extract(t, fastaValidator{}, data, 4))
+		if s.Valid || !strings.Contains(s.Reason, "';'") {
+			t.Errorf("%q: %+v", data, s)
+		}
+	}
+}

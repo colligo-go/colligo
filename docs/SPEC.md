@@ -659,7 +659,7 @@ Concorrência de leitura local ajustada ao armazenamento: vários arquivos ao me
 
 Ordem de custo, do maior para o menor: rede, descompressão, parser, hash, banco. O banco e o driver `modernc` nunca são gargalo.
 
-**Piso físico.** Validar gzip simples e FASTQ exige descomprimir tudo. O piso de `check` completo é, portanto, `zcat arquivo | wc -l`. Meta: `check` completo de um `.fastq.gz` custa no máximo 10% acima desse piso na mesma máquina. Medido no benchmark de `TESTING.md` §10.
+**Piso físico.** Validar gzip simples e FASTQ exige descomprimir tudo. O piso de `check` completo é a descompressão em Go puro (`klauspost/compress/gzip`) do mesmo arquivo. Meta: `check` completo de um `.fastq.gz` custa no máximo 10% acima desse piso na mesma máquina — isto mede o que é nosso: leitura única, hashes e parser. `zcat arquivo | wc -l` continua medido e reportado; a distância até ele é a do inflate em Go contra o zlib em C, e fechá-la exige cgo ou descompressão especulativa (`BACKLOG.md`), que não entram à custa de confiabilidade. Medido no benchmark de `TESTING.md` §7.1.
 
 **Descompressão.**
 
@@ -707,7 +707,7 @@ Atestação funciona com manifesto redigido, porque hashes não são sensíveis.
 
 `colligo check --certificate` grava `<arquivo>.colligo-cert.json` com: versão do esquema, versão da ferramenta, tamanho, `blake3_root`, `group_size`, MD5, SHA-256, fatos por `kind` com `extractor_version`, e cada afirmação avaliada com declarado, observado e resultado.
 
-O repositório mantém um verificador de referência em `tools/verify_cert.py`: Python com biblioteca padrão mais o pacote `blake3`, ~200 linhas, sem importar nada do Colligo. Ele recalcula tamanho, hashes e os fatos de `records` para FASTQ, e confere contra o certificado. Divergência entre verificador e certificado é bug de uma das duas implementações e falha a suíte.
+O repositório mantém um verificador de referência em `tools/verify_cert.py`: Python com biblioteca padrão mais o pacote `blake3`, ~200 linhas, sem importar nada do Colligo. Ele recalcula tamanho, hashes e os fatos de `records` para FASTQ, e confere contra o certificado. Divergência entre verificador e certificado é bug de uma das duas implementações e falha a suíte. Códigos de saída do verificador: 0 concorda, 1 discorda, 2 não consegue julgar (uso, entrada ilegível, `schema_version` desconhecido) — "não sei" nunca vira "discordo" nem "concordo".
 
 Certificado de estudo restrito segue a tabela de `CONFIDENTIALITY.md` §5.7: nome opaco, sem URL.
 

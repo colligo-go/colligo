@@ -1,0 +1,11 @@
+{
+  "generator": "internal/corpus",
+  "description": "GTF with a pragma and three features",
+  "size": 159,
+  "sha256": "901de572f60fa678b190da088185013a3f0f8940560d445ef325f83b00d7ec05",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 3,
+    "failed": []
+  }
+}

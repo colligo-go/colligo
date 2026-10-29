@@ -1,0 +1,14 @@
+{
+  "generator": "internal/corpus",
+  "description": "complete FASTQ followed by two blank lines",
+  "size": 2813,
+  "sha256": "f0858c0af3ef7d13563990e5094f27e6019966eb1f0f3959ac65e9a61f8396ef",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 30,
+    "bases": 1200,
+    "failed": [
+      "trailing_blank_lines"
+    ]
+  }
+}

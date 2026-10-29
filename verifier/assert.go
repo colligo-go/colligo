@@ -29,7 +29,7 @@ func AssertionIDs() []string {
 		diagnoses.ReadFailed, diagnoses.HTMLBody, diagnoses.MagicMismatch,
 		diagnoses.ChecksumMismatch, diagnoses.SizeMismatch, diagnoses.StructureInvalid,
 		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.CountMismatch,
-		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.ExtensionMismatch,
+		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
 	}
 }
 
@@ -83,7 +83,7 @@ func Evaluate(name secret.Name, res facts.Result, exp Expected, declared string,
 	stages := []stage{
 		{ids: []string{diagnoses.HTMLBody, diagnoses.MagicMismatch}, run: func() []model.Assertion { return magicStage(res, wantContainer) }},
 		{ids: []string{diagnoses.ChecksumMismatch, diagnoses.SizeMismatch}, run: func() []model.Assertion { return integrityStage(res, exp, withHashes) }},
-		{ids: []string{diagnoses.StructureInvalid}, run: func() []model.Assertion { return structureStage(res) }},
+		{ids: []string{diagnoses.StructureInvalid, diagnoses.TrailingBlankLines}, run: func() []model.Assertion { return structureStage(res) }},
 		{ids: []string{diagnoses.FormatUnknown, diagnoses.FormatDeclared}, run: func() []model.Assertion { return formatStage(res, declared) }},
 		{ids: []string{diagnoses.CountMismatch}, run: func() []model.Assertion { return countStage(res, exp) }},
 		{ids: []string{diagnoses.ExtensionMismatch}, run: func() []model.Assertion { return extensionStage(res, wantContainer, wantContent) }},
@@ -143,6 +143,7 @@ type structureFact struct {
 	Valid  bool   `json:"valid"`
 	Reason string `json:"reason"`
 	Offset int64  `json:"offset"`
+	Blank  int64  `json:"trailing_blank_lines"`
 }
 
 func structureFacts(res facts.Result) (container, content *structureFact) {
@@ -176,8 +177,12 @@ func structureStage(res facts.Result) []model.Assertion {
 		}
 		out = append(out, newAssertion(diagnoses.StructureInvalid, s.Valid, diagnoses.Values{Declared: "valid", Observed: observed, Detail: s.Format}))
 		if !s.Valid {
-			break
+			return out
 		}
+	}
+	if content != nil && content.Format == format.ContentFastq {
+		out = append(out, newAssertion(diagnoses.TrailingBlankLines, content.Blank == 0, diagnoses.Values{
+			Declared: "0", Observed: fmt.Sprint(content.Blank)}))
 	}
 	return out
 }

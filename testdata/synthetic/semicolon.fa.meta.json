@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "FASTA with an old ';' comment line",
+  "size": 20,
+  "sha256": "c0cd5929612542b32e8a829bd1f03d2feccbc01d1ed49470800818f90e6947d6",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "failed": [
+      "structure_invalid"
+    ]
+  }
+}

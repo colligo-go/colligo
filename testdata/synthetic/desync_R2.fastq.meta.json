@@ -1,0 +1,14 @@
+{
+  "generator": "internal/corpus",
+  "description": "second mate with one read fewer than the first",
+  "size": 16195,
+  "sha256": "3bf0069c99233987f00771ca4f58bafb2beab7a1e4977300b4afdbdcb782f834",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 119,
+    "bases": 7140,
+    "failed": [
+      "pair_count"
+    ]
+  }
+}

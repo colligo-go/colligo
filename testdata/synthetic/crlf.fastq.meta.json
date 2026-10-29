@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "FASTQ with CRLF line endings; \\r is not a base",
+  "size": 1471,
+  "sha256": "28d58520fd3d5feddd86075d6ee6d83496c80d8ba0be2f53aad511b05fbf3aab",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 40,
+    "bases": 400,
+    "failed": []
+  }
+}

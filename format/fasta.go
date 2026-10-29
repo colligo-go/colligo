@@ -9,7 +9,7 @@ import (
 type fastaValidator struct{}
 
 func (fastaValidator) Format() string          { return ContentFasta }
-func (fastaValidator) Version() string         { return "fasta-1" }
+func (fastaValidator) Version() string         { return "fasta-2" }
 func (fastaValidator) MagicPrefix() []byte     { return []byte{'>'} }
 func (fastaValidator) Compressed() bool        { return false }
 func (fastaValidator) NewExtractor() Extractor { return newFastaExtractor() }
@@ -38,6 +38,10 @@ func (f *fastaExtractor) Write(p []byte) (int, error) {
 
 func (f *fastaExtractor) line(line []byte, length int, offset int64) {
 	if f.bad != nil {
+		return
+	}
+	if length > 0 && line[0] == ';' {
+		f.bad = &problem{reason: "comment lines starting with ';' are not supported", offset: offset}
 		return
 	}
 	if length > 0 && line[0] == '>' {

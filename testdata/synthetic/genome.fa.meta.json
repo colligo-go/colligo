@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "two-sequence FASTA",
+  "size": 49,
+  "sha256": "296b31490cb0a897ea523461edbea9f6eda37bb6e59c0b93712a8f51a9a03daf",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 2,
+    "bases": 24,
+    "failed": []
+  }
+}

@@ -78,6 +78,8 @@ Estilo da casa. Inviolável durante implementação. Curto de propósito.
 
 **GoDoc em tudo que é exportado.** Escrito junto com o código. É a única forma de texto explicativo permitida no código.
 
+**Idioma.** `docs/` em português. Código, GoDoc, mensagens de erro, diagnósticos e saída do CLI em inglês, como o README público.
+
 **Decisão muda código e doc no mesmo commit.** SPEC e implementação não desincronizam.
 
 **Onde cada coisa mora:** por quê em `DESIGN.md`, o quê em `SPEC.md`, defesa contra erro silencioso em `RELIABILITY.md`, proteção de dado restrito em `CONFIDENTIALITY.md`, como testar em `TESTING.md`, como contribuir em `CONTRIBUTING.md`, o que foi adiado em `BACKLOG.md`, o que já existe fora daqui em `RELATED.md`.

@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "FASTQ with reads of varied length",
+  "size": 35830,
+  "sha256": "99b85edca470addb396fb5910ffba33cf0cb4448a2901e32260cb29c5c61d517",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 200,
+    "bases": 16169,
+    "failed": []
+  }
+}

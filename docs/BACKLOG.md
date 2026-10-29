@@ -8,6 +8,13 @@ Regra: todo item carrega uma frase de "o que destravaria". Sem ela, o item é ca
 
 ---
 
+## Diagnósticos traduzidos
+
+Frases do catálogo `diagnoses/` em português e outros idiomas, escolhidas por locale.
+
+Destrava quando: houver usuário que precise da frase na própria língua; os identificadores no `--json` já são estáveis e não dependem do texto.
+
+---
 
 ## `colligo gc` — coletor de lixo que entende proveniência
 

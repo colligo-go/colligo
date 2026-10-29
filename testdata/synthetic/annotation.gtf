@@ -1,0 +1,4 @@
+#!genome-build synthetic
+chr1	synthetic	gene	1	16	.	+	.	gene_id "g1";
+chr1	synthetic	exon	1	10	.	+	.	gene_id "g1";
+chr2	synthetic	gene	1	8	.	-	.	gene_id "g2";

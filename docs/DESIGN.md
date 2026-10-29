@@ -172,7 +172,7 @@ Go não é a linguagem mais rápida para o gargalo do projeto. Descompressão e 
 
 Go foi escolhido pelo resto do sistema: rede, retry, rate limit e fan-out de metadados são naturais; binário estático com cross-compile trivial; inicialização instantânea, que importa ao rodar `check` em milhares de arquivos ou como passo curto de pipeline; empacotamento como biocontainer e módulo nf-core quase sem esforço. E velocidade de desenvolvimento, que num projeto de uma pessoa pesa mais que um fator constante de throughput.
 
-A diferença real é menor do que parece. Em download a rede domina. Em arquivo local o piso é `zcat | wc -l`, e o próprio `zcat` é C; Go com `klauspost/compress` fica perto dele. É fator constante, não ordem de grandeza.
+A diferença real é menor do que parece. Em download a rede domina. Em arquivo local o piso é a descompressão, e o `zcat` é C; Go com `klauspost/compress` fica cerca de 20% atrás dele na medição da Fatia 1. É fator constante, não ordem de grandeza.
 
 Linguagem não é diferencial. O usuário escolhe ferramenta pelo que ela pega e pelo atrito de usar; Go reduz o atrito, mas não é o motivo de alguém usar. E linguagem não protege ideia: a checagem de `read_count` cabe num script Python dentro de qualquer workflow. O que não se copia rápido é a arquitetura de fatos e o benchmark como prova.
 
@@ -271,7 +271,7 @@ Correto não basta. Uma ferramenta que é só mais correta que as outras é resp
 
 ### Velocidade tem piso físico, e a meta é encostar nele
 
-Validar gzip simples e FASTQ exige descomprimir tudo. O piso é `zcat | wc -l`; a meta é ficar a 10% dele. Três decisões seguem daí: a leitura única distribui o buffer em paralelo, uma goroutine por consumidor, porque `io.MultiWriter` somaria os custos; o parser opera sobre o buffer sem alocar; e o jeito mais rápido de verificar é não verificar de novo — fatos por raiz transformam a reexecução num `stat`. Modo rápido existe (`check --quick`), mas nunca declara nada verificado.
+Validar gzip simples e FASTQ exige descomprimir tudo. O piso é a descompressão em Go puro; a meta é ficar a 10% dela, e na primeira medição o `check` inteiro ficou a 0,5%. O `zcat`, em C, é ~20% mais rápido que o inflate em Go: essa distância é reportada, não perseguida, porque fechá-la pede cgo ou descompressão especulativa. Três decisões seguem daí: a leitura única distribui o buffer em paralelo, uma goroutine por consumidor, porque `io.MultiWriter` somaria os custos; o parser opera sobre o buffer sem alocar; e o jeito mais rápido de verificar é não verificar de novo — fatos por raiz transformam a reexecução num `stat`. Modo rápido existe (`check --quick`), mas nunca declara nada verificado.
 
 ### Artefato derivado tem proveniência, mínima
 
@@ -302,6 +302,16 @@ Go estável mais recente (habilita `iter.Seq`, que resolve iteração sobre estu
 Plataforma: o alvo de uso é Linux (HPC, servidores, WSL). O desenvolvimento acontece também em Windows, e isso tem consequência: permissões `0600`/`0700`, `verified_inode` e detecção de pasta sincronizada assumem POSIX. Decisão: desenvolver e testar no WSL; o binário nativo de Windows compila, mas só a porta leve é suportada nele até existir CI Windows. OneDrive é a pasta sincronizada padrão do Windows — exatamente o caso que `CONFIDENTIALITY.md` §5.3 quer pegar —, então estudo restrito em Windows nativo é recusado.
 
 ---
+
+### Decisões da Fatia 1, com confiabilidade primeiro
+
+- **Linha em branco no fim do FASTQ é `advisory`, não `blocking`.** É inofensiva e comum; bloqueá-la gera alarme falso, e alarme falso empurra o usuário para `--permissive`, que é onde problema real passa. Ela é contada no fato e relatada. Linha em branco *no meio* continua `blocking`.
+- **Linha `;` no FASTA é rejeitada.** Antes ela era contada como bases: contagem errada em silêncio. Ignorá-la poderia esconder lixo. Num formato arcaico, falhar fechado custa pouco.
+- **O verificador independente distingue "discordo" (1) de "não sei julgar" (2).** Schema desconhecido é "não sei"; tratá-lo como discordância ou concordância seria afirmar algo que não foi verificado.
+- **`fatal` de arquivo não interrompe os outros arquivos; `fatal` da ferramenta interrompe tudo.** Na porta leve não há estado a salvar, e parar no primeiro arquivo ruim esconderia o diagnóstico dos demais. O código de saída continua sendo 2.
+- **Saída em inglês.** Uma língua só na interface pública; os identificadores no `--json` são estáveis independentemente do texto.
+- **A meta de desempenho mede o que é nosso.** Ver "Velocidade tem piso físico". Trocar confiabilidade por velocidade — cgo, inflate especulativo — fica para depois e só com medição.
+- **Corpus sintético versionado, com verdade do gerador.** Bytes fixos tornam certificados reprodutíveis por terceiros; o esperado vem de quem escreveu o arquivo, não de outro parser, o que pega o erro que o Go e o verificador Python compartilhariam.
 
 ## 4. Tipos de dado
 

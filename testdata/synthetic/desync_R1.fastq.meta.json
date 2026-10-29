@@ -1,0 +1,14 @@
+{
+  "generator": "internal/corpus",
+  "description": "first mate of a pair whose second mate lost one read",
+  "size": 16332,
+  "sha256": "abe12f49d1562ac01c04af0b4a87ba137b530e8713b32f57e5123e3ff9a98163",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 120,
+    "bases": 7200,
+    "failed": [
+      "pair_count"
+    ]
+  }
+}

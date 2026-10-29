@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "more distinct read lengths than the histogram keeps",
+  "size": 147863,
+  "sha256": "05e9585b49107313d650c2930b141841f7fb7707d94be89c3be4809c6490b9a3",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 4296,
+    "bases": 9247140,
+    "failed": []
+  }
+}

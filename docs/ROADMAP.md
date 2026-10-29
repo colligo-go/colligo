@@ -44,7 +44,7 @@ Escopo:
 - `cmd/colligo check` e `validate`: arquivos soltos, `--expected`, `--json`, códigos de saída de `RELIABILITY.md` §1.
 - `--cross-check` com saída compatível com `b3sum` e `sha256sum`.
 - Leitura única distribuída em paralelo, sem `io.MultiWriter`; parser de FASTQ sem alocação; `check --quick`.
-- Benchmark de desempenho contra o piso `zcat | wc -l` (`TESTING.md` §7.1).
+- Benchmark de desempenho contra o piso do gunzip em Go puro, com `zcat | wc -l` reportado (`TESTING.md` §7.1).
 - `check .` com descoberta de formato e pares; catálogo `diagnoses/` com uma entrada por afirmação.
 - `check --certificate` e o verificador independente `tools/verify_cert.py`.
 
@@ -55,7 +55,7 @@ Critério de pronto:
 - R2 com um read a menos que R1: `blocking`, código 3.
 - Cada arquivo é lido exatamente uma vez, verificado por contador de bytes lidos no teste.
 - Hashes conferem com `b3sum` e `sha256sum` quando presentes.
-- `check` completo de um `.fastq.gz` a no máximo 10% acima de `zcat | wc -l` na máquina de referência.
+- `check` completo de um `.fastq.gz` a no máximo 10% acima do gunzip em Go puro na máquina de referência.
 - Parser de FASTQ com zero alocação por registro.
 - `colligo check .` numa pasta com pares R1/R2 e um arquivo truncado roda sem configuração e imprime o diagnóstico em frase.
 - O verificador Python concorda com o certificado em todo o corpus sintético.

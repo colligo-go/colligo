@@ -2,15 +2,17 @@ package facts
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 func perfFastqGz(tb testing.TB, megabytes int) (path string, size int64) {
@@ -74,7 +76,7 @@ func TestPerformanceFloor(t *testing.T) {
 		t.Skip("set COLLIGO_PERF=1 to run the performance benchmark")
 	}
 	if _, err := exec.LookPath("zcat"); err != nil {
-		t.Fatal("zcat not found: the floor cannot be measured")
+		t.Fatal("zcat not found: the reference floor cannot be measured")
 	}
 	path, size := perfFastqGz(t, 1024)
 	best := func(fn func()) time.Duration {
@@ -84,25 +86,40 @@ func TestPerformanceFloor(t *testing.T) {
 		}
 		return d
 	}
-	floor := best(func() {
+	open := func() *os.File {
+		f, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return f
+	}
+	goFloor := best(func() {
+		f := open()
+		defer f.Close()
+		r, err := gzip.NewReader(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := io.Copy(io.Discard, r); err != nil {
+			t.Fatal(err)
+		}
+	})
+	zcat := best(func() {
 		if err := exec.Command("sh", "-c", fmt.Sprintf("zcat %q | wc -l >/dev/null", path)).Run(); err != nil {
 			t.Fatal(err)
 		}
 	})
 	ours := best(func() {
-		f, err := os.Open(path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		f := open()
 		defer f.Close()
 		if _, err := Compute(context.Background(), f, Options{Hashes: true}); err != nil {
 			t.Fatal(err)
 		}
 	})
-	ratio := float64(ours) / float64(floor)
-	t.Logf("file %.0f MiB compressed: zcat|wc -l = %v, check = %v, ratio = %.1f%% (target <= 110%%)",
-		float64(size)/(1<<20), floor, ours, 100*ratio)
-	if ratio > 1.10 {
-		t.Fatalf("check is %.1f%% of the floor, target is 110%%", 100*ratio)
+	overGo := float64(ours) / float64(goFloor)
+	t.Logf("file %.0f MiB compressed: Go gunzip = %v, zcat|wc -l = %v, check = %v", float64(size)/(1<<20), goFloor, zcat, ours)
+	t.Logf("check = %.1f%% of Go gunzip (target <= 110%%), %.1f%% of zcat|wc -l (reported)", 100*overGo, 100*float64(ours)/float64(zcat))
+	if overGo > 1.10 {
+		t.Fatalf("check is %.1f%% of the Go gunzip floor, target is 110%%", 100*overGo)
 	}
 }

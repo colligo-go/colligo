@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "gzip cut at two thirds of its length",
+  "size": 59564,
+  "sha256": "950b2e1933d2e030ce596120709d0da8a0c680024099aafab26aa67bc6b4ae70",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "failed": [
+      "structure_invalid"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "FASTQ in BGZF with the EOF block",
+  "size": 20764,
+  "sha256": "24bad299bdba43a61d500a903405150a50bcdc222342ea35bbc552b92e1192ab",
+  "recorded_at": "2026-10-29T13:24:14Z",
+  "expect": {
+    "records": 500,
+    "bases": 45000,
+    "failed": []
+  }
+}

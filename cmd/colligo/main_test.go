@@ -236,3 +236,16 @@ func TestMissingPathIsAUsageErrorThatNamesThePath(t *testing.T) {
 		t.Fatalf("exit %d out %q err %q", code, out, errText)
 	}
 }
+
+func TestFatalInOneFileStillChecksTheOthers(t *testing.T) {
+	dir := t.TempDir()
+	put(t, dir, "annotation.gtf.gz", []byte("<!DOCTYPE html><title>Error</title>"))
+	put(t, dir, "reads.fastq", fastq("S", 10))
+	code, out, _ := invoke("check", dir)
+	if code != verifier.ExitFatal {
+		t.Fatalf("exit %d, want 2\n%s", code, out)
+	}
+	if !strings.Contains(out, "html_body") || !strings.Contains(out, "verified: fastq") {
+		t.Fatalf("the healthy file must still be checked and reported:\n%s", out)
+	}
+}

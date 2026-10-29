@@ -11,18 +11,19 @@ import (
 )
 
 const (
-	ReadFailed        = "read_failed"
-	HTMLBody          = "html_body"
-	MagicMismatch     = "magic_mismatch"
-	ChecksumMismatch  = "checksum_mismatch"
-	SizeMismatch      = "size_mismatch"
-	StructureInvalid  = "structure_invalid"
-	FormatUnknown     = "format_unknown"
-	FormatDeclared    = "format_declared"
-	CountMismatch     = "count_mismatch"
-	PairCount         = "pair_count"
-	PairIDs           = "pair_ids"
-	ExtensionMismatch = "extension_mismatch"
+	ReadFailed         = "read_failed"
+	HTMLBody           = "html_body"
+	MagicMismatch      = "magic_mismatch"
+	ChecksumMismatch   = "checksum_mismatch"
+	SizeMismatch       = "size_mismatch"
+	StructureInvalid   = "structure_invalid"
+	FormatUnknown      = "format_unknown"
+	FormatDeclared     = "format_declared"
+	CountMismatch      = "count_mismatch"
+	PairCount          = "pair_count"
+	PairIDs            = "pair_ids"
+	ExtensionMismatch  = "extension_mismatch"
+	TrailingBlankLines = "trailing_blank_lines"
 )
 
 type Entry struct {
@@ -47,6 +48,12 @@ func (e Entry) Describe(v Values) (observation, cause, action string) {
 }
 
 var catalogue = []Entry{
+	{
+		ID: TrailingBlankLines, Mode: "M4", Severity: model.Advisory,
+		Observation: "The file ends with {observed} blank line(s) after the last complete record.",
+		Cause:       "A tool that wrote or concatenated the file added empty lines; the records themselves are complete.",
+		Action:      "No action is needed for the data; remove the blank lines if a downstream tool rejects them.",
+	},
 	{
 		ID: ReadFailed, Mode: "M10", Severity: model.Fatal,
 		Observation: "The file could not be read: {detail}.",

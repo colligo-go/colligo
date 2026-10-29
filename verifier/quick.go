@@ -25,8 +25,12 @@ func textTailFact(content string, last byte) model.Fact {
 	if label == "" {
 		label = format.ContentUnknown
 	}
-	if last == '\n' {
-		return quickStructureFact(label+"-1", label, true, "", 0)
+	version := label + "-1"
+	if v, ok := format.Lookup(label); ok {
+		version = v.Version()
 	}
-	return quickStructureFact(label+"-1", label, false, "last line is incomplete", 0)
+	if last == '\n' {
+		return quickStructureFact(version, label, true, "", 0)
+	}
+	return quickStructureFact(version, label, false, "last line is incomplete", 0)
 }

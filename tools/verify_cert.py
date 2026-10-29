@@ -7,7 +7,8 @@ and compares them with the certificate. A disagreement is a bug in one of
 the two implementations.
 
 usage: verify_cert.py CERTIFICATE [FILE]
-exit:  0 the certificate agrees, 1 it does not, 2 usage or unreadable input
+exit:  0 the certificate agrees, 1 it does not, 2 it cannot be judged:
+       usage, unreadable input, or a schema this verifier does not know
 """
 import gzip
 import hashlib
@@ -57,6 +58,7 @@ class Fastq:
         self.bases = 0
         self.lengths = {}
         self.overflow = 0
+        self.blank = 0
         self.first = None
         self.last = None
         self.problem = None
@@ -83,6 +85,12 @@ def parse_fastq(path):
                 if line.endswith(b"\r"):
                     line = line[:-1]
                 if state == 0:
+                    if line == b"":
+                        out.blank += 1
+                        continue
+                    if out.blank:
+                        out.problem = "blank line inside the file"
+                        return out
                     if not line.startswith(b"@"):
                         out.problem = "record does not start with '@'"
                         return out
@@ -131,7 +139,6 @@ def verify(cert, path):
         if claimed != observed:
             problems.append(f"{label}: certificate says {claimed!r}, recomputed {observed!r}")
 
-    expect("schema_version", cert.get("schema_version"), SCHEMA_VERSION)
     expect("group_size", cert.get("group_size"), GROUP_SIZE)
     size, md5, sha, b3 = hash_file(path)
     expect("size", cert.get("size"), size)
@@ -152,6 +159,7 @@ def verify(cert, path):
         parsed = parse_fastq(path)
         expect("fastq structure.valid", fastq_structure[0]["value"]["valid"], parsed.problem is None)
         if parsed.problem is None:
+            expect("fastq structure.trailing_blank_lines", fastq_structure[0]["value"].get("trailing_blank_lines", 0), parsed.blank)
             for fact in facts_of(cert, "records", "fastq"):
                 value = fact["value"]
                 expect("records.records", value["records"], parsed.records)
@@ -206,6 +214,8 @@ def main(argv):
     try:
         with open(cert_path, "r", encoding="utf-8") as f:
             cert = json.load(f)
+        if cert.get("schema_version") != SCHEMA_VERSION:
+            fail_usage(f"unknown schema_version {cert.get('schema_version')!r}; this verifier knows {SCHEMA_VERSION}")
         if not os.path.isfile(path):
             fail_usage(f"{path!r} is not a file")
         problems = verify(cert, path)
