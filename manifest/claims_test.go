@@ -172,3 +172,23 @@ func TestIndependentVerifierChecksTheRootOfAMultiGroupFile(t *testing.T) {
 		t.Fatalf("a wrong root exit %d, want 1\n%s", code, out)
 	}
 }
+
+func TestIndependentVerifierListsWhatItDidNotRecompute(t *testing.T) {
+	exe := exttool.Python(t)
+	dir := t.TempDir()
+	cert := certify(t, dir, "genome.fa", []byte(">chr1\nACGTACGT\n>chr2\nGGCC\n"))
+	code, out := exitCode(t, exe, cert)
+	if code != 0 || !strings.HasPrefix(out, "AGREE\n") {
+		t.Fatalf("exit %d\n%s", code, out)
+	}
+	for _, want := range []string{"UNCHECKED fact ", "UNCHECKED assertion html_body"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	fq := certify(t, dir, "r.fastq", fastq("S", 20, 1))
+	_, out = exitCode(t, exe, fq)
+	if strings.Contains(out, "UNCHECKED fact records") || strings.Contains(out, "UNCHECKED fact digests") {
+		t.Errorf("recomputed facts listed as unchecked:\n%s", out)
+	}
+}

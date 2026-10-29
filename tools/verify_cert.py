@@ -192,6 +192,11 @@ def verify(cert, path):
     expect("sha256", cert.get("sha256"), sha)
     expect("blake3_root", cert.get("blake3_root"), b3)
 
+    for fact in facts_of(cert, "digests", "digests"):
+        expect("digests.md5", fact["value"].get("md5"), md5)
+        expect("digests.sha256", fact["value"].get("sha256"), sha)
+        expect("digests.size", fact["value"].get("size"), size)
+
     recomputed = {md5, sha, b3}
     parsed = None
     verdicts = {}
@@ -255,6 +260,28 @@ def check_assertion(a, size, recomputed, parsed, verdicts, structure_formats):
         if not a["passed"] and judged and recomputed_valid:
             problems.append("assertion structure_invalid failed, but the structure recomputed as valid")
     return problems
+
+
+RECALCULATED_FACTS = {
+    "digests": ("digests",),
+    "structure": ("fastq", "gzip", "bgzf"),
+    "records": ("fastq",),
+    "read_ends": ("fastq",),
+}
+RECALCULATED_ASSERTIONS = {"checksum_mismatch", "size_mismatch", "count_mismatch", "structure_invalid"}
+
+
+def unchecked(cert):
+    """Facts and assertions the verifier did not recompute, one line each."""
+    lines = []
+    for fact in cert["facts"]:
+        prefixes = RECALCULATED_FACTS.get(fact["kind"], ())
+        if not fact["extractor_version"].startswith(prefixes) if prefixes else True:
+            lines.append(f"UNCHECKED fact {fact['kind']} ({fact['extractor_version']})")
+    for a in cert["assertions"]:
+        if not a.get("skipped") and a["id"] not in RECALCULATED_ASSERTIONS:
+            lines.append(f"UNCHECKED assertion {a['id']}")
+    return lines
 
 
 def decompresses_cleanly(path):
@@ -338,6 +365,8 @@ def main(argv):
             print(f"DISAGREE {p}")
         return 1
     print("AGREE")
+    for line in unchecked(cert):
+        print(line)
     return 0
 
 
