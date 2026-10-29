@@ -175,7 +175,7 @@ def verify(cert, path):
         for fact in facts_of(cert, "structure", "gzip"):
             expect("gzip structure.valid", fact["value"]["valid"], decompresses)
         for fact in facts_of(cert, "structure", "bgzf"):
-            expect("bgzf structure.valid", fact["value"]["valid"], decompresses and has_bgzf_eof(path))
+            expect("bgzf structure.valid", fact["value"]["valid"], decompresses and has_bgzf_chain(path))
     return problems
 
 
@@ -190,14 +190,47 @@ def decompresses_cleanly(path):
 
 
 BGZF_EOF = bytes.fromhex("1f8b08040000000000ff0600424302001b0003000000000000000000")
+GZIP_FIXED_HEADER = 12
+GZIP_TRAILER = 8
 
 
-def has_bgzf_eof(path):
+def bgzf_block_size(f, offset, file_size):
+    """Total size of the BGZF block at offset, or None when no valid block starts there."""
+    f.seek(offset)
+    fixed = f.read(GZIP_FIXED_HEADER)
+    if len(fixed) < GZIP_FIXED_HEADER or fixed[0] != 0x1F or fixed[1] != 0x8B or fixed[2] != 8 or not fixed[3] & 4:
+        return None
+    xlen = int.from_bytes(fixed[10:12], "little")
+    extra = f.read(xlen)
+    if len(extra) < xlen:
+        return None
+    i = 0
+    while i + 4 <= xlen:
+        slen = int.from_bytes(extra[i + 2 : i + 4], "little")
+        if i + 4 + slen > xlen:
+            return None
+        if extra[i : i + 2] == b"BC" and slen == 2:
+            size = int.from_bytes(extra[i + 4 : i + 6], "little") + 1
+            minimum = GZIP_FIXED_HEADER + xlen + GZIP_TRAILER
+            return size if minimum <= size and offset + size <= file_size else None
+        i += 4 + slen
+    return None
+
+
+def has_bgzf_chain(path):
+    """True when the BSIZE fields chain from offset 0 to exactly the end of
+    the file and the last block is the 28-byte EOF marker."""
+    file_size = os.path.getsize(path)
+    offset, last = 0, None
     with open(path, "rb") as f:
-        f.seek(0, os.SEEK_END)
-        if f.tell() < len(BGZF_EOF):
+        while offset < file_size:
+            size = bgzf_block_size(f, offset, file_size)
+            if size is None:
+                return False
+            offset, last = offset + size, offset
+        if last is None or file_size - last != len(BGZF_EOF):
             return False
-        f.seek(-len(BGZF_EOF), os.SEEK_END)
+        f.seek(last)
         return f.read() == BGZF_EOF
 
 
