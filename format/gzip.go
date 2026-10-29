@@ -27,17 +27,17 @@ func (v gzipValidator) NewExtractor() Extractor {
 type bgzfValidator struct{}
 
 func (bgzfValidator) Format() string      { return ContainerBgzf }
-func (bgzfValidator) Version() string     { return "bgzf-1" }
+func (bgzfValidator) Version() string     { return "bgzf-2" }
 func (bgzfValidator) MagicPrefix() []byte { return append([]byte(nil), gzipMagic...) }
 func (bgzfValidator) Compressed() bool    { return true }
 func (v bgzfValidator) NewExtractor() Extractor {
-	return &containerExtractor{label: v.Format(), version: v.Version(), bgzf: true}
+	return &containerExtractor{label: v.Format(), version: v.Version(), blocks: &blockWalker{}}
 }
 
 type containerExtractor struct {
 	label        string
 	version      string
-	bgzf         bool
+	blocks       *blockWalker
 	size         int64
 	tail         [28]byte
 	tailLen      int
@@ -49,6 +49,9 @@ type containerExtractor struct {
 
 func (c *containerExtractor) Write(p []byte) (int, error) {
 	c.size += int64(len(p))
+	if c.blocks != nil {
+		c.blocks.Write(p)
+	}
 	if len(p) >= len(c.tail) {
 		copy(c.tail[:], p[len(p)-len(c.tail):])
 		c.tailLen = len(c.tail)
@@ -78,7 +81,9 @@ func (c *containerExtractor) Finish() ([]model.Fact, error) {
 	switch {
 	case c.reported && c.payloadErr != nil:
 		v.Valid, v.Reason, v.Offset = false, c.payloadErr.Error(), c.consumed
-	case c.bgzf && !bytes.Equal(c.tail[:c.tailLen], bgzfEOF):
+	case c.blocks != nil && c.blocks.finish() != nil:
+		v.Valid, v.Reason, v.Offset = false, c.blocks.bad.reason, c.blocks.bad.offset
+	case c.blocks != nil && !bytes.Equal(c.tail[:c.tailLen], bgzfEOF):
 		v.Valid, v.Reason, v.Offset = false, "missing BGZF EOF block", c.size
 	}
 	raw, err := json.Marshal(v)

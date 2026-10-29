@@ -43,6 +43,7 @@ func DetectContainer(head []byte) string {
 }
 
 func DetectContent(head []byte) string {
+	head = bytes.TrimPrefix(head, utf8BOM)
 	trimmed := bytes.TrimLeft(head, " \t\r\n")
 	if len(trimmed) == 0 {
 		return ContentUnknown

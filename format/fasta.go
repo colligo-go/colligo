@@ -8,11 +8,13 @@ import (
 
 type fastaValidator struct{}
 
-func (fastaValidator) Format() string          { return ContentFasta }
-func (fastaValidator) Version() string         { return "fasta-2" }
-func (fastaValidator) MagicPrefix() []byte     { return []byte{'>'} }
-func (fastaValidator) Compressed() bool        { return false }
-func (fastaValidator) NewExtractor() Extractor { return newFastaExtractor() }
+func (fastaValidator) Format() string      { return ContentFasta }
+func (fastaValidator) Version() string     { return "fasta-3" }
+func (fastaValidator) MagicPrefix() []byte { return []byte{'>'} }
+func (fastaValidator) Compressed() bool    { return false }
+func (v fastaValidator) NewExtractor() Extractor {
+	return rejectBOM(ContentFasta, v.Version(), newFastaExtractor())
+}
 
 type fastaExtractor struct {
 	lines   lineReader
