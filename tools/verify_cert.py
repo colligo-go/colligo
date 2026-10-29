@@ -8,7 +8,8 @@ the two implementations.
 
 usage: verify_cert.py CERTIFICATE [FILE]
 exit:  0 the certificate agrees, 1 it does not, 2 it cannot be judged:
-       usage, unreadable input, or a schema this verifier does not know
+       usage, unreadable input, a schema this verifier does not know, or a
+       certificate with a missing or unknown field
 """
 import gzip
 import hashlib
@@ -25,10 +26,55 @@ MAX_LENGTH_BUCKETS = 4096
 SCHEMA_VERSION = 1
 GZIP_MAGIC = b"\x1f\x8b"
 
+CERTIFICATE_FIELDS = {
+    "schema_version": int,
+    "tool": dict,
+    "size": int,
+    "blake3_root": str,
+    "group_size": int,
+    "md5": str,
+    "sha256": str,
+    "facts": list,
+    "assertions": list,
+}
+TOOL_FIELDS = {"version": str, "git_sha": str}
+FACT_FIELDS = {"kind": str, "extractor_version": str, "value": dict}
+ASSERTION_REQUIRED = {"id": str, "mode": str, "severity": str, "passed": bool, "declared": str, "observed": str}
+ASSERTION_OPTIONAL = {
+    "skipped": bool,
+    "skipped_by": str,
+    "observation": str,
+    "probable_cause": str,
+    "suggested_action": str,
+}
+
 
 def fail_usage(message):
     print(f"verify_cert: {message}", file=sys.stderr)
     sys.exit(2)
+
+
+def check_fields(where, obj, required, optional=None):
+    if not isinstance(obj, dict):
+        fail_usage(f"{where} is not an object")
+    allowed = {**required, **(optional or {})}
+    for name in required:
+        if name not in obj:
+            fail_usage(f"{where} is missing the required field {name!r}")
+    for name, value in obj.items():
+        if name not in allowed:
+            fail_usage(f"{where} has the unknown field {name!r}")
+        if type(value) is not allowed[name]:
+            fail_usage(f"{where}.{name} has the wrong type {type(value).__name__}")
+
+
+def check_schema(cert):
+    check_fields("certificate", cert, CERTIFICATE_FIELDS)
+    check_fields("certificate.tool", cert["tool"], TOOL_FIELDS)
+    for i, fact in enumerate(cert["facts"]):
+        check_fields(f"certificate.facts[{i}]", fact, FACT_FIELDS)
+    for i, assertion in enumerate(cert["assertions"]):
+        check_fields(f"certificate.assertions[{i}]", assertion, ASSERTION_REQUIRED, ASSERTION_OPTIONAL)
 
 
 def hash_file(path):
@@ -147,16 +193,14 @@ def verify(cert, path):
     expect("blake3_root", cert.get("blake3_root"), b3)
 
     recomputed = {md5, sha, b3}
-    for a in cert.get("assertions", []):
-        if a["id"] == "checksum_mismatch" and not a.get("skipped"):
-            if a["observed"] not in recomputed:
-                problems.append(f"assertion checksum_mismatch observed {a['observed']!r}, which is none of the recomputed hashes")
-            if a["passed"] != (a["declared"] == a["observed"]):
-                problems.append("assertion checksum_mismatch: result disagrees with declared and observed")
+    parsed = None
+    verdicts = {}
+    structure_formats = {f["extractor_version"].split("-")[0] for f in facts_of(cert, "structure", "")}
 
     fastq_structure = facts_of(cert, "structure", "fastq")
     if fastq_structure:
         parsed = parse_fastq(path)
+        verdicts["fastq"] = parsed.problem is None
         expect("fastq structure.valid", fastq_structure[0]["value"]["valid"], parsed.problem is None)
         if parsed.problem is None:
             expect("fastq structure.trailing_blank_lines", fastq_structure[0]["value"].get("trailing_blank_lines", 0), parsed.blank)
@@ -172,10 +216,44 @@ def verify(cert, path):
 
     if is_gzip(path):
         decompresses = decompresses_cleanly(path)
+        verdicts["gzip"] = decompresses
         for fact in facts_of(cert, "structure", "gzip"):
             expect("gzip structure.valid", fact["value"]["valid"], decompresses)
         for fact in facts_of(cert, "structure", "bgzf"):
-            expect("bgzf structure.valid", fact["value"]["valid"], decompresses and has_bgzf_chain(path))
+            chained = decompresses and has_bgzf_chain(path)
+            verdicts["bgzf"] = chained
+            expect("bgzf structure.valid", fact["value"]["valid"], chained)
+
+    for a in cert["assertions"]:
+        if a.get("skipped"):
+            continue
+        problems.extend(check_assertion(a, size, recomputed, parsed, verdicts, structure_formats))
+    return problems
+
+
+def check_assertion(a, size, recomputed, parsed, verdicts, structure_formats):
+    name = a["id"]
+    problems = []
+    if name in ("checksum_mismatch", "size_mismatch", "count_mismatch"):
+        if a["passed"] != (a["declared"] == a["observed"]):
+            problems.append(f"assertion {name}: result disagrees with declared and observed")
+    if name == "checksum_mismatch" and a["observed"] not in recomputed:
+        problems.append(f"assertion checksum_mismatch observed {a['observed']!r}, which is none of the recomputed hashes")
+    if name == "size_mismatch" and a["observed"] != str(size):
+        problems.append(f"assertion size_mismatch observed {a['observed']!r}, recomputed {str(size)!r}")
+    if name == "count_mismatch" and parsed is not None and parsed.problem is None:
+        counted = {str(parsed.records), str(parsed.bases)}
+        if a["observed"] not in counted:
+            problems.append(f"assertion count_mismatch observed {a['observed']!r}, recomputed {sorted(counted)!r}")
+    if name == "structure_invalid":
+        if a["passed"] != (a["observed"] == "valid"):
+            problems.append("assertion structure_invalid: result disagrees with observed")
+        recomputed_valid = all(verdicts.values())
+        judged = bool(verdicts) and set(verdicts) >= structure_formats
+        if a["passed"] and verdicts and not recomputed_valid:
+            problems.append("assertion structure_invalid passed, but the structure recomputed as invalid")
+        if not a["passed"] and judged and recomputed_valid:
+            problems.append("assertion structure_invalid failed, but the structure recomputed as valid")
     return problems
 
 
@@ -249,6 +327,7 @@ def main(argv):
             cert = json.load(f)
         if cert.get("schema_version") != SCHEMA_VERSION:
             fail_usage(f"unknown schema_version {cert.get('schema_version')!r}; this verifier knows {SCHEMA_VERSION}")
+        check_schema(cert)
         if not os.path.isfile(path):
             fail_usage(f"{path!r} is not a file")
         problems = verify(cert, path)
