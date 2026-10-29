@@ -2,6 +2,8 @@ package format
 
 import (
 	"bytes"
+	"compress/gzip"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -176,11 +178,36 @@ func TestGTF(t *testing.T) {
 	}
 }
 
+func bgzfBlock(t testing.TB, payload []byte) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	w := gzip.NewWriter(&b)
+	w.Extra = []byte{'B', 'C', 2, 0, 0, 0}
+	if _, err := w.Write(payload); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	raw := b.Bytes()
+	binary.LittleEndian.PutUint16(raw[16:], uint16(len(raw)-1))
+	return raw
+}
+
+func bgzfBlocks(t testing.TB, n int) []byte {
+	t.Helper()
+	var out []byte
+	for i := 0; i < n; i++ {
+		out = append(out, bgzfBlock(t, bytes.Repeat([]byte{byte(i)}, 40))...)
+	}
+	return out
+}
+
 func TestContainerBgzfEOFBlock(t *testing.T) {
 	v := bgzfValidator{}
 	for _, withEOF := range []bool{true, false} {
 		e := v.NewExtractor()
-		e.Write(bytes.Repeat([]byte{1}, 100))
+		e.Write(bgzfBlocks(t, 3))
 		if withEOF {
 			e.Write(BGZFEOFBlock())
 		}
@@ -290,7 +317,7 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestBGZFTailIsFoundWhateverTheWriteSplit(t *testing.T) {
-	body := bytes.Repeat([]byte{9}, 200)
+	body := bgzfBlocks(t, 4)
 	full := append(append([]byte{}, body...), BGZFEOFBlock()...)
 	valid := func(parts ...[]byte) bool {
 		e := bgzfValidator{}.NewExtractor()

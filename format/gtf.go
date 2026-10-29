@@ -9,11 +9,13 @@ import (
 
 type gtfValidator struct{}
 
-func (gtfValidator) Format() string          { return ContentGTF }
-func (gtfValidator) Version() string         { return "gtf-1" }
-func (gtfValidator) MagicPrefix() []byte     { return nil }
-func (gtfValidator) Compressed() bool        { return false }
-func (gtfValidator) NewExtractor() Extractor { return newGTFExtractor() }
+func (gtfValidator) Format() string      { return ContentGTF }
+func (gtfValidator) Version() string     { return "gtf-2" }
+func (gtfValidator) MagicPrefix() []byte { return nil }
+func (gtfValidator) Compressed() bool    { return false }
+func (v gtfValidator) NewExtractor() Extractor {
+	return rejectBOM(ContentGTF, v.Version(), newGTFExtractor())
+}
 
 type gtfExtractor struct {
 	lines   lineReader

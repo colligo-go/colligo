@@ -10,11 +10,13 @@ const maxLengthBuckets = 4096
 
 type fastqValidator struct{}
 
-func (fastqValidator) Format() string          { return ContentFastq }
-func (fastqValidator) Version() string         { return "fastq-2" }
-func (fastqValidator) MagicPrefix() []byte     { return []byte{'@'} }
-func (fastqValidator) Compressed() bool        { return false }
-func (fastqValidator) NewExtractor() Extractor { return newFastqExtractor() }
+func (fastqValidator) Format() string      { return ContentFastq }
+func (fastqValidator) Version() string     { return "fastq-3" }
+func (fastqValidator) MagicPrefix() []byte { return []byte{'@'} }
+func (fastqValidator) Compressed() bool    { return false }
+func (v fastqValidator) NewExtractor() Extractor {
+	return rejectBOM(ContentFastq, v.Version(), newFastqExtractor())
+}
 
 type fastqExtractor struct {
 	lines    lineReader
