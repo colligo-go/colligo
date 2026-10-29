@@ -1,0 +1,41 @@
+package verifier
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
+
+func ParseExpected(pairs []string) (Expected, error) {
+	var exp Expected
+	for _, p := range pairs {
+		key, value, ok := strings.Cut(p, "=")
+		if !ok || value == "" {
+			return Expected{}, fmt.Errorf("--expected %q: want key=value", p)
+		}
+		switch strings.ToLower(key) {
+		case "md5":
+			exp.MD5 = value
+		case "sha256":
+			exp.SHA256 = value
+		case "blake3":
+			exp.BLAKE3 = value
+		case "size", "reads", "bases":
+			n, err := strconv.ParseInt(value, 10, 64)
+			if err != nil || n < 0 {
+				return Expected{}, fmt.Errorf("--expected %q: %q is not a count", p, value)
+			}
+			switch strings.ToLower(key) {
+			case "size":
+				exp.Size = &n
+			case "reads":
+				exp.Reads = &n
+			default:
+				exp.Bases = &n
+			}
+		default:
+			return Expected{}, fmt.Errorf("--expected %q: unknown key (use md5, sha256, blake3, size, reads, bases)", p)
+		}
+	}
+	return exp, nil
+}
