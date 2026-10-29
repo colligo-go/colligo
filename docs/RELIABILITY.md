@@ -83,21 +83,21 @@ O pior modo. Um `.gz` cortado descomprime parcialmente. Muita ferramenta downstr
 
 Custo, dito com precisão: para BGZF, BAM e CRAM há marcador de fim, e a verificação é barata. Para gzip simples e FASTQ não há — o ISIZE só confere descomprimindo tudo, e contar linhas também. Nesses formatos a validação é uma leitura completa do conteúdo descomprimido. Por isso ela acontece **uma vez por raiz de hash e versão de validador** (`DESIGN.md`, "Fatos e afirmações"), e a mesma leitura extrai contagens e IDs usados por M5 e M15.
 
-| Formato       | Prefixo         | Verificação de término                                      |
-| ------------- | --------------- | ----------------------------------------------------------- |
-| gzip          | `1f 8b`         | último membro fecha; ISIZE bate com o descomprimido mod 2^32 |
-| bgzf          | `1f 8b` + XLEN  | cadeia de BSIZE contígua até o fim; bloco EOF presente      |
-| bam           | `BAM\1` em bgzf | bloco EOF de bgzf presente                                  |
-| cram          | `CRAM`          | contêiner EOF presente                                      |
-| fastq / .gz   | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory`; BOM UTF-8 no início rejeitado |
-| fasta         | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada; BOM UTF-8 no início rejeitado |
-| vcf / .gz     | `##fileformat`  | header presente; última linha tem contagem de campos válida  |
-| gtf / gff3    | texto           | última linha tem 9 campos separados por tab; BOM UTF-8 no início rejeitado |
-| hdf5 / h5ad   | `\x89HDF\r\n`   | superbloco íntegro; raiz abre                                |
-| pdb           | texto           | registro `END` presente                                      |
-| mmcif         | `data_`         | último bloco fecha                                           |
-| rds           | magic RDS       | prefixo apenas                                               |
-| tsv / csv     | —               | contagem de campos consistente; última linha completa        |
+| Formato     | Prefixo         | Verificação de término                                                                                                                                   |
+| ----------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| gzip        | `1f 8b`         | último membro fecha; ISIZE bate com o descomprimido mod 2^32                                                                                             |
+| bgzf        | `1f 8b` + XLEN  | cadeia de BSIZE contígua até o fim; bloco EOF presente                                                                                                   |
+| bam         | `BAM\1` em bgzf | bloco EOF de bgzf presente                                                                                                                               |
+| cram        | `CRAM`          | contêiner EOF presente                                                                                                                                   |
+| fastq / .gz | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory`; BOM UTF-8 no início rejeitado |
+| fasta       | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada; BOM UTF-8 no início rejeitado                                   |
+| vcf / .gz   | `##fileformat`  | header presente; última linha tem contagem de campos válida                                                                                              |
+| gtf / gff3  | texto           | toda linha de feature tem 9 campos separados por tab; BOM UTF-8 no início rejeitado                                                                      |
+| hdf5 / h5ad | `\x89HDF\r\n`   | superbloco íntegro; raiz abre                                                                                                                            |
+| pdb         | texto           | registro `END` presente                                                                                                                                  |
+| mmcif       | `data_`         | último bloco fecha                                                                                                                                       |
+| rds         | magic RDS       | prefixo apenas                                                                                                                                           |
+| tsv / csv   | —               | contagem de campos consistente; última linha completa                                                                                                    |
 
 Formato declarado vem do perfil ou do TOML. Inferido por extensão → `confidence = inferred` e `advisory`.
 
