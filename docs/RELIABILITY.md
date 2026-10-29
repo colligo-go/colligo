@@ -36,6 +36,8 @@ Colligo falha fechado. Três severidades:
 
 `--expected` com a mesma chave repetida (sem diferenciar maiúscula de minúscula, mesmo com valor igual) é erro de uso, código 1, antes de ler qualquer arquivo: dois valores para a mesma chave são ambíguos e deixar o último vencer esconderia um erro de cópia.
 
+`--cross-check` escreve `colligo.sha256` e `colligo.b3` no formato do GNU: se o nome tem `\` ou quebra de linha, a linha começa com `\` e o nome sai com `\\` e `\n`, o que `sha256sum -c` e `b3sum -c` entendem. Link simbólico para diretório nunca é seguido (evita ciclos com `--recursive`); sai como "symbolic link to a directory, not followed" e em `skipped_directory_links` no JSON, e não como arquivo não reconhecido.
+
 Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
 
 ---
