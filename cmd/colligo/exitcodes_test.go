@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/colligo-go/colligo/verifier"
@@ -48,6 +49,23 @@ func TestExitCodeTable(t *testing.T) {
 					}
 				}
 			}
+		}
+	}
+}
+
+func TestRepeatedExpectedKeyIsAUsageErrorBeforeAnyFileIsRead(t *testing.T) {
+	missing := t.TempDir() + "/never-read.fastq"
+	for _, args := range [][]string{
+		{"check", "--expected", "md5=aa", "--expected", "md5=bb", missing},
+		{"check", "--expected", "md5=aa", "--expected", "MD5=aa", missing},
+		{"check", "--expected", "reads=5", "--expected", "reads=5", missing},
+	} {
+		code, out, errText := invoke(args...)
+		if code != verifier.ExitUsage || out != "" {
+			t.Errorf("%v: exit %d out %q", args, code, out)
+		}
+		if !strings.Contains(errText, "given more than once") || strings.Contains(errText, "never-read") {
+			t.Errorf("%v: stderr %q", args, errText)
 		}
 	}
 }

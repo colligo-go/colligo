@@ -8,17 +8,17 @@ import (
 
 func ParseExpected(pairs []string) (Expected, error) {
 	var exp Expected
-	seen := map[string]bool{}
+	seen := map[string]string{}
 	for _, p := range pairs {
 		key, value, ok := strings.Cut(p, "=")
 		if !ok || value == "" {
 			return Expected{}, fmt.Errorf("--expected %q: want key=value", p)
 		}
 		key = strings.ToLower(key)
-		if seen[key] {
-			return Expected{}, fmt.Errorf("--expected %q: %s was already given", p, key)
+		if previous, dup := seen[key]; dup {
+			return Expected{}, fmt.Errorf("--expected %s given more than once (%q and %q)", key, previous, value)
 		}
-		seen[key] = true
+		seen[key] = value
 		switch key {
 		case "md5":
 			exp.MD5 = value
