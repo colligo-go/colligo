@@ -8,12 +8,18 @@ import (
 
 func ParseExpected(pairs []string) (Expected, error) {
 	var exp Expected
+	seen := map[string]string{}
 	for _, p := range pairs {
 		key, value, ok := strings.Cut(p, "=")
 		if !ok || value == "" {
 			return Expected{}, fmt.Errorf("--expected %q: want key=value", p)
 		}
-		switch strings.ToLower(key) {
+		key = strings.ToLower(key)
+		if previous, dup := seen[key]; dup {
+			return Expected{}, fmt.Errorf("--expected %s given more than once (%q and %q)", key, previous, value)
+		}
+		seen[key] = value
+		switch key {
 		case "md5":
 			exp.MD5 = value
 		case "sha256":
@@ -25,7 +31,7 @@ func ParseExpected(pairs []string) (Expected, error) {
 			if err != nil || n < 0 {
 				return Expected{}, fmt.Errorf("--expected %q: %q is not a count", p, value)
 			}
-			switch strings.ToLower(key) {
+			switch key {
 			case "size":
 				exp.Size = &n
 			case "reads":

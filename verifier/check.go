@@ -156,32 +156,38 @@ func checkQuick(ctx context.Context, name secret.Name, opts Options) (*FileRepor
 // candidate when its content is a known format or its name says it should
 // be one, so a web page saved as .gtf.gz is rejected instead of ignored. A
 // file named explicitly is always checked.
-func Discover(ctx context.Context, root secret.Name, recursive bool) (names []secret.Name, skipped []string, err error) {
+func Discover(ctx context.Context, root secret.Name, recursive bool) (names []secret.Name, skipped, dirLinks []string, err error) {
 	isDir, err := fsaccess.IsDir(root.Raw)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	if !isDir {
-		return []secret.Name{root}, nil, nil
+		return []secret.Name{root}, nil, nil, nil
 	}
 	entries, err := fsaccess.ReadDir(root.Raw)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	for _, e := range entries {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		name := secret.NewName(e.Path)
 		if e.Dir {
 			if !recursive || hidden(name) {
 				continue
 			}
-			sub, subSkipped, err := Discover(ctx, name, recursive)
+			sub, subSkipped, subLinks, err := Discover(ctx, name, recursive)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
-			names, skipped = append(names, sub...), append(skipped, subSkipped...)
+			names, skipped, dirLinks = append(names, sub...), append(skipped, subSkipped...), append(dirLinks, subLinks...)
+			continue
+		}
+		if e.DirLink {
+			if !hidden(name) {
+				dirLinks = append(dirLinks, name.String())
+			}
 			continue
 		}
 		if hidden(name) {
@@ -194,7 +200,8 @@ func Discover(ctx context.Context, root secret.Name, recursive bool) (names []se
 		}
 	}
 	sort.Strings(skipped)
-	return names, skipped, nil
+	sort.Strings(dirLinks)
+	return names, skipped, dirLinks, nil
 }
 
 func hidden(name secret.Name) bool {
