@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/colligo-go/colligo/diagnoses"
@@ -169,6 +170,85 @@ func TestSwappedMiddleReadsAreNotCaughtByThePairInvariant(t *testing.T) {
 		}
 		if len(pairAssertions(f)) != 2 {
 			t.Fatalf("%s: the pair was not evaluated: %v", f.Name, pairAssertions(f))
+		}
+	}
+}
+
+func missingMateOf(rep *FileReport) (string, bool) {
+	for _, a := range rep.Assertions {
+		if a.ID == diagnoses.PairMissing && !a.Passed {
+			return a.Declared, true
+		}
+	}
+	return "", false
+}
+
+func TestMateWithoutItsOtherMateIsAdvisoryAndNamesTheExpectedFile(t *testing.T) {
+	dir := t.TempDir()
+	reads := fastqWithHeaders(numbered(10, "")...)
+	cases := []struct {
+		lone, want string
+	}{
+		{"a_R1.fastq", "a_R2.fastq"},
+		{"b_R2.fastq.gz", "b_R1.fastq.gz"},
+		{"c_1.fq", "c_2.fq"},
+		{"d.2.fastq", "d.1.fastq"},
+		{"S1_L001_R1_001.fastq", "S1_L001_R2_001.fastq"},
+	}
+	for _, c := range cases {
+		data := reads
+		if strings.HasSuffix(c.lone, ".gz") {
+			data = gzipped(t, reads)
+		}
+		rep := run(t, Options{}, write(t, dir, c.lone, data), write(t, dir, "unrelated-"+c.lone[:1]+".fastq", reads))
+		got, ok := missingMateOf(rep.Files[0])
+		if !ok || got != c.want {
+			t.Errorf("%s: pair_missing %q (%v), want %q", c.lone, got, ok, c.want)
+		}
+		if rep.Files[0].Status != StatusVerified || rep.ExitCode(false) != ExitOK {
+			t.Errorf("%s: pair_missing must stay advisory: %s", c.lone, rep.Files[0].Status)
+		}
+		if _, flagged := missingMateOf(rep.Files[1]); flagged {
+			t.Errorf("a file without a mate suffix was flagged")
+		}
+	}
+}
+
+func TestPairMissingNeedsMoreThanOneFile(t *testing.T) {
+	dir := t.TempDir()
+	rep := run(t, Options{}, write(t, dir, "solo_R1.fastq", fastqWithHeaders(numbered(10, "")...)))
+	if _, flagged := missingMateOf(rep.Files[0]); flagged {
+		t.Fatal("a single-file run must not claim a missing mate")
+	}
+}
+
+func TestPairMissingIsNotRaisedForCompletePairsOrDuplicatedMates(t *testing.T) {
+	dir := t.TempDir()
+	reads := fastqWithHeaders(numbered(10, "")...)
+	complete := run(t, Options{}, write(t, dir, "ok_R1.fastq", reads), write(t, dir, "ok_R2.fastq", reads))
+	dup := run(t, Options{},
+		write(t, dir, "dup_R1.fastq", reads),
+		write(t, dir, "dup_R1.fastq.gz", gzipped(t, reads)),
+		write(t, dir, "dup_R2.fastq", reads))
+	for _, rep := range []Report{complete, dup} {
+		for _, f := range rep.Files {
+			if _, flagged := missingMateOf(f); flagged {
+				t.Errorf("%s flagged", f.Name)
+			}
+		}
+	}
+}
+
+func TestMatesInDifferentDirectoriesOrWithDifferentChunksEachMissTheirMate(t *testing.T) {
+	dir := t.TempDir()
+	reads := fastqWithHeaders(numbered(10, "")...)
+	apart := run(t, Options{}, writeIn(t, dir, "a", "s_R1.fastq", reads), writeIn(t, dir, "b", "s_R2.fastq", reads))
+	chunks := run(t, Options{}, write(t, dir, "S_R1_001.fastq", reads), write(t, dir, "S_R2_002.fastq", reads))
+	for name, rep := range map[string]Report{"directories": apart, "chunks": chunks} {
+		for _, f := range rep.Files {
+			if _, flagged := missingMateOf(f); !flagged {
+				t.Errorf("%s: %s not flagged", name, f.Name)
+			}
 		}
 	}
 }

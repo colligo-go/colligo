@@ -68,7 +68,14 @@ func EvaluatePairs(reports []*FileReport) {
 	}
 	for _, stem := range order {
 		g := groups[stem]
-		if g[0] != nil || g[1] == nil || g[2] == nil {
+		if g[0] != nil {
+			continue
+		}
+		if (g[1] == nil) != (g[2] == nil) {
+			flagMissingMate(reports, g[1], g[2])
+			continue
+		}
+		if g[1] == nil {
 			continue
 		}
 		m1, ok1 := pairable(g[1])
@@ -89,4 +96,20 @@ func EvaluatePairs(reports []*FileReport) {
 			r.finalize()
 		}
 	}
+}
+
+func flagMissingMate(reports []*FileReport, first, second *FileReport) {
+	lone := first
+	if lone == nil {
+		lone = second
+	}
+	if len(reports) < 2 || lone.Status == StatusUnreadable {
+		return
+	}
+	expected, ok := format.MateName(lone.Name)
+	if !ok {
+		return
+	}
+	lone.Assertions = append(lone.Assertions, newAssertion(diagnoses.PairMissing, false, diagnoses.Values{Declared: expected, Observed: "absent"}))
+	lone.finalize()
 }
