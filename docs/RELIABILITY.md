@@ -89,10 +89,10 @@ Custo, dito com precisão: para BGZF, BAM e CRAM há marcador de fim, e a verifi
 | bgzf          | `1f 8b` + XLEN  | cadeia de BSIZE contígua até o fim; bloco EOF presente      |
 | bam           | `BAM\1` em bgzf | bloco EOF de bgzf presente                                  |
 | cram          | `CRAM`          | contêiner EOF presente                                      |
-| fastq / .gz   | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory` |
-| fasta         | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada |
+| fastq / .gz   | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory`; BOM UTF-8 no início rejeitado |
+| fasta         | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada; BOM UTF-8 no início rejeitado |
 | vcf / .gz     | `##fileformat`  | header presente; última linha tem contagem de campos válida  |
-| gtf / gff3    | texto           | última linha tem 9 campos separados por tab |
+| gtf / gff3    | texto           | última linha tem 9 campos separados por tab; BOM UTF-8 no início rejeitado |
 | hdf5 / h5ad   | `\x89HDF\r\n`   | superbloco íntegro; raiz abre                                |
 | pdb           | texto           | registro `END` presente                                      |
 | mmcif         | `data_`         | último bloco fecha                                           |
