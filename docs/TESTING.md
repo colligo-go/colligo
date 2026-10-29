@@ -72,7 +72,7 @@ Duas categorias, nunca misturadas.
 
 Mesma **forma** da resposta real, valores inventados. É o que roda no CI e para qualquer colaborador. Contém as sentinelas de vazamento.
 
-Para os validadores de formato, o corpus sintético é produzido por um gerador versionado, `internal/corpus`: `go test ./internal/corpus -record` grava os arquivos e um `.meta.json` irmão com gerador, tamanho, SHA-256, data de gravação e o que o gerador sabe que escreveu — contagem de registros e bases, e quais afirmações devem falhar. Sem a flag, o teste falha se um arquivo divergir do gerador ou se aparecer arquivo que o gerador não produz. O esperado nunca vem de um parser: `check` sobre o diretório e o verificador Python são conferidos contra ele.
+Para os validadores de formato, o corpus sintético é produzido por um gerador versionado, `internal/corpus`: `go test ./internal/corpus -record` grava os arquivos e um `.meta.json` irmão com gerador, tamanho, SHA-256, data de gravação e o que o gerador sabe que escreveu — contagem de registros e bases, e quais afirmações devem falhar. Sem a flag, o teste falha se um arquivo divergir do gerador ou se aparecer arquivo que o gerador não produz. O esperado nunca vem de um parser: `check` sobre o diretório e o verificador Python são conferidos contra ele. O gerador comprime com `klauspost/compress`, fixado no `go.sum`: a saída do `compress/gzip` da stdlib muda entre versões do Go, e o corpus precisa dos mesmos bytes em qualquer toolchain.
 
 ### `testdata/real/` — nunca versionada
 

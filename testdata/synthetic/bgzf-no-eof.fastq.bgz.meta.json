@@ -1,9 +1,9 @@
 {
   "generator": "internal/corpus",
   "description": "BGZF without the EOF block",
-  "size": 20736,
-  "sha256": "97058d7c75a4fa7f348a000f6aa4cb93ddf68242d27d5adcea26beedd297ccde",
-  "recorded_at": "2026-10-29T13:24:14Z",
+  "size": 20734,
+  "sha256": "02a4dc42b35e71d343cf0090a8f6dda5b2c8eb258d58b37d01521c0cdac299d7",
+  "recorded_at": "2026-10-29T13:30:57Z",
   "expect": {
     "failed": [
       "structure_invalid"

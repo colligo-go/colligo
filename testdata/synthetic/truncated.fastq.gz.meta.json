@@ -1,9 +1,9 @@
 {
   "generator": "internal/corpus",
   "description": "gzip cut at two thirds of its length",
-  "size": 59564,
-  "sha256": "950b2e1933d2e030ce596120709d0da8a0c680024099aafab26aa67bc6b4ae70",
-  "recorded_at": "2026-10-29T13:24:14Z",
+  "size": 59641,
+  "sha256": "a097f3ae07daf1c3e269e2137d22a5792af28eb57d4b77edff1cef69617f398d",
+  "recorded_at": "2026-10-29T13:30:57Z",
   "expect": {
     "failed": [
       "structure_invalid"

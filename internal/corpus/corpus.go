@@ -1,15 +1,18 @@
 // Package corpus generates the versioned synthetic corpus in
 // testdata/synthetic. Each fixture carries what the generator knows it wrote,
-// so the expected counts and failures never come from a parser.
+// so the expected counts and failures never come from a parser. Compression
+// uses klauspost/compress, pinned in go.sum, because the bytes of the standard
+// library compressor change between Go releases.
 package corpus
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"strings"
+
+	"github.com/klauspost/compress/gzip"
 )
 
 type Expect struct {
