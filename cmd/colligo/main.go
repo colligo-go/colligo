@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/colligo-go/colligo/checksum"
@@ -95,13 +96,31 @@ func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
 		if err := fs.Parse(args); err != nil {
 			return nil, err
 		}
-		args = fs.Args()
-		if len(args) == 0 {
+		rest := fs.Args()
+		if endedByTerminator(fs, args, len(args)-len(rest)) {
+			return append(paths, rest...), nil
+		}
+		if len(rest) == 0 {
 			return paths, nil
 		}
-		paths = append(paths, args[0])
-		args = args[1:]
+		paths = append(paths, rest[0])
+		args = rest[1:]
 	}
+}
+
+func endedByTerminator(fs *flag.FlagSet, args []string, consumed int) bool {
+	if consumed == 0 || args[consumed-1] != "--" {
+		return false
+	}
+	if consumed < 2 || !strings.HasPrefix(args[consumed-2], "-") || strings.Contains(args[consumed-2], "=") {
+		return true
+	}
+	f := fs.Lookup(strings.TrimLeft(args[consumed-2], "-"))
+	if f == nil {
+		return true
+	}
+	boolean, ok := f.Value.(interface{ IsBoolFlag() bool })
+	return ok && boolean.IsBoolFlag()
 }
 
 func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
@@ -142,7 +161,7 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	names, skipped, err := collect(ctx, paths, s.recursive)
+	names, skipped, dirLinks, err := collect(ctx, paths, s.recursive)
 	if err != nil {
 		return failed(err, stderr)
 	}
@@ -152,7 +171,7 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 	if err != nil {
 		return failed(err, stderr)
 	}
-	report.Skipped = skipped
+	report.Skipped, report.SkippedLinks = skipped, dirLinks
 	code := report.ExitCode(s.permissive)
 
 	if s.jsonOut {
@@ -183,18 +202,16 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 	return code
 }
 
-func collect(ctx context.Context, paths []string, recursive bool) ([]secret.Name, []string, error) {
-	var names []secret.Name
-	var skipped []string
+func collect(ctx context.Context, paths []string, recursive bool) (names []secret.Name, skipped, dirLinks []string, err error) {
 	for _, p := range paths {
 		name := secret.NewName(p)
-		found, skip, err := verifier.Discover(ctx, name, recursive)
+		found, skip, links, err := verifier.Discover(ctx, name, recursive)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", name, err)
+			return nil, nil, nil, fmt.Errorf("%s: %w", name, err)
 		}
-		names, skipped = append(names, found...), append(skipped, skip...)
+		names, skipped, dirLinks = append(names, found...), append(skipped, skip...), append(dirLinks, links...)
 	}
-	return names, skipped, nil
+	return names, skipped, dirLinks, nil
 }
 
 func failed(err error, stderr io.Writer) int {
