@@ -20,9 +20,12 @@ func newFSAccess() FSAccess { return FSAccess{} }
 // value of secret.Name.Raw, e.g. fsaccess.Reveal(name.Raw).
 func Reveal(fn func(FSAccess) string) string { return fn(newFSAccess()) }
 
+// Entry is one directory entry. A symbolic link to a directory has DirLink
+// set and Dir clear, so a walk never follows it.
 type Entry struct {
-	Path string
-	Dir  bool
+	Path    string
+	Dir     bool
+	DirLink bool
 }
 
 func Open(name func(FSAccess) string) (*os.File, error) {
@@ -58,7 +61,13 @@ func ReadDir(name func(FSAccess) string) ([]Entry, error) {
 	}
 	out := make([]Entry, 0, len(items))
 	for _, it := range items {
-		out = append(out, Entry{Path: filepath.Join(root, it.Name()), Dir: it.IsDir()})
+		path := filepath.Join(root, it.Name())
+		entry := Entry{Path: path, Dir: it.IsDir()}
+		if it.Type()&os.ModeSymlink != 0 {
+			target, err := os.Stat(path)
+			entry.DirLink = err == nil && target.IsDir()
+		}
+		out = append(out, entry)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/colligo-go/colligo/facts"
 	"github.com/colligo-go/colligo/model"
@@ -67,8 +68,9 @@ func (r *FileReport) finalize() {
 }
 
 type Report struct {
-	Files   []*FileReport `json:"files"`
-	Skipped []string      `json:"skipped,omitempty"`
+	Files        []*FileReport `json:"files"`
+	Skipped      []string      `json:"skipped,omitempty"`
+	SkippedLinks []string      `json:"skipped_directory_links,omitempty"`
 }
 
 func (r Report) ExitCode(permissive bool) int {
@@ -94,13 +96,14 @@ type jsonReport struct {
 	SchemaVersion int           `json:"schema_version"`
 	Files         []*FileReport `json:"files"`
 	Skipped       []string      `json:"skipped,omitempty"`
+	SkippedLinks  []string      `json:"skipped_directory_links,omitempty"`
 	ExitCode      int           `json:"exit_code"`
 }
 
 func (r Report) WriteJSON(w io.Writer, exitCode int) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(jsonReport{SchemaVersion: SchemaVersion, Files: r.Files, Skipped: r.Skipped, ExitCode: exitCode})
+	return enc.Encode(jsonReport{SchemaVersion: SchemaVersion, Files: r.Files, Skipped: r.Skipped, SkippedLinks: r.SkippedLinks, ExitCode: exitCode})
 }
 
 func (r Report) WriteText(w io.Writer) {
@@ -123,6 +126,9 @@ func (r Report) WriteText(w io.Writer) {
 	}
 	for _, s := range r.Skipped {
 		fmt.Fprintf(w, "%s\n  skipped: not a recognised data file\n", s)
+	}
+	for _, s := range r.SkippedLinks {
+		fmt.Fprintf(w, "%s\n  skipped: symbolic link to a directory, not followed\n", s)
 	}
 	fmt.Fprintf(w, "\n%d file(s): %d verified, %d valid, %d quick, %d invalid, %d unreadable\n",
 		len(r.Files), counts[StatusVerified], counts[StatusValid], counts[StatusQuick], counts[StatusInvalid], counts[StatusUnreadable])
@@ -158,12 +164,21 @@ func (r Report) WriteChecksums(sha256sum, b3sum io.Writer) error {
 		if f.SHA256 == "" || f.BLAKE3 == "" {
 			continue
 		}
-		if _, err := fmt.Fprintf(sha256sum, "%s  %s\n", f.SHA256, f.Name); err != nil {
+		if _, err := io.WriteString(sha256sum, checksumLine(f.SHA256, f.Name.String())); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(b3sum, "%s  %s\n", f.BLAKE3, f.Name); err != nil {
+		if _, err := io.WriteString(b3sum, checksumLine(f.BLAKE3, f.Name.String())); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+var checksumEscaper = strings.NewReplacer(`\`, `\\`, "\n", `\n`)
+
+func checksumLine(sum, name string) string {
+	if strings.ContainsAny(name, "\\\n") {
+		return `\` + sum + "  " + checksumEscaper.Replace(name) + "\n"
+	}
+	return sum + "  " + name + "\n"
 }
