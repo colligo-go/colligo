@@ -70,11 +70,16 @@ func corpus() map[string][]byte {
 
 func certify(t *testing.T, dir, base string, data []byte) string {
 	t.Helper()
+	return certifyWith(t, dir, base, data, verifier.Options{})
+}
+
+func certifyWith(t *testing.T, dir, base string, data []byte, opts verifier.Options) string {
+	t.Helper()
 	p := filepath.Join(dir, base)
 	if err := os.WriteFile(p, data, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	rep, err := verifier.CheckFile(context.Background(), secret.NewName(p), verifier.Options{})
+	rep, err := verifier.CheckFile(context.Background(), secret.NewName(p), opts)
 	if err != nil {
 		t.Fatal(err)
 	}
