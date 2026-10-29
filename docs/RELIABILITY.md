@@ -116,6 +116,10 @@ Contagens diferentes de reads, ou arquivos de amostras diferentes pareados por e
 
 Divergência → `blocking` nos dois arquivos, com `pair_mismatch`. Nenhum dos dois vira `done`.
 
+**Como os pares se formam.** Pelo nome, no mesmo diretório: mesmo radical, `_1`/`_2`, `_R1`/`_R2` ou `.1`/`.2`, e o mesmo número de pedaço (`_001`). `_R1_001` com `_R2_002` não pareia. Se dois arquivos disputam o mesmo mate (por exemplo `s_R1.fastq` e `s_R1.fastq.gz`), nenhum dos três recebe afirmação de par. Um mate em gzip e o outro em texto puro pareiam normalmente.
+
+**O que a invariante não pega.** Ela compara contagem e o primeiro e o último ID. Dois arquivos com o mesmo número de reads, o mesmo primeiro e o mesmo último ID, mas reads do meio trocados ou reordenados, passam como `verified`. Conferir todos os IDs exigiria guardar ou resumir a sequência de IDs na mesma leitura; está fora da fatia atual.
+
 ### M6 — Sucesso parcial com saída zero
 
 47 de 50 arquivos baixados. O pipeline segue com 47. O resultado sai. Ninguém percebe.
