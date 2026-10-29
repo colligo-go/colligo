@@ -184,7 +184,7 @@ Custo alto: roda no job semanal completo e numa amostra aleatória de pontos em 
 
 ## 6.3 Certificado e verificador independente
 
-Para todo arquivo do corpus sintético e dos mutantes, `check --certificate` e `tools/verify_cert.py` são executados; o verificador precisa concordar com cada hash e contagem do certificado, e reprovar todo certificado adulterado.
+Para todo arquivo do corpus sintético e dos mutantes, `check --certificate` e `tools/verify_cert.py` são executados; o verificador precisa concordar com cada hash e contagem do certificado, e reprovar todo certificado adulterado, inclusive o `passed` das afirmações de um arquivo inválido.
 
 ## 6.4 Concorrência adaptativa
 
