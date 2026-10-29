@@ -76,9 +76,9 @@ Estilo da casa. Inviolável durante implementação. Curto de propósito.
 
 ## Documentação
 
-**GoDoc em tudo que é exportado.** Escrito junto com o código. É a única forma de texto explicativo permitida no código.
+**GoDoc só onde acrescenta algo.** Em identificador exportado, e apenas quando diz o que o nome e a assinatura não dizem: um invariante, uma restrição de uso, um porquê não óbvio. GoDoc que repete o nome é ruído e sai. É a única forma de texto explicativo permitida no código; identificador não exportado não leva comentário.
 
-**Idioma.** `docs/` em português. Código, GoDoc, mensagens de erro, diagnósticos e saída do CLI em inglês, como o README público.
+**Idioma.** `docs/` em português. Código, GoDoc, nomes e mensagens de teste, mensagens de erro, diagnósticos e saída do CLI em inglês, como o README público.
 
 **Decisão muda código e doc no mesmo commit.** SPEC e implementação não desincronizam.
 

@@ -49,9 +49,6 @@ func (r *ring) fill(ctx context.Context, src io.Reader) (*chunk, error) {
 	}
 }
 
-// run reads src exactly once, handing the same read-only slice to one
-// goroutine per consumer. A buffer returns to the ring when every consumer
-// has released it, so the cost is the slowest consumer, not their sum.
 func (r *ring) run(ctx context.Context, src io.Reader, first *chunk, consumers []consumer) (int64, error) {
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(len(consumers) + 1)

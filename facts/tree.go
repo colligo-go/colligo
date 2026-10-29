@@ -8,8 +8,7 @@ import (
 )
 
 const (
-	GroupSize = 8 << 20
-	// GroupLog is GroupSize in the unit lukechampine.com/blake3/bao takes.
+	GroupSize   = 8 << 20
 	GroupLog    = 13
 	groupChunks = GroupSize / guts.ChunkSize
 )
@@ -74,9 +73,6 @@ func (t *treeBuilder) closeGroup() {
 	t.groupBytes = 0
 }
 
-// sum returns the root hash and the chaining value of every group. A file
-// of a single group has one entry: the root itself, since a lone group is
-// the root node and cannot be a subtree.
 func (t *treeBuilder) sum() (root [32]byte, groups [][32]byte) {
 	last := t.groupNode()
 	if len(t.cvs) == 0 {

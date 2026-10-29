@@ -2,16 +2,16 @@ package fsaccess
 
 import "testing"
 
-func TestRevealChamaFnComUmFSAccess(t *testing.T) {
+func TestRevealCallsFnWithAnFSAccess(t *testing.T) {
 	called := false
 	got := Reveal(func(fs FSAccess) string {
 		called = true
-		return "valor"
+		return "value"
 	})
 	if !called {
-		t.Fatal("Reveal não chamou fn")
+		t.Fatal("Reveal did not call fn")
 	}
-	if got != "valor" {
-		t.Errorf("Reveal() = %q, esperado %q", got, "valor")
+	if got != "value" {
+		t.Errorf("Reveal() = %q, want %q", got, "value")
 	}
 }

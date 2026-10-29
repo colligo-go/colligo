@@ -24,8 +24,6 @@ type TB interface {
 
 func on(variable string) bool { return os.Getenv(variable) != "" }
 
-// Python returns an interpreter that can import blake3, the package the
-// independent certificate verifier needs.
 func Python(t TB) string {
 	t.Helper()
 	exe := os.Getenv(PythonVar)
@@ -47,8 +45,6 @@ func Python(t TB) string {
 	return ""
 }
 
-// B3Sum returns the path of b3sum. When it is absent and not required, the
-// comparison is skipped loudly, not silently.
 func B3Sum(t TB) (string, bool) {
 	t.Helper()
 	path, err := exec.LookPath("b3sum")

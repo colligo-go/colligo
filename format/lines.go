@@ -4,9 +4,6 @@ import "bytes"
 
 const maxKeptLine = 64 << 10
 
-// lineReader hands each line to handle as a prefix of at most maxKeptLine
-// bytes plus its true length, so a file with one enormous line never has to
-// fit in memory. A trailing '\r' is part of the line terminator.
 type lineReader struct {
 	carry  []byte
 	length int

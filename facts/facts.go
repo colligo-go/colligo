@@ -30,8 +30,10 @@ type Options struct {
 }
 
 type Result struct {
-	Size      int64
-	Root      [32]byte
+	Size int64
+	Root [32]byte
+	// Groups holds one chaining value per 8 MiB group. A file of a single
+	// group holds the root itself: a lone group is the root node.
 	Groups    [][32]byte
 	MD5       [16]byte
 	SHA256    [32]byte
@@ -59,8 +61,6 @@ type collector struct {
 
 func (c *collector) add(f []model.Fact) { c.facts = append(c.facts, f...) }
 
-// Compute reads src exactly once. Every consumer sees the same bytes in
-// parallel; none of them reads the source on its own.
 func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 	rg := newRing(bufferCount, bufferSize)
 	first, err := rg.fill(ctx, src)

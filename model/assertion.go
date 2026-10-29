@@ -1,7 +1,5 @@
 package model
 
-// Assertion is a comparison computed on demand between facts, expected
-// values and declarations. It has no table of its own.
 type Assertion struct {
 	ID          string   `json:"id"`
 	Mode        string   `json:"mode"`

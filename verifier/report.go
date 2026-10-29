@@ -71,8 +71,6 @@ type Report struct {
 	Skipped []string      `json:"skipped,omitempty"`
 }
 
-// ExitCode follows RELIABILITY.md §1. Strict is the default: a blocking
-// failure is code 3, and permissive turns it into 0 without hiding it.
 func (r Report) ExitCode(permissive bool) int {
 	var worst model.Severity
 	for _, f := range r.Files {

@@ -35,7 +35,6 @@ const (
 	ContentUnknown = "unknown"
 )
 
-// Registry is explicit: there is no init-time registration.
 func Registry() []FormatValidator {
 	return []FormatValidator{gzipValidator{}, bgzfValidator{}, fastqValidator{}, fastaValidator{}, gtfValidator{}}
 }

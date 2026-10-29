@@ -18,9 +18,8 @@ import (
 )
 
 type Options struct {
-	Format   string
-	Expected Expected
-	// Structure validates the format only: no hashes, no counts, no pairs.
+	Format    string
+	Expected  Expected
 	Structure bool
 	// Quick reads the magic bytes, the tail and a sample of the start. Its
 	// result is never verified.

@@ -25,8 +25,6 @@ func Err(err error) Field { return Field{label: "error", value: err} }
 
 func (f Field) Label() string { return f.label }
 
-// Value is already redacted for the secret/ types, because fmt and
-// encoding/json call their methods instead of reading the field raw.
 func (f Field) Value() any { return f.value }
 
 // String, GoString and MarshalJSON format the value through its own methods.

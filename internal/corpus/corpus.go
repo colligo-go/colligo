@@ -2,7 +2,8 @@
 // testdata/synthetic. Each fixture carries what the generator knows it wrote,
 // so the expected counts and failures never come from a parser. Compression
 // uses klauspost/compress, pinned in go.sum, because the bytes of the standard
-// library compressor change between Go releases.
+// library compressor change between Go releases. Generation must stay
+// deterministic: a change in the generator has to show up as a diff.
 package corpus
 
 import (
@@ -101,8 +102,6 @@ func broken(label, description string, data []byte, failed ...string) Fixture {
 	return Fixture{Label: label, Description: description, Data: data, Expect: Expect{Failed: failed}}
 }
 
-// Generate is deterministic: the same code always produces the same bytes,
-// so a change in the generator shows up as a diff in testdata.
 func Generate() []Fixture {
 	plain := randomReads(1, "SRR100", "/1", 200, 50, 110)
 

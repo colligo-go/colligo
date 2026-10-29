@@ -9,9 +9,9 @@ import (
 	"github.com/colligo-go/colligo/secret"
 )
 
-func TestEndpointFieldNeverLeaksAQueryNoFormatoNemNoJSON(t *testing.T) {
-	const canary = "CANARY-SEGREDO-NAO-PODE-VAZAR"
-	ep, err := secret.NewEndpoint("https://exemplo.org/download?token=" + canary)
+func TestEndpointFieldNeverLeaksTheQuery(t *testing.T) {
+	const canary = "CANARY-MUST-NOT-LEAK"
+	ep, err := secret.NewEndpoint("https://example.org/download?token=" + canary)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -19,7 +19,7 @@ func TestEndpointFieldNeverLeaksAQueryNoFormatoNemNoJSON(t *testing.T) {
 
 	formatted := fmt.Sprintf("%v %s %+v %#v", f.Value(), f.Value(), f.Value(), f.Value())
 	if strings.Contains(formatted, canary) {
-		t.Errorf("campo vazou a sentinela em texto formatado: %q", formatted)
+		t.Errorf("field leaked the canary when formatted: %q", formatted)
 	}
 
 	b, err := json.Marshal(f.Value())
@@ -27,19 +27,19 @@ func TestEndpointFieldNeverLeaksAQueryNoFormatoNemNoJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(b), canary) {
-		t.Errorf("campo vazou a sentinela em JSON: %q", b)
+		t.Errorf("field leaked the canary in JSON: %q", b)
 	}
 }
 
-func TestStrEErrGuardamOValorSemRedacao(t *testing.T) {
-	f := Str("formato", "fastq")
-	if f.Label() != "formato" || f.Value() != "fastq" {
-		t.Errorf("Str não preservou rótulo/valor: %+v", f)
+func TestStrAndErrKeepTheirValue(t *testing.T) {
+	f := Str("format", "fastq")
+	if f.Label() != "format" || f.Value() != "fastq" {
+		t.Errorf("Str lost its label or value: %+v", f)
 	}
 
-	err := fmt.Errorf("falha de rede")
+	err := fmt.Errorf("network failure")
 	ef := Err(err)
 	if ef.Label() != "error" || ef.Value() != err {
-		t.Errorf("Err não preservou o erro: %+v", ef)
+		t.Errorf("Err lost the error: %+v", ef)
 	}
 }

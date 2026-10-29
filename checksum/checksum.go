@@ -36,8 +36,6 @@ func (e *SelfTestError) Error() string {
 	return fmt.Sprintf("checksum: %s vector mismatch: want %s, got %s", e.Algorithm, e.Want, e.Got)
 }
 
-// Severity is always fatal: a hash failing its own known vector can't be
-// trusted for any other decision.
 func (e *SelfTestError) Severity() model.Severity { return model.Fatal }
 
 func sum(algorithm string, input []byte) (string, error) {
@@ -56,8 +54,8 @@ func sum(algorithm string, input []byte) (string, error) {
 	}
 }
 
-// Verify must be called explicitly at startup, never from init(), which
-// would hide the side effect.
+// Verify must run before any hash is trusted. Call it explicitly at startup,
+// never from init().
 func Verify() error {
 	for _, v := range vectors {
 		got, err := sum(v.algorithm, v.input)

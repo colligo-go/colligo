@@ -14,8 +14,6 @@ type Name struct {
 	restricted bool
 }
 
-// NewName is the only constructor outside package secret: the light door
-// has no study, so it never builds a restricted Name.
 func NewName(raw string) Name { return Name{raw: raw} }
 
 func (n Name) String() string {

@@ -1,5 +1,3 @@
-// Command colligo answers one question: do I have the data I think I have?
-// The light door has no database and no configuration.
 package main
 
 import (
@@ -91,7 +89,6 @@ func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.Fla
 	return fs, s
 }
 
-// parseInterleaved accepts flags before, between and after the paths.
 func parseInterleaved(fs *flag.FlagSet, args []string) ([]string, error) {
 	var paths []string
 	for {

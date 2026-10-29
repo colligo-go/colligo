@@ -1,5 +1,3 @@
-// Command noleak runs the internal/noleak check, via go vet -vettool or as
-// a standalone CI binary.
 package main
 
 import (
