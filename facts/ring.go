@@ -36,6 +36,9 @@ func (r *ring) release(c *chunk) {
 }
 
 func (r *ring) fill(ctx context.Context, src io.Reader) (*chunk, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	select {
 	case c := <-r.free:
 		n, err := io.ReadFull(src, c.buf)
