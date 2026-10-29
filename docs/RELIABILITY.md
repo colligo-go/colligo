@@ -34,6 +34,8 @@ Colligo falha fechado. Três severidades:
 
 **Alcance do `fatal`.** Falha da própria ferramenta (vetores conhecidos de hash, canário) aborta a execução inteira: nada mais é confiável. Falha `fatal` de um arquivo (ilegível, página HTML, checksum que não confere) encerra a verificação *daquele* arquivo; na porta leve os demais continuam sendo verificados, porque não há estado a salvar e parar esconderia o diagnóstico deles. O código de saída é o da pior severidade encontrada.
 
+`--expected` com a mesma chave repetida (sem diferenciar maiúscula de minúscula, mesmo com valor igual) é erro de uso, código 1, antes de ler qualquer arquivo: dois valores para a mesma chave são ambíguos e deixar o último vencer esconderia um erro de cópia.
+
 Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
 
 ---
