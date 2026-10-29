@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "BGZF whose first block claims five bytes more than it has",
+  "size": 20762,
+  "sha256": "3611ab3a8e608f777b7f44f9cc549bf49448ced9ddee7e74878d3e10edbc5483",
+  "recorded_at": "2026-10-29T14:28:43Z",
+  "expect": {
+    "failed": [
+      "structure_invalid"
+    ]
+  }
+}
