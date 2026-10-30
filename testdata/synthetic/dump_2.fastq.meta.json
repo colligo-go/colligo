@@ -1,0 +1,12 @@
+{
+  "generator": "internal/corpus",
+  "description": "second mate with fastq-dump --readids IDs, consistent with dump_1",
+  "size": 11692,
+  "sha256": "24ece31a4a019de8fe777b429fdd713af460ebc9f812ac48f3f45eb1ce82b7f2",
+  "recorded_at": "2026-10-30T01:16:43Z",
+  "expect": {
+    "records": 100,
+    "bases": 5000,
+    "failed": []
+  }
+}

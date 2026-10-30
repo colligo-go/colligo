@@ -118,7 +118,7 @@ Contagens diferentes de reads, ou arquivos de amostras diferentes pareados por e
 **Defesa.** Quando ambos os membros de um `pair_id` chegam a validado:
 
 - Contagem de registros idêntica.
-- ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`).
+- ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`, e o `.1`/`.2` do `fastq-dump --readids`, só na forma `<acesso>.<spot>.<1|2>`, como `SRR001666.1.1`). Um `.1` ou `.2` final fora desse formato é parte do ID: `SRR1.1` e `SRR1.2` são spots diferentes.
 
 Divergência → `blocking` nos dois arquivos, com `pair_mismatch`. Nenhum dos dois vira `done`.
 
