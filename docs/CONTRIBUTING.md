@@ -12,18 +12,30 @@ Adapters são puros: não recebem `Store`, não recebem caminho de disco, não a
 
 ---
 
+## Fluxo de um PR
+
+1. Branch a partir de `main` atualizado, com nome `<tipo>/<descrição>`: `feat/ena-source`, `fix/12-bgzf-bsize`.
+2. Commits em Conventional Commits: `fix(format): reject a leading UTF-8 BOM`, com corpo explicando o porquê em `feat` e `fix`.
+3. PR com título no mesmo formato. O CI confere nome do branch, título e commits, e roda a suíte inteira.
+4. Merge só com o CI verde e depois de revisão. Nada entra em `main` de outro jeito.
+
+As regras completas estão em `docs/CONVENTIONS.md`, seção Git.
+
 ## Antes de abrir PR
 
 ```
-go test -race -count=2 ./...
+gofmt -l .
 go vet ./...
-golangci-lint run
-go test -run Fuzz -fuzz=Fuzz -fuzztime=60s ./source/<sua-fonte>
+go build -o /tmp/noleak ./internal/noleak/cmd/noleak && go vet -vettool=/tmp/noleak ./...
+COLLIGO_PYTHON=<python com blake3> COLLIGO_REQUIRE_PYTHON=1 go test -race -count=2 ./...
+go test -run '^$' -fuzz=Fuzz -fuzztime=60s ./source/<sua-fonte>
 ```
 
-Commits pequenos, por fatia ou sub-fatia. Mensagem descreve o que mudou e por quê em uma linha. Decisão muda código e documento no mesmo commit.
+`gofmt -l .` não pode imprimir nada. O verificador independente precisa de um Python com o pacote `blake3`; sem `COLLIGO_REQUIRE_PYTHON=1` o teste dele é pulado, e o CI não aceita isso.
 
-Sem comentários no código. Nem em Go, nem em SQL, nem em TOML de exemplo. GoDoc em tudo que é exportado — é a única forma de texto explicativo permitida.
+Decisão muda código e documento no mesmo commit.
+
+Sem comentários no código. GoDoc só em identificador exportado, e só quando diz o que o nome e a assinatura não dizem. Detalhe em `docs/CONVENTIONS.md`.
 
 ---
 
