@@ -31,6 +31,8 @@ COLLIGO_PYTHON=<python with blake3> COLLIGO_REQUIRE_PYTHON=1 go test -race -coun
 go test -run '^$' -fuzz=Fuzz -fuzztime=60s ./source/<your-source>
 ```
 
+Fuzzing finds cases by chance. When it finds one, in your run, in the PR `fuzz` job or in the weekly job, the input goes into `testdata/fuzz/<Target>/` inside the package that owns the target (for example `format/testdata/fuzz/FuzzValidateFastq/`), committed together with the fix. `go test`, and so the required `test` check, replays it on every run.
+
 `gofmt -l .` must print nothing. The independent verifier needs a Python with the `blake3` package; without `COLLIGO_REQUIRE_PYTHON=1` its test is skipped, and CI does not accept that.
 
 A decision changes code and document in the same commit.
