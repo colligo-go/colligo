@@ -53,11 +53,11 @@ Write an adapter only if the source really requires a programmatic call.
 
 Three things that must be kept separate:
 
-| What           | Where it lives   | Publishable |
-| -------------- | ---------------- | ----------- |
-| Code           | repository       | yes         |
-| Configuration  | local TOML, env  | no          |
-| Real fixtures  | `testdata/real/` | no          |
+| What          | Where it lives   | Publishable |
+| ------------- | ---------------- | ----------- |
+| Code          | repository       | yes         |
+| Configuration | local TOML, env  | no          |
+| Real fixtures | `testdata/real/` | no          |
 
 **If it is institution-specific, it is configuration, not code.** Applied with discipline, what is left is an adapter that describes a *format*, not an institution — and that is publishable without embarrassment.
 

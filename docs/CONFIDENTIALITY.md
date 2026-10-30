@@ -29,10 +29,10 @@ Out of scope: an adversary with root access to the machine, an adversary with ac
 
 Every source has a declared classification. Two classes.
 
-| Class        | Meaning                                                            |
-| ------------ | ------------------------------------------------------------------ |
-| `public`     | Publicly accessible data. No retention or export restriction.      |
-| `restricted` | Controlled access: dbGaP, institutional data, patient data.        |
+| Class        | Meaning                                                       |
+| ------------ | ------------------------------------------------------------- |
+| `public`     | Publicly accessible data. No retention or export restriction. |
+| `restricted` | Controlled access: dbGaP, institutional data, patient data.   |
 
 **The declaration is mandatory and fails closed.** A source configured without `classification` causes a load error naming the source. There is no default. There is no inference.
 
@@ -138,9 +138,9 @@ A restricted study needs stable identifiers for auditing without exposing names.
 
 `raw_responses` is the largest surface: it stores API responses in full.
 
-| Class        | Behaviour                                                           |
-| ------------ | ------------------------------------------------------------------- |
-| `public`     | Body stored compressed (zstd), default TTL 90d.                     |
+| Class        | Behaviour                                                               |
+| ------------ | ----------------------------------------------------------------------- |
+| `public`     | Body stored compressed (zstd), default TTL 90d.                         |
 | `restricted` | **The body is not stored.** `body_hash`, size and timestamp are stored. |
 
 Enforced in the `store` layer, consulting the study's classification. The caller has no parameter to turn it off. A malicious or buggy adapter cannot persist a restricted body because the decision is not its own.
@@ -195,16 +195,16 @@ Allowed origins, in this order:
 
 The manifest is made to circulate. It is the end of highest risk.
 
-| Field               | `public` | `restricted`     |
-| ------------------- | -------- | ---------------- |
-| name / path         | real     | opaque id        |
-| source URL          | real     | omitted          |
-| size                | yes      | yes              |
-| root and outboard   | yes      | yes              |
-| source checksum     | yes      | yes              |
-| format and custody  | yes      | yes              |
-| accession           | real     | opaque id        |
-| salt                | never    | never            |
+| Field              | `public` | `restricted` |
+| ------------------ | -------- | ------------ |
+| name / path        | real     | opaque id    |
+| source URL         | real     | omitted      |
+| size               | yes      | yes          |
+| root and outboard  | yes      | yes          |
+| source checksum    | yes      | yes          |
+| format and custody | yes      | yes          |
+| accession          | real     | opaque id    |
+| salt               | never    | never        |
 
 A restricted study's manifest carries `"classification": "restricted"` and `"redacted": true` in the header, so that the recipient knows the names are opaque.
 
@@ -256,19 +256,19 @@ Stable format, so that two machines can be diffed.
 
 Every line of this table is a test. If any fails, the build fails.
 
-| Invariant                                                     | How it is tested                                     |
-| ------------------------------------------------------------- | ---------------------------------------------------- |
-| Salt does not appear in any output                            | grep on the output of every export command           |
-| Credential does not appear in any output                      | high-entropy sentinel credential; global grep        |
-| Restricted body does not reach the database                   | inspection of `raw_responses` after a restricted fetch |
-| `%v` of every domain type is safe                             | reflection over the exported types; format and grep  |
-| `Raw()` unreachable outside the filesystem                    | analyzer §3.1 and a negative compile test            |
-| No host other than the configured ones                        | instrumented dialer                                  |
-| Restricted database permission is `0600`                      | stat after opening, including WAL and SHM            |
-| Restricted manifest does not contain a real name              | fixture manifest with a sentinel name; grep          |
-| `debug` in a restricted study fails                           | expected-error test                                  |
-| Real fixture never tracked                                    | `git ls-files` in CI                                 |
-| Derivative of a restricted parent is restricted               | registration of a mixed derivative                   |
+| Invariant                                        | How it is tested                                       |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Salt does not appear in any output               | grep on the output of every export command             |
+| Credential does not appear in any output         | high-entropy sentinel credential; global grep          |
+| Restricted body does not reach the database      | inspection of `raw_responses` after a restricted fetch |
+| `%v` of every domain type is safe                | reflection over the exported types; format and grep    |
+| `Raw()` unreachable outside the filesystem       | analyzer §3.1 and a negative compile test              |
+| No host other than the configured ones           | instrumented dialer                                    |
+| Restricted database permission is `0600`         | stat after opening, including WAL and SHM              |
+| Restricted manifest does not contain a real name | fixture manifest with a sentinel name; grep            |
+| `debug` in a restricted study fails              | expected-error test                                    |
+| Real fixture never tracked                       | `git ls-files` in CI                                   |
+| Derivative of a restricted parent is restricted  | registration of a mixed derivative                     |
 
 The sentinel technique deserves a note: a unique, improbable value (`COLLIGO_CANARY_7f3a…`) is injected as a file name, credential and response body in the test fixtures, and the suite greps for it in **every** artifact produced — log, export, manifest, report, database. A single leak at any end shows up.
 

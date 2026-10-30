@@ -14,23 +14,23 @@ The document is organised by failure mode, not by component, because that is how
 
 Colligo fails closed. Three severities:
 
-| Severity    | Effect                                                                          |
-| ----------- | ------------------------------------------------------------------------------- |
-| `fatal`     | Aborts immediately. Partial state saved. Export impossible.                     |
-| `blocking`  | Recorded. Other files carry on. The study is **not** left complete.             |
-| `advisory`  | Recorded and printed. Does not affect completeness.                             |
+| Severity   | Effect                                                              |
+| ---------- | ------------------------------------------------------------------- |
+| `fatal`    | Aborts immediately. Partial state saved. Export impossible.         |
+| `blocking` | Recorded. Other files carry on. The study is **not** left complete. |
+| `advisory` | Recorded and printed. Does not affect completeness.                 |
 
 **Strict mode is the default.** In it, any `blocking` still pending at the end of the run produces a non-zero exit code. `--permissive` leaves the exit code at zero, but **hides nothing**: the export still marks the study as incomplete and each row still carries its custody state. Permissive changes whether the pipeline stops, never whether the information exists.
 
 ### Exit codes
 
-| Code | Meaning                                                              |
-| ---- | -------------------------------------------------------------------- |
-| 0    | Complete and verified                                                |
-| 1    | Usage or configuration error (nothing was attempted)                 |
-| 2    | `fatal`: integrity, identity, authentication, disk                   |
-| 3    | Incomplete: `blocking` pending                                       |
-| 4    | Interrupted: cancelled, state saved, resumable                       |
+| Code | Meaning                                                                   |
+| ---- | ------------------------------------------------------------------------- |
+| 0    | Complete and verified                                                     |
+| 1    | Usage or configuration error (nothing was attempted)                      |
+| 2    | `fatal`: integrity, identity, authentication, disk                        |
+| 3    | Incomplete: `blocking` pending                                            |
+| 4    | Interrupted: cancelled, state saved, resumable                            |
 | 5    | `check --quick`: nothing found in what was read, content not read in full |
 
 **Reach of `fatal`.** A failure of the tool itself (known hash vectors, canary) aborts the whole run: nothing else is trustworthy. A `fatal` failure of one file (unreadable, HTML page, checksum that does not match) ends the verification of *that* file; on the light door the others carry on being verified, because there is no state to save and stopping would hide their diagnosis. The exit code is that of the worst severity found.
@@ -94,21 +94,21 @@ The worst mode. A cut `.gz` decompresses partially. Many downstream tools accept
 
 Cost, stated precisely: for BGZF, BAM and CRAM there is an end marker, and the verification is cheap. For plain gzip and FASTQ there is none — ISIZE only checks by decompressing everything, and counting lines too. In these formats the validation is a full read of the decompressed content. That is why it happens **once per hash root and validator version** (`DESIGN.md`, "Facts and assertions"), and the same read extracts the counts and IDs used by M5 and M15.
 
-| Format      | Prefix          | End-of-file verification                                                                                                                                  |
-| ----------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| gzip        | `1f 8b`         | last member closes; ISIZE matches the decompressed size mod 2^32                                                                                          |
-| bgzf        | `1f 8b` + XLEN  | contiguous BSIZE chain up to the end; EOF block present                                                                                                   |
-| bam         | `BAM\1` in bgzf | bgzf EOF block present                                                                                                                                    |
-| cram        | `CRAM`          | EOF container present                                                                                                                                     |
-| fastq / .gz | `@`             | line count a multiple of 4; last line complete; blank line only after the last record, and then `advisory`; UTF-8 BOM at the start rejected              |
-| fasta       | `>`             | ends with a newline; no truncated sequence line; `;` comment line rejected; UTF-8 BOM at the start rejected                                              |
-| vcf / .gz   | `##fileformat`  | header present; last line has a valid field count                                                                                                         |
-| gtf / gff3  | text            | every feature line has 9 tab-separated fields; UTF-8 BOM at the start rejected                                                                            |
-| hdf5 / h5ad | `\x89HDF\r\n`   | superblock intact; root opens                                                                                                                             |
-| pdb         | text            | `END` record present                                                                                                                                      |
-| mmcif       | `data_`         | last block closes                                                                                                                                         |
-| rds         | RDS magic       | prefix only                                                                                                                                               |
-| tsv / csv   | —               | consistent field count; last line complete                                                                                                                |
+| Format      | Prefix          | End-of-file verification                                                                                                                    |
+| ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| gzip        | `1f 8b`         | last member closes; ISIZE matches the decompressed size mod 2^32                                                                            |
+| bgzf        | `1f 8b` + XLEN  | contiguous BSIZE chain up to the end; EOF block present                                                                                     |
+| bam         | `BAM\1` in bgzf | bgzf EOF block present                                                                                                                      |
+| cram        | `CRAM`          | EOF container present                                                                                                                       |
+| fastq / .gz | `@`             | line count a multiple of 4; last line complete; blank line only after the last record, and then `advisory`; UTF-8 BOM at the start rejected |
+| fasta       | `>`             | ends with a newline; no truncated sequence line; `;` comment line rejected; UTF-8 BOM at the start rejected                                 |
+| vcf / .gz   | `##fileformat`  | header present; last line has a valid field count                                                                                           |
+| gtf / gff3  | text            | every feature line has 9 tab-separated fields; UTF-8 BOM at the start rejected                                                              |
+| hdf5 / h5ad | `\x89HDF\r\n`   | superblock intact; root opens                                                                                                               |
+| pdb         | text            | `END` record present                                                                                                                        |
+| mmcif       | `data_`         | last block closes                                                                                                                           |
+| rds         | RDS magic       | prefix only                                                                                                                                 |
+| tsv / csv   | —               | consistent field count; last line complete                                                                                                  |
 
 The declared format comes from the profile or the TOML. Inferred from the extension → `confidence = inferred` and `advisory`.
 
@@ -253,13 +253,13 @@ Mandatory order, derived from the model: write bytes → `fsync` of the `.part` 
 
 Per-file custody state, always available and always exported:
 
-| State        | Meaning                                                            |
-| ------------ | ------------------------------------------------------------------ |
+| State        | Meaning                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------- |
 | `verified`   | Content read and checked, within the scrub window. The `stat` gate never produces this state |
-| `stale`      | Was checked before; window expired or baseline changed             |
-| `unverified` | Never checked by content                                           |
-| `invalid`    | Check failed; diverging groups or failed assertion known           |
-| `adopted`    | Under custody, with no origin checksum to cross against            |
+| `stale`      | Was checked before; window expired or baseline changed                                       |
+| `unverified` | Never checked by content                                                                     |
+| `invalid`    | Check failed; diverging groups or failed assertion known                                     |
+| `adopted`    | Under custody, with no origin checksum to cross against                                      |
 | `suspect`    | Added to any state: Scribo observed, after the pipeline, an incoherent result for this input |
 
 Every export carries `custody_state`, `last_verified_at` and `verified_fraction` per row, plus a `.custody.json` sidecar with the study summary. Whoever consumes the TSV downstream sees the state in the file they are already reading, without needing to query the database.
