@@ -18,6 +18,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Naming rules self-test
+        run: bash .github/check-names.sh --self-test
+
+      - name: Branch name and commit messages
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: bash .github/check-names.sh
+
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
