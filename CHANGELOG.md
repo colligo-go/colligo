@@ -4,7 +4,9 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
-To be released as `0.1.0` when slice 1 closes.
+## [0.1.0] - 2026-10-30
+
+First release: slices 0 and 1, the light door. One command, no database, no configuration.
 
 ### Added
 
@@ -16,3 +18,8 @@ To be released as `0.1.0` when slice 1 closes.
 - Assertions evaluated in the defence precedence order, pair invariants for R1/R2, and a diagnoses catalogue that turns each failure into an observation, a probable cause and a suggested action.
 - Certificates that a third party can check with `tools/verify_cert.py`, which imports nothing from Colligo.
 - A versioned synthetic corpus whose expected results come from the generator, not from a parser.
+- A performance baseline on a documented reference machine: a full `check` of a `.fastq.gz` at 106% of pure-Go gunzip (target 110%), and the three hashes at 110% of the slowest one alone (target 120%), measured as the median of 5 runs under recorded conditions.
+- Continuous integration on every pull request (gitleaks, gofmt, vet, `noleak`, `go test -race` with the Python verifier and `b3sum` required) plus a weekly job with the slow tests and 30 minutes of fuzzing per target.
+
+[Unreleased]: https://github.com/colligo-go/colligo/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/colligo-go/colligo/releases/tag/v0.1.0
