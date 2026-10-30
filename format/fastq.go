@@ -11,7 +11,7 @@ const maxLengthBuckets = 4096
 type fastqValidator struct{}
 
 func (fastqValidator) Format() string      { return ContentFastq }
-func (fastqValidator) Version() string     { return "fastq-3" }
+func (fastqValidator) Version() string     { return "fastq-4" }
 func (fastqValidator) MagicPrefix() []byte { return []byte{'@'} }
 func (fastqValidator) Compressed() bool    { return false }
 func (v fastqValidator) NewExtractor() Extractor {
@@ -111,9 +111,7 @@ func (f *fastqExtractor) recordID(header []byte) {
 	if n := len(id); n > 0 && id[n-1] == '\r' {
 		id = id[:n-1]
 	}
-	if n := len(id); n >= 2 && id[n-2] == '/' && (id[n-1] == '1' || id[n-1] == '2') {
-		id = id[:n-2]
-	}
+	id = stripMateSuffix(id)
 	if !f.hasID {
 		f.first = append(f.first[:0], id...)
 		f.hasID = true
@@ -163,3 +161,43 @@ func (f *fastqExtractor) Finish() ([]model.Fact, error) {
 	}
 	return []model.Fact{structure, records, ends}, nil
 }
+
+func stripMateSuffix(id []byte) []byte {
+	n := len(id)
+	if n < 2 || (id[n-1] != '1' && id[n-1] != '2') {
+		return id
+	}
+	if id[n-2] == '/' || isReadIDsSuffix(id) {
+		return id[:n-2]
+	}
+	return id
+}
+
+func isReadIDsSuffix(id []byte) bool {
+	rest := id[:len(id)-2]
+	if id[len(id)-2] != '.' {
+		return false
+	}
+	spotStart := len(rest)
+	for spotStart > 0 && isDigit(rest[spotStart-1]) {
+		spotStart--
+	}
+	if spotStart == len(rest) || spotStart == 0 || rest[spotStart-1] != '.' {
+		return false
+	}
+	accession := rest[:spotStart-1]
+	if len(accession) < 4 || accession[1] != 'R' || accession[2] != 'R' {
+		return false
+	}
+	if c := accession[0]; c != 'S' && c != 'E' && c != 'D' {
+		return false
+	}
+	for _, c := range accession[3:] {
+		if !isDigit(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }

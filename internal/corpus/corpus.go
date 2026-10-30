@@ -117,6 +117,9 @@ func Generate() []Fixture {
 
 	orphan := randomReads(9, "ORPHAN", "/1", 80, 60, 60)
 
+	dump1 := randomReads(10, "SRR200", ".1", 100, 50, 50)
+	dump2 := randomReads(11, "SRR200", ".2", 100, 50, 50)
+
 	desync1 := randomReads(4, "DSYNC", "/1", 120, 60, 60)
 	desync2 := randomReads(5, "DSYNC", "/2", 119, 60, 60)
 
@@ -148,6 +151,8 @@ func Generate() []Fixture {
 		valid("plain.fastq", "FASTQ with reads of varied length", plain.text.Bytes(), plain),
 		valid("pair_R1.fastq.gz", "first mate of a consistent pair", gz(pair1.text.Bytes()), pair1),
 		valid("pair_R2.fastq.gz", "second mate of a consistent pair", gz(pair2.text.Bytes()), pair2),
+		valid("dump_1.fastq", "first mate with fastq-dump --readids IDs, consistent with dump_2", dump1.text.Bytes(), dump1),
+		valid("dump_2.fastq", "second mate with fastq-dump --readids IDs, consistent with dump_1", dump2.text.Bytes(), dump2),
 		valid("desync_R1.fastq", "first mate of a pair whose second mate lost one read", desync1.text.Bytes(), desync1, "pair_count"),
 		valid("desync_R2.fastq", "second mate with one read fewer than the first", desync2.text.Bytes(), desync2, "pair_count"),
 		valid("orphan_R1.fastq", "first mate whose second mate is not in the corpus", orphan.text.Bytes(), orphan, "pair_missing"),

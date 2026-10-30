@@ -32,6 +32,14 @@ func fastq(prefix string, reads int, seed int64) []byte {
 	return b.Bytes()
 }
 
+func fastqWithIDs(ids ...string) []byte {
+	var b bytes.Buffer
+	for _, id := range ids {
+		fmt.Fprintf(&b, "@%s\nACGTACGT\n+\nFFFFFFFF\n", id)
+	}
+	return b.Bytes()
+}
+
 func gz(data []byte) []byte {
 	var b bytes.Buffer
 	w := gzip.NewWriter(&b)
@@ -56,6 +64,9 @@ func corpus() map[string][]byte {
 	return map[string][]byte{
 		"trailing-blank.fq": append(fastq("T", 30, 10), '\n', '\n', '\n'),
 		"crlf.fastq":        crlf.Bytes(),
+		"dump_1.fastq":      fastqWithIDs("SRR1.1.1", "SRR1.2.1", "SRR1.3.1 length=8"),
+		"dump_2.fastq":      fastqWithIDs("ERR7.4.2", "ERR7.5.2"),
+		"spots.fastq":       fastqWithIDs("SRR1.1", "SRR1.2", "SRR1.2.3", "SRR.1.1", "x.1.1"),
 		"many-lengths.fq":   lengths.Bytes(),
 		"plain.fastq":       fastq("P", 500, 3),
 		"zipped.fastq.gz":   good,
