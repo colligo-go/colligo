@@ -125,7 +125,7 @@ Contagens diferentes de reads, ou arquivos de amostras diferentes pareados por e
 - Contagem de registros idêntica.
 - ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`, e o `.1`/`.2` do `fastq-dump --readids`, só na forma `<acesso>.<spot>.<1|2>`, como `SRR001666.1.1`). Um `.1` ou `.2` final fora desse formato é parte do ID: `SRR1.1` e `SRR1.2` são spots diferentes.
 
-Divergência → `blocking` nos dois arquivos, com `pair_mismatch`. Nenhum dos dois vira `done`.
+Divergência → `blocking` nos dois arquivos, com `pair_count` (contagens diferentes) ou `pair_ids` (primeiro ou último ID diferente). Nenhum dos dois vira `done`.
 
 **Como os pares se formam.** Pelo nome, no mesmo diretório: mesmo radical, `_1`/`_2`, `_R1`/`_R2` ou `.1`/`.2`, e o mesmo número de pedaço (`_001`). `_R1_001` com `_R2_002` não pareia. Se dois arquivos disputam o mesmo mate (por exemplo `s_R1.fastq` e `s_R1.fastq.gz`), nenhum dos três recebe afirmação de par. Um mate em gzip e o outro em texto puro pareiam normalmente.
 
@@ -166,7 +166,7 @@ Se o cálculo de hash tem erro, tudo "verifica" e tudo está errado. Nenhuma def
 
 1. **Vetores conhecidos na inicialização.** Vetores oficiais de BLAKE3, MD5 e SHA-256 rodados em toda abertura de banco. Falha → `fatal`, ferramenta ou ambiente suspeito. Custa microssegundos.
 2. **Canário.** Cada estudo tem um arquivo canário de 128 KiB de conteúdo determinístico e hash conhecido, verificado em toda execução pelo mesmo caminho de código dos arquivos reais. Se o canário falha, o problema é ambiente ou ferramenta, não dado — e a mensagem diz isso, para você não sair caçando corrupção onde não há.
-3. **Verificação cruzada externa.** `colligo verify --cross-check` emite arquivos no formato de `sha256sum` e `b3sum`, para você conferir com ferramenta que não é a nossa. Na suíte de testes, quando `b3sum` está no PATH, os hashes são comparados contra ele.
+3. **Verificação cruzada externa.** `colligo check --cross-check` emite arquivos no formato de `sha256sum` e `b3sum`, para você conferir com ferramenta que não é a nossa. Na suíte de testes, quando `b3sum` está no PATH, os hashes são comparados contra ele.
 4. **Verificador de certificado independente.** `tools/verify_cert.py` recalcula hashes e contagens sem código do Colligo e confere o certificado (SPEC §13). Roda na suíte sobre todo o corpus sintético.
 5. **Segunda implementação do extrator, quando existir.** Se o acelerador Rust de `DESIGN.md` entrar, os fatos dele e os do extrator Go são comparados byte a byte na suíte, e `check --cross-extract` roda os dois sobre o mesmo arquivo em produção. Divergência → `fatal` com os dois valores, e a mensagem aponta a ferramenta, não o dado.
 
