@@ -1,118 +1,118 @@
-# Contribuindo com o Colligo
+# Contributing to Colligo
 
 ---
 
-## O contrato
+## The contract
 
-Para adicionar uma fonte: implemente `Source`, grave fixtures sintéticos, e chame `sourcetest.Run`.
+To add a source: implement `Source`, record synthetic fixtures, and call `sourcetest.Run`.
 
-Se passar, aceitamos sem auditar sua lógica de parsing linha por linha. **O que garante o usuário não é nossa revisão — é a suíte.** Se você encontrar um jeito de passar na suíte e ainda assim entregar dado errado, isso é um bug na suíte e queremos saber.
+If it passes, we accept it without auditing your parsing logic line by line. **What guarantees the user is not our review — it is the suite.** If you find a way to pass the suite and still deliver wrong data, that is a bug in the suite and we want to know.
 
-Adapters são puros: não recebem `Store`, não recebem caminho de disco, não abrem arquivo. O pior bug possível num adapter é devolver metadado errado, que o validador pega. Um adapter não pode corromper o acervo, por construção.
+Adapters are pure: they do not receive a `Store`, do not receive a disk path, do not open files. The worst possible bug in an adapter is returning wrong metadata, which the validator catches. An adapter cannot corrupt the collection, by construction.
 
 ---
 
-## Fluxo de um PR
+## Flow of a PR
 
-1. Branch a partir de `main` atualizado, com nome `<tipo>/<descrição>`: `feat/ena-source`, `fix/12-bgzf-bsize`.
-2. Commits em Conventional Commits: `fix(format): reject a leading UTF-8 BOM`, com corpo explicando o porquê em `feat` e `fix`.
-3. Push do branch e `gh pr create`, com título no mesmo formato. O CI roda no PR, não no push do branch: sem PR aberto não há CI. Ele confere nome do branch, título e commits, e roda a suíte inteira.
-4. Merge só com o CI verde e depois de revisão. Nada entra em `main` de outro jeito.
+1. Branch from an up-to-date `main`, named `<type>/<description>`: `feat/ena-source`, `fix/12-bgzf-bsize`.
+2. Commits in Conventional Commits: `fix(format): reject a leading UTF-8 BOM`, with a body explaining the why in `feat` and `fix`.
+3. Push the branch and `gh pr create`, with a title in the same format. CI runs on the PR, not on the branch push: without an open PR there is no CI. It checks the branch name, title and commits, and runs the whole suite.
+4. Merge only with green CI and after review. Nothing enters `main` any other way.
 
-As regras completas estão em `docs/CONVENTIONS.md`, seção Git.
+The complete rules are in `docs/CONVENTIONS.md`, Git section.
 
-## Antes de abrir PR
+## Before opening a PR
 
 ```
 gofmt -l .
 go vet ./...
 go build -o /tmp/noleak ./internal/noleak/cmd/noleak && go vet -vettool=/tmp/noleak ./...
-COLLIGO_PYTHON=<python com blake3> COLLIGO_REQUIRE_PYTHON=1 go test -race -count=2 ./...
-go test -run '^$' -fuzz=Fuzz -fuzztime=60s ./source/<sua-fonte>
+COLLIGO_PYTHON=<python with blake3> COLLIGO_REQUIRE_PYTHON=1 go test -race -count=2 ./...
+go test -run '^$' -fuzz=Fuzz -fuzztime=60s ./source/<your-source>
 ```
 
-`gofmt -l .` não pode imprimir nada. O verificador independente precisa de um Python com o pacote `blake3`; sem `COLLIGO_REQUIRE_PYTHON=1` o teste dele é pulado, e o CI não aceita isso.
+`gofmt -l .` must print nothing. The independent verifier needs a Python with the `blake3` package; without `COLLIGO_REQUIRE_PYTHON=1` its test is skipped, and CI does not accept that.
 
-Decisão muda código e documento no mesmo commit.
+A decision changes code and document in the same commit.
 
-Sem comentários no código. GoDoc só em identificador exportado, e só quando diz o que o nome e a assinatura não dizem. Detalhe em `docs/CONVENTIONS.md`.
-
----
-
-## Adapter para fonte privada
-
-Fonte institucional funciona. A arquitetura não distingue origem: se você consegue descrever onde os arquivos estão e o que se sabe sobre eles, cabe num adapter.
-
-### Primeiro: confirme que você precisa de um
-
-Boa parte do dado institucional não chega por API. Chega como diretório montado, ou export com uma planilha descrevendo os arquivos. Nesse caso **não escreva adapter**: use `colligo adopt --manifest lista.csv`. Nada específico da instituição passa a existir em código nenhum, e você ganha custódia completa com reverificação eterna.
-
-Escreva adapter só se a fonte realmente exigir chamada programática.
-
-### A separação obrigatória
-
-Três coisas que precisam ficar separadas:
-
-| O quê         | Onde vive        | Publicável |
-| ------------- | ---------------- | ---------- |
-| Código        | repositório      | sim        |
-| Configuração  | TOML local, env  | não        |
-| Fixtures reais| `testdata/real/` | não        |
-
-**Se é específico da instituição, é configuração, não código.** Aplicada com disciplina, sobra um adapter que descreve um *formato*, não uma instituição — e isso é publicável sem constrangimento.
-
-Vaza pelo código, mesmo sem fixture:
-
-- Nome de host interno escrito direto no código
-- Nome de campo que revela o que a instituição coleta (`prontuario`, `data_nascimento`)
-- Identificador de projeto ou de estudo controlado
-- Credencial esquecida
-
-Credencial vazada não se desvaza: o histórico do Git é para sempre. `gitleaks` roda em pre-commit por isso.
-
-### Onde o adapter privado mora
-
-Não precisa estar dentro do repositório do Colligo. É um módulo separado que importa o Colligo — pode viver em repositório interno ou só numa pasta na sua máquina.
-
-Isso funciona porque fontes são registradas explicitamente em `colligo.WithSources(...)`, não por descoberta automática. O core não precisa saber que seu adapter existe.
-
-### Teste de adapter privado
-
-Adapter privado não tem revisão da comunidade. Ninguém além de você lê aquele código. **A suíte de conformidade deixa de ser conveniência e passa a ser o único revisor que existe.** Roda `sourcetest` igual aos públicos, sem exceção.
-
-Fixture sintética resolve o teste público: um registro falso com a mesma forma do real, valores inventados. Entenda a limitação — fixture sintética testa se o parser está certo, **não** se a realidade continua igual. Se o servidor passar a devolver um campo novo, seu teste segue verde e você quebra na prática.
-
-Por isso o trabalho é duplo:
-
-- **Público:** conformidade contra fixture sintética. Roda para qualquer um, sempre.
-- **Local:** teste contra fixtures reais, atrás da tag `restricted`, mais o job de drift semanal que regrava contra a API real. Nunca sai da sua máquina ou da infra da instituição.
-
-O segundo é onde a detecção de mudança realmente mora.
-
-### Classificação
-
-Fonte restrita declara `classification = "restricted"` na configuração. Isso liga todo o regime de `CONFIDENTIALITY.md`: corpo de resposta não persistido, nomes opacos no export, permissão de banco enforçada, `debug` proibido.
-
-A declaração é obrigatória e não tem default. Uma fonte sem classificação causa erro de carregamento.
-
-### Um aviso fora do técnico
-
-Publicar o adapter pode ser restrito pelo acordo de uso do dado, não só pelo bom senso. Alguns termos proíbem descrever a estrutura interna ou o endpoint, mesmo sem dado nenhum.
-
-Antes de subir um adapter que descreve API institucional, pergunte a quem cuida de governança de dados. São cinco minutos de conversa contra um problema que não tem desfazer.
+No comments in the code. GoDoc only on an exported identifier, and only when it says what the name and the signature do not. Details in `docs/CONVENTIONS.md`.
 
 ---
 
-## Adicionando um validador de formato
+## Adapter for a private source
 
-Implemente `FormatValidator` com prefixo mágico e verificação de término. Não faça parsing completo — a pergunta é "o arquivo termina onde deveria terminar?", não "o conteúdo faz sentido?".
+An institutional source works. The architecture does not distinguish origin: if you can describe where the files are and what is known about them, it fits in an adapter.
 
-Todo validador precisa de teste com: arquivo válido, arquivo truncado em 10 offsets aleatórios, arquivo com 1 byte corrompido no meio, arquivo vazio, e página HTML de erro renomeada com a extensão do formato.
+### First: confirm that you need one
+
+A good part of institutional data does not arrive through an API. It arrives as a mounted directory, or an export with a spreadsheet describing the files. In that case **do not write an adapter**: use `colligo adopt --manifest list.csv`. Nothing institution-specific comes to exist in any code, and you get full custody with perpetual reverification.
+
+Write an adapter only if the source really requires a programmatic call.
+
+### The mandatory separation
+
+Three things that must be kept separate:
+
+| What          | Where it lives   | Publishable |
+| ------------- | ---------------- | ----------- |
+| Code          | repository       | yes         |
+| Configuration | local TOML, env  | no          |
+| Real fixtures | `testdata/real/` | no          |
+
+**If it is institution-specific, it is configuration, not code.** Applied with discipline, what is left is an adapter that describes a *format*, not an institution — and that is publishable without embarrassment.
+
+Leaks through code, even without a fixture:
+
+- An internal host name written directly in the code
+- A field name that reveals what the institution collects (`medical_record`, `birth_date`)
+- A project or controlled-study identifier
+- A forgotten credential
+
+A leaked credential cannot be un-leaked: Git history is forever. That is why `gitleaks` runs in pre-commit.
+
+### Where the private adapter lives
+
+It does not need to be inside the Colligo repository. It is a separate module that imports Colligo — it can live in an internal repository or just in a folder on your machine.
+
+This works because sources are registered explicitly in `colligo.WithSources(...)`, not by automatic discovery. The core does not need to know that your adapter exists.
+
+### Testing a private adapter
+
+A private adapter has no community review. Nobody but you reads that code. **The conformance suite stops being a convenience and becomes the only reviewer that exists.** Run `sourcetest` just like the public ones, without exception.
+
+A synthetic fixture solves the public test: a fake record with the same shape as the real one, invented values. Understand the limitation — a synthetic fixture tests whether the parser is right, **not** whether reality is still the same. If the server starts returning a new field, your test stays green and you break in practice.
+
+So the work is double:
+
+- **Public:** conformance against a synthetic fixture. Runs for anyone, always.
+- **Local:** a test against real fixtures, behind the `restricted` tag, plus the weekly drift job that re-records against the real API. It never leaves your machine or the institution's infrastructure.
+
+The second is where change detection really lives.
+
+### Classification
+
+A restricted source declares `classification = "restricted"` in the configuration. This turns on the whole regime of `CONFIDENTIALITY.md`: response body not persisted, opaque names in the export, database permission enforced, `debug` forbidden.
+
+The declaration is mandatory and has no default. A source without a classification causes a load error.
+
+### A non-technical warning
+
+Publishing the adapter may be restricted by the data use agreement, not only by common sense. Some terms forbid describing the internal structure or the endpoint, even without any data.
+
+Before uploading an adapter that describes an institutional API, ask whoever handles data governance. It is five minutes of conversation against a problem that cannot be undone.
 
 ---
 
-## Reportando bug
+## Adding a format validator
 
-Use `colligo redact-report` e cole a saída. Ela é feita para ser pública: contém versões, hash de config, contagem de estados e tipos de erro, e nenhum identificador.
+Implement `FormatValidator` with a magic prefix and an end-of-file check. Do not do full parsing — the question is "does the file end where it should end?", not "does the content make sense?".
 
-Não cole log cru, não cole stack trace, não cole caminho de arquivo. Se o relatório redigido não é suficiente para diagnosticar, isso é um bug no relatório e queremos saber.
+Every validator needs a test with: a valid file, a file truncated at 10 random offsets, a file with 1 byte corrupted in the middle, an empty file, and an HTML error page renamed with the format's extension.
+
+---
+
+## Reporting a bug
+
+Use `colligo redact-report` and paste the output. It is made to be public: it contains versions, config hash, counts of states and error types, and no identifier.
+
+Do not paste a raw log, do not paste a stack trace, do not paste a file path. If the redacted report is not enough to diagnose, that is a bug in the report and we want to know.

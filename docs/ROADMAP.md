@@ -1,186 +1,186 @@
 # Colligo — Roadmap
 
-> **Fatia atual: 0 — Fundação mínima.** Nada fora dela deve ser construído ainda.
+> **Current slice: 1 — Light door: `colligo check`.** Slice 0 is closed. Nothing outside Slice 1 should be built yet.
 
-A regra deste documento: construir uma fatia fina de ponta a ponta antes de generalizar em largura.
+The rule of this document: build a thin slice end to end before generalising in breadth.
 
-Duas regras aprendidas no caminho:
+Two rules learned along the way:
 
-- **O que é estrutural vem antes do que é funcional — mas só o que não dá para encaixar depois.** Tipos que não vazam e verificação da própria ferramenta entram primeiro. Diagnóstico, relatório e regime completo de dado restrito se adicionam depois sem dor, e ficam para quando houver fonte restrita.
-- **A porta leve vem antes da pesada.** A primeira entrega útil não tem banco. É ela que gera usuários e é ela que exercita o núcleo — extratores, validadores, adapters — antes de existir persistência. Ver `DESIGN.md` §1, "Duas portas".
-
----
-
-## Fatia 0 — Fundação mínima
-
-Pequena em linhas, impossível de adicionar depois.
-
-Escopo:
-
-- `secret/`: `Secret`, `Name`, `Endpoint`, com redação por construção.
-- `logf`: campos tipados; sem campo `string` genérico para caminho, URL ou credencial.
-- `checksum/`: vetores conhecidos de BLAKE3, MD5 e SHA-256 rodados na inicialização.
-- Analisador `go/analysis` no CI que proíbe `string` crua onde o domínio exige `secret.*`.
-
-Critério de pronto:
-
-- `%v`, `%s`, `%+v`, `%#v` e `json.Marshal` de todo tipo de `secret/` não contêm a sentinela.
-- Vetores conhecidos falham alto quando sabotados de propósito.
-- O analisador reprova um fixture de código que passa `string` para `logf.Name`.
-
-Movido para depois: `doctor`, `redact-report`, canário, detecção de pasta sincronizada, permissões de banco, dialer instrumentado, sentinela global. Entram na Fatia 6, junto com a primeira fonte restrita, ou na Fatia 7.
+- **What is structural comes before what is functional — but only what cannot be fitted in later.** Types that do not leak and verification of the tool itself come first. Diagnosis, reporting and the full regime for restricted data are added later without pain, and are left for when there is a restricted source.
+- **The light door comes before the heavy one.** The first useful delivery has no database. It is what generates users and what exercises the core — extractors, validators, adapters — before persistence exists. See `DESIGN.md` §1, "Two doors".
 
 ---
 
-## Fatia 1 — Porta leve: `colligo check`
+## Slice 0 — Minimal foundation (closed)
 
-A menor unidade útil. Sem banco, sem TOML, sem estado.
+Small in lines, impossible to add later.
 
-Escopo:
+Scope:
 
-- `facts/`: leitura única em streaming que produz raiz BLAKE3 (outboard Bao, grupo de 8 MiB), MD5, SHA-256 e os fatos de formato.
-- `format/`: validadores de gzip, bgzf, fastq, fasta e gtf, que também extraem fatos — contagem de registros e bases, primeiro e último ID, nomes de sequência.
-- Invariante de par sobre os fatos: mesma contagem, IDs compatíveis.
-- `cmd/colligo check` e `validate`: arquivos soltos, `--expected`, `--json`, códigos de saída de `RELIABILITY.md` §1.
-- `--cross-check` com saída compatível com `b3sum` e `sha256sum`.
-- Leitura única distribuída em paralelo, sem `io.MultiWriter`; parser de FASTQ sem alocação; `check --quick`.
-- Benchmark de desempenho contra o piso do gunzip em Go puro, com `zcat | wc -l` reportado (`TESTING.md` §7.1).
-- `check .` com descoberta de formato e pares; catálogo `diagnoses/` com uma entrada por afirmação.
-- `check --certificate` e o verificador independente `tools/verify_cert.py`.
+- `secret/`: `Secret`, `Name`, `Endpoint`, with redaction by construction.
+- `logf`: typed fields; no generic `string` field for path, URL or credential.
+- `checksum/`: known vectors of BLAKE3, MD5 and SHA-256 run at start-up.
+- A `go/analysis` analyzer in CI that forbids a raw `string` where the domain requires `secret.*`.
 
-Critério de pronto:
+Definition of done:
 
-- Truncar um `.fastq.gz` em 10 offsets: todos detectados.
-- Página HTML renomeada para `.gtf.gz`: rejeitada pelos bytes mágicos.
-- R2 com um read a menos que R1: `blocking`, código 3.
-- Cada arquivo é lido exatamente uma vez, verificado por contador de bytes lidos no teste.
-- Hashes conferem com `b3sum` e `sha256sum` quando presentes.
-- `check` completo de um `.fastq.gz` a no máximo 10% acima do gunzip em Go puro na máquina de referência.
-- Parser de FASTQ com zero alocação por registro.
-- `colligo check .` numa pasta com pares R1/R2 e um arquivo truncado roda sem configuração e imprime o diagnóstico em frase.
-- O verificador Python concorda com o certificado em todo o corpus sintético.
+- `%v`, `%s`, `%+v`, `%#v` and `json.Marshal` of every `secret/` type do not contain the sentinel.
+- Known vectors fail loudly when deliberately sabotaged.
+- The analyzer rejects a code fixture that passes a `string` to `logf.Name`.
+
+Moved to later: `doctor`, `redact-report`, canary, sync-folder detection, database permissions, instrumented dialer, global sentinel. They enter in Slice 6, together with the first restricted source, or in Slice 7.
 
 ---
 
-## Fatia 2 — Declarado contra a fonte
+## Slice 1 — Light door: `colligo check` (current)
 
-A porta leve passa a perguntar à fonte.
+The smallest useful unit. No database, no TOML, no state.
 
-Escopo:
+Scope:
 
-- `source/ena/`: apenas a parte de metadados — `fastq_md5`, `fastq_bytes`, `read_count`, `base_count`, status do registro. Puro, com fixture sintética.
-- `transport/` HTTP mínimo para metadados, com rate limit por domínio.
-- `colligo check --source ena`: compara fatos contra o declarado. M15 de `RELIABILITY.md`.
-- `colligo identify`: digest de Sequence Collection para FASTA; release do GTF do GENCODE pelo cabeçalho; hash contra checksums oficiais onde houver.
-- `colligo check --samplesheet`: samplesheet de pipeline nf-core conferida pelo conteúdo.
-- Módulo MultiQC que lê o `--json` do `check` e mostra o resultado no relatório que o usuário já abre.
+- `facts/`: a single streaming read that produces BLAKE3 root (Bao outboard, 8 MiB group), MD5, SHA-256 and the format facts.
+- `format/`: validators for gzip, bgzf, fastq, fasta and gtf, which also extract facts — count of records and bases, first and last ID, sequence names.
+- Pair invariant over the facts: same count, compatible IDs.
+- `cmd/colligo check` and `validate`: loose files, `--expected`, `--json`, exit codes of `RELIABILITY.md` §1.
+- `--cross-check` with output compatible with `b3sum` and `sha256sum`.
+- Single read distributed in parallel, without `io.MultiWriter`; allocation-free FASTQ parser; `check --quick`.
+- Performance benchmark against the pure-Go gunzip floor, with `zcat | wc -l` reported (`TESTING.md` §7.1).
+- `check .` with format and pair discovery; `diagnoses/` catalogue with one entry per assertion.
+- `check --certificate` and the independent verifier `tools/verify_cert.py`.
 
-Critério de pronto:
+Definition of done:
 
-- O caso QC Fail reproduzido em fixture — FASTQ válido com read 2 encurtado — sai com código 3 porque `base_count` não bate.
-- `identify` reconhece um GTF do GENCODE pelo cabeçalho e um FASTA pelo digest seqcol.
-- Uma samplesheet com R2 trocado entre duas amostras é reprovada.
-- O resultado do `check` aparece num relatório MultiQC.
-- Distribuição: receita bioconda rascunhada e módulo nf-core esboçado.
-
----
-
-## Fatia 3 — Porta pesada: fetch, store e resume
-
-O núcleo de aquisição, agora com persistência.
-
-Escopo:
-
-- Antes do código: modelo TLA+ do resume, do rename e da máquina de estados, verificado por model checking (`RELIABILITY.md` M20).
-- `colligo get`: accession → download → `samplesheet.csv` + `colligo.lock`, sem banco, com estado de resume ao lado dos arquivos.
-- Verificação sobreposta ao download; concorrência adaptativa por domínio (SPEC §12).
-- Abertura do banco conforme `CONTRACT.md` §2, idêntica à do Scribo: journal mode por filesystem, `_txlock=immediate`, `tool_runs` com o DDL do contrato.
-- `model/` e `store/` SQLite conforme SPEC, com PRAGMAs no DSN lidos de volta e tabela `facts`.
-- Writer goroutine com erro e flush; `tool_runs` com `run_id` em todo evento; detecção de execução interrompida.
-- `source/gencode/` com `Fetch` e `Resolve`, puros.
-- `transport/` com `Range`, `If-Range`, retry e rate limit.
-- `downloader/`: streaming para `.part` alimentando a mesma extração de fatos da Fatia 1; várias conexões por arquivo alinhadas a grupos, desligado por default.
-- Resume com reconciliação contra o disco usando o outboard Bao.
-- `cmd/colligo` com `fetch`, `verify` e `status`.
-
-Critério de pronto:
-
-- Baixar FASTA e GTF do GENCODE de ponta a ponta, validar, renomear.
-- `colligo get` de um estudo pequeno do ENA entrega samplesheet validada e lock.
-- `get` com verificação completa a no máximo 5% acima de `curl` puro.
-- Servidor fake com capacidade limitada e 429: a concorrência adaptativa converge sem estourar o teto e sem erro permanente.
-- Crash em qualquer ponto: todas as invariantes do modelo valem após cada retomada.
-- Matar o processo no meio e retomar, com checksum final correto.
-- Teste de propriedade do resume passando.
-- `ENOSPC` injetado: offset seguro gravado antes do erro.
-- `go test -race -count=2` limpo.
+- Truncate a `.fastq.gz` at 10 offsets: all detected.
+- HTML page renamed to `.gtf.gz`: rejected by the magic bytes.
+- R2 with one read fewer than R1: `blocking`, code 3.
+- Each file is read exactly once, verified by a bytes-read counter in the test.
+- Hashes match `b3sum` and `sha256sum` when present.
+- A full `check` of a `.fastq.gz` at most 10% above pure-Go gunzip on the reference machine.
+- FASTQ parser with zero allocations per record.
+- `colligo check .` on a folder with R1/R2 pairs and a truncated file runs without configuration and prints the diagnosis in a sentence.
+- The Python verifier agrees with the certificate across the whole synthetic corpus.
 
 ---
 
-## Fatia 4 — `adopt`, scrub, manifesto e atestação
+## Slice 2 — Declared against the source
 
-O que destrava os terabytes que chegam por fora.
+The light door starts asking the source.
 
-Escopo: `adopt/` individual e em lote por CSV; gate de `stat` que decide o que ler, sem declarar nada verificado; scrub amortizado por `last_verified_at`; `manifest/` com raiz e outboard; `attest`; `colligo lock` e `check --lock`; duplicata entre accessions por raiz (M19).
+Scope:
 
-Critério: adotar um arquivo vindo de `prefetch` e reverificá-lo depois apontando a fatia corrompida; exportar manifesto, corromper um byte, e a atestação apontar o índice exato; trocar o release de uma referência e o diff do `colligo.lock` mostrar só aquela linha; segunda execução sobre 10 mil arquivos inalterados dentro da meta de `TESTING.md` §10.
+- `source/ena/`: only the metadata part — `fastq_md5`, `fastq_bytes`, `read_count`, `base_count`, record status. Pure, with a synthetic fixture.
+- Minimal HTTP `transport/` for metadata, with per-domain rate limit.
+- `colligo check --source ena`: compares facts against the declared. M15 of `RELIABILITY.md`.
+- `colligo identify`: Sequence Collection digest for FASTA; GENCODE GTF release by the header; hash against official checksums where they exist.
+- `colligo check --samplesheet`: nf-core pipeline samplesheet checked against the content.
+- MultiQC module that reads the `--json` of `check` and shows the result in the report the user already opens.
 
----
+Definition of done:
 
-## Fatia 5 — Vigilância da fonte, GEO, validação em duas fases
-
-Escopo:
-
-- `colligo recheck --upstream`: reexecuta a parte de metadados dos adapters e compara com o guardado. M16 de `RELIABILITY.md`.
-- `source/geo/` via E-utilities; caminho de arquivo pequeno; perfis `rnaseq`, `tabular` e `singlecell`.
-- Integração com o Scribo (SPEC §14.1): sinais de `input_signals` na custódia, funil de completude com `[results]`, scrub priorizado por dependentes.
-- Química de single-cell declarada × observada (M17) e coerência de matriz suplementar contra os GSMs (M18).
-- Validação Fase 1 local e Fase 2 remota; `discrepancies` com severidade; `expected_set_hash`; `status --require-complete`.
-
-Critério: um fixture em que o run passa de público a suprimido gera `discrepancy` `blocking`; um dado 10x v2 declarado v3 é `blocking`; uma matriz com duas colunas trocadas de nome é `blocking`; declarar tipo errado para o pipeline em modo estrito; remover um arquivo do fixture e o estudo deixar de ser completo.
-
----
-
-## Fatia 6 — Referência, `compat` e primeira fonte restrita
-
-Escopo:
-
-- `reference_assets` com assembly, release, `chromosome_naming` e digest seqcol.
-- `compat/`: comparação por `sorted_name_length_pairs` entre FASTA, `.fai`, BAM, VCF; inclusão de nomes para GTF e BED.
-- Primeiro adapter de fonte restrita, com o regime completo de `CONFIDENTIALITY.md`: permissões, pasta sincronizada, sentinela global, dialer instrumentado, canário.
-
-Critério: FASTA GENCODE contra VCF com contigs do Ensembl devolve incompatível com o diff de nomes; declarar release errado no TOML e receber `fatal`; toda invariante de `CONFIDENTIALITY.md` §6 com teste passando.
+- The QC Fail case reproduced in a fixture — valid FASTQ with a shortened read 2 — exits with code 3 because `base_count` does not match.
+- `identify` recognises a GENCODE GTF by the header and a FASTA by the seqcol digest.
+- A samplesheet with R2 swapped between two samples is rejected.
+- The result of `check` appears in a MultiQC report.
+- Distribution: bioconda recipe drafted and nf-core module sketched.
 
 ---
 
-## Fatia 7 — Largura, derivados mínimos, benchmark e polimento
+## Slice 3 — Heavy door: fetch, store and resume
 
-Escopo: `source/cbioportal/`, `source/pdb/`, `source/dfam/`, `source/ensembl/`; perfil `structure`; FTP isolado; `drs://`; `derived_files` mínimo; `exporter/` com custódia; descompressão paralela de BGZF; `doctor` e `redact-report`; benchmark de falhas silenciosas completo (`TESTING.md` §7); GoDoc; exemplos executáveis; README com estudo real.
+The acquisition core, now with persistence.
+
+Scope:
+
+- Before the code: TLA+ model of resume, rename and the state machine, verified by model checking (`RELIABILITY.md` M20).
+- `colligo get`: accession → download → `samplesheet.csv` + `colligo.lock`, without a database, with resume state next to the files.
+- Verification overlapped with the download; adaptive concurrency per domain (SPEC §12).
+- Database opening per `CONTRACT.md` §2, identical to Scribo's: journal mode by filesystem, `_txlock=immediate`, `tool_runs` with the contract's DDL.
+- SQLite `model/` and `store/` per SPEC, with PRAGMAs in the DSN read back and the `facts` table.
+- Writer goroutine with error and flush; `tool_runs` with `run_id` in every event; detection of an interrupted run.
+- `source/gencode/` with `Fetch` and `Resolve`, pure.
+- `transport/` with `Range`, `If-Range`, retry and rate limit.
+- `downloader/`: streaming to `.part` feeding the same fact extraction as Slice 1; several connections per file aligned to groups, off by default.
+- Resume with reconciliation against the disk using the Bao outboard.
+- `cmd/colligo` with `fetch`, `verify` and `status`.
+
+Definition of done:
+
+- Download GENCODE FASTA and GTF end to end, validate, rename.
+- `colligo get` of a small ENA study delivers a validated samplesheet and lock.
+- `get` with full verification at most 5% above plain `curl`.
+- A fake server with limited capacity and 429: adaptive concurrency converges without exceeding the ceiling and without a permanent error.
+- Crash at any point: all invariants of the model hold after each resumption.
+- Kill the process in the middle and resume, with a correct final checksum.
+- Resume property test passing.
+- `ENOSPC` injected: safe offset written before the error.
+- `go test -race -count=2` clean.
 
 ---
 
-## Tipos de dado por versão
+## Slice 4 — `adopt`, scrub, manifest and attestation
+
+What unlocks the terabytes that arrive from outside.
+
+Scope: `adopt/` individual and in batch by CSV; `stat` gate that decides what to read, without declaring anything verified; amortised scrub by `last_verified_at`; `manifest/` with root and outboard; `attest`; `colligo lock` and `check --lock`; duplicate across accessions by root (M19).
+
+Criterion: adopt a file coming from `prefetch` and reverify it later pointing at the corrupted slice; export a manifest, corrupt one byte, and the attestation points at the exact index; change the release of a reference and the diff of `colligo.lock` shows only that line; a second run over 10 thousand unchanged files within the target of `TESTING.md` §10.
+
+---
+
+## Slice 5 — Watching the source, GEO, two-phase validation
+
+Scope:
+
+- `colligo recheck --upstream`: re-runs the metadata part of the adapters and compares with what was stored. M16 of `RELIABILITY.md`.
+- `source/geo/` via E-utilities; small-file path; profiles `rnaseq`, `tabular` and `singlecell`.
+- Integration with Scribo (SPEC §14.1): `input_signals` signals in custody, completeness funnel with `[results]`, scrub prioritised by dependents.
+- Single-cell chemistry declared × observed (M17) and coherence of the supplementary matrix against the GSMs (M18).
+- Local Phase 1 and remote Phase 2 validation; `discrepancies` with severity; `expected_set_hash`; `status --require-complete`.
+
+Criterion: a fixture in which the run goes from public to suppressed generates a `blocking` `discrepancy`; 10x v2 data declared as v3 is `blocking`; a matrix with two columns with swapped names is `blocking`; declaring the wrong type for the pipeline in strict mode; removing a file from the fixture and the study ceasing to be complete.
+
+---
+
+## Slice 6 — Reference, `compat` and the first restricted source
+
+Scope:
+
+- `reference_assets` with assembly, release, `chromosome_naming` and seqcol digest.
+- `compat/`: comparison by `sorted_name_length_pairs` between FASTA, `.fai`, BAM, VCF; name inclusion for GTF and BED.
+- First restricted-source adapter, with the full regime of `CONFIDENTIALITY.md`: permissions, sync folder, global sentinel, instrumented dialer, canary.
+
+Criterion: a GENCODE FASTA against a VCF with Ensembl contigs returns incompatible with the name diff; declaring the wrong release in the TOML and receiving `fatal`; every invariant of `CONFIDENTIALITY.md` §6 with a passing test.
+
+---
+
+## Slice 7 — Breadth, minimal derivatives, benchmark and polish
+
+Scope: `source/cbioportal/`, `source/pdb/`, `source/dfam/`, `source/ensembl/`; `structure` profile; isolated FTP; `drs://`; minimal `derived_files`; `exporter/` with custody; parallel BGZF decompression; `doctor` and `redact-report`; complete silent-failure benchmark (`TESTING.md` §7); GoDoc; executable examples; README with a real study.
+
+---
+
+## Data types by version
 
 ```
 v1 — rnaseq, singlecell, tabular, reference, structure, chipseq, generic
-v2 — definir conforme uso real da v1, não no papel agora
+v2 — define according to real use of v1, not on paper now
 ```
 
-`atacseq`, `methylation` e `wgs` vivem no `BACKLOG.md`. A v1 ensina quais tipos aparecem nos estudos reais — esses são melhores candidatos que os que parecem importantes hoje.
+`atacseq`, `methylation` and `wgs` live in `BACKLOG.md`. v1 teaches which types appear in real studies — those are better candidates than the ones that seem important today.
 
 ---
 
-## Marcos de versão
+## Version milestones
 
 ```
-v0.x.x — interface em desenvolvimento, pode mudar
-v1.0.0 — interface pública congelada, semver estrito
+v0.x.x — interface under development, may change
+v1.0.0 — public interface frozen, strict semver
 ```
 
-Permanece em v0 até a interface estar estável e testada em uso real. A porta leve pode ganhar releases próprias de v0 desde a Fatia 1.
+It stays at v0 until the interface is stable and tested in real use. The light door can get its own v0 releases from Slice 1.
 
-**A versão vem só da tag do git.** Não existe constante de versão no código. Cada fatia fechada sobe a minor: Fatia 1 → `v0.1.0`, Fatia 2 → `v0.2.0`. Correção publicada sobre uma release sobe o patch: `v0.1.1`. Entre tags, o binário se identifica pela pseudo-versão do Go, com data e commit (`v0.0.0-20261029173537-1d27b8e84ac6` antes da primeira tag), e com `+dirty` quando foi compilado com mudança não comitada. `colligo version` e todo certificado registram versão e commit, de modo que qualquer resultado aponta para o código exato que o produziu.
+**The version comes only from the git tag.** There is no version constant in the code. Each closed slice bumps the minor: Slice 1 → `v0.1.0`, Slice 2 → `v0.2.0`. A fix published over a release bumps the patch: `v0.1.1`. Between tags, the binary identifies itself by Go's pseudo-version, with date and commit (`v0.0.0-20261029173537-1d27b8e84ac6` before the first tag), and with `+dirty` when it was built with an uncommitted change. `colligo version` and every certificate record version and commit, so that any result points to the exact code that produced it.
 
-Tag só a partir de `main` com o CI verde, anotada, com as notas da versão vindas do `CHANGELOG.md`.
+Tag only from `main` with green CI, annotated, with the release notes taken from `CHANGELOG.md`.
 
-O repositório é público desde a Fatia 0. Não por ideologia: desenvolver fechado torna o projeto inelegível para os veículos que pedem histórico público de desenvolvimento, e cada mês fechado é um mês que não conta.
+The repository is public since Slice 0. Not out of ideology: developing closed makes the project ineligible for the venues that ask for a public development history, and each closed month is a month that does not count.

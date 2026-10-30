@@ -157,7 +157,7 @@ func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, e
 	if !opts.Structure && !opts.Quick {
 		EvaluatePairs(reports)
 	}
-	return Report{Files: reports}, nil
+	return Report{Files: reports, Quick: opts.Quick}, nil
 }
 
 const quickSample = 64 << 10

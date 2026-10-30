@@ -1,40 +1,40 @@
-# Colligo — Confidencialidade
+# Colligo — Confidentiality
 
-Documento normativo. Descreve as pontas por onde dado restrito pode escapar e o mecanismo que fecha cada uma.
+Normative document. It describes the ends through which restricted data can escape and the mechanism that closes each one.
 
-Princípio único deste documento: **proteção por tipo, não por disciplina.** Todo mecanismo aqui é estrutural — o caminho errado não compila, não abre, ou não roda. Nenhum mecanismo depende de alguém lembrar de redigir algo.
+The single principle of this document: **protection by type, not by discipline.** Every mechanism here is structural — the wrong path does not compile, does not open, or does not run. No mechanism depends on someone remembering to redact something.
 
-**Quando entra.** Os tipos da §3 e o analisador da §3.1 entram na Fatia 0, porque retrofitar tipos é reescrever. O restante do regime — §5.2 a §5.12 e a tabela da §6 — entra na Fatia 6, junto com o primeiro adapter de fonte restrita. Antes disso não existe estudo restrito para proteger, e construir o regime inteiro atrasaria a primeira entrega útil sem proteger nada. Ver `DESIGN.md`, "Confidencialidade entra pelos tipos".
-
----
-
-## 1. Modelo de ameaça
-
-O adversário não é malicioso. É o acidente.
-
-Casos que este documento previne:
-
-- Um `.db` de estudo com dado de paciente sincronizado para nuvem pessoal.
-- Uma stack trace com caminho de arquivo contendo prontuário, colada num issue público.
-- Um manifesto exportado achando que só continha hashes, contendo nomes de arquivo hospitalar.
-- Uma fixture de teste real commitada por engano.
-- Um token de dbGaP em `argv`, visível a qualquer usuário da máquina via `ps`.
-- Uma credencial num TOML versionado.
-
-Fora de escopo: adversário com acesso root à máquina, adversário com acesso ao banco e ao salt simultaneamente, e análise de tráfego de rede. Colligo não é ferramenta de criptografia.
+**When it enters.** The types of §3 and the analyzer of §3.1 enter in Slice 0, because retrofitting types means rewriting. The rest of the regime — §5.2 to §5.12 and the table of §6 — enters in Slice 6, together with the first restricted-source adapter. Before that there is no restricted study to protect, and building the whole regime would delay the first useful delivery without protecting anything. See `DESIGN.md`, "Confidentiality enters through the types".
 
 ---
 
-## 2. Classificação
+## 1. Threat model
 
-Toda fonte tem classificação declarada. Duas classes.
+The adversary is not malicious. It is the accident.
 
-| Classe       | Significado                                                        |
-| ------------ | ------------------------------------------------------------------ |
-| `public`     | Dado publicamente acessível. Sem restrição de retenção ou export.  |
-| `restricted` | Acesso controlado: dbGaP, dado institucional, dado de paciente.    |
+Cases this document prevents:
 
-**A declaração é obrigatória e falha fechado.** Uma fonte configurada sem `classification` causa erro de carregamento nomeando a fonte. Não há default. Não há inferência.
+- A study `.db` with patient data synced to a personal cloud.
+- A stack trace with a file path containing a medical record number, pasted into a public issue.
+- An exported manifest that was thought to contain only hashes, containing hospital file names.
+- A real test fixture committed by mistake.
+- A dbGaP token in `argv`, visible to any user of the machine via `ps`.
+- A credential in a versioned TOML.
+
+Out of scope: an adversary with root access to the machine, an adversary with access to the database and the salt at the same time, and network traffic analysis. Colligo is not an encryption tool.
+
+---
+
+## 2. Classification
+
+Every source has a declared classification. Two classes.
+
+| Class        | Meaning                                                       |
+| ------------ | ------------------------------------------------------------- |
+| `public`     | Publicly accessible data. No retention or export restriction. |
+| `restricted` | Controlled access: dbGaP, institutional data, patient data.   |
+
+**The declaration is mandatory and fails closed.** A source configured without `classification` causes a load error naming the source. There is no default. There is no inference.
 
 ```toml
 [sources.gencode]
@@ -44,21 +44,21 @@ classification = "public"
 classification = "restricted"
 ```
 
-Um estudo que contém qualquer fonte `restricted` é um **estudo restrito**, e o modo restrito se aplica ao banco inteiro — não por linha. Motivo: correlação. Saber que o paciente X está no mesmo estudo que o paciente Y já é informação.
+A study that contains any `restricted` source is a **restricted study**, and restricted mode applies to the whole database — not per row. Reason: correlation. Knowing that patient X is in the same study as patient Y is already information.
 
-A classificação do estudo é gravada em `study_meta` na criação e é **imutável**. Um estudo público não pode ser promovido a restrito, porque os dados já foram gravados em claro; a promoção seria gambiarra. Erro instrui a criar estudo novo.
+The study's classification is written to `study_meta` at creation and is **immutable**. A public study cannot be promoted to restricted, because the data has already been written in the clear; the promotion would be a hack. The error instructs the user to create a new study.
 
-**Artefato derivado herda a classificação mais estrita entre seus pais.** Um GTF fundido de GENCODE (`public`) com um arquivo `restricted` é `restricted`. Enforçado no registro do derivado, não no uso.
+**A derived artifact inherits the strictest classification among its parents.** A GTF merged from GENCODE (`public`) with a `restricted` file is `restricted`. Enforced at the registration of the derivative, not at use.
 
 ---
 
-## 3. Tipos que não vazam
+## 3. Types that do not leak
 
-Três tipos no core. Nenhum dado sensível trafega como `string` nua em nenhum ponto do sistema.
+Three types in the core. No sensitive data travels as a bare `string` at any point of the system.
 
 ### `Secret`
 
-Envelopa credencial. Não implementa nada que a imprima.
+Wraps a credential. It implements nothing that prints it.
 
 ```go
 type Secret struct{ v string }
@@ -69,11 +69,11 @@ func (Secret) MarshalJSON() ([]byte, error) { return []byte(`"[REDACTED]"`), nil
 func (s Secret) reveal() string        { return s.v }
 ```
 
-`reveal` é não exportado. Só o pacote de transporte alcança o valor, no momento de montar o header. `%v`, `%s`, `%+v`, `log`, `json.Marshal` e `spew` todos produzem `[REDACTED]` por construção.
+`reveal` is unexported. Only the transport package reaches the value, at the moment of building the header. `%v`, `%s`, `%+v`, `log`, `json.Marshal` and `spew` all produce `[REDACTED]` by construction.
 
 ### `Name`
 
-Envelopa nome de arquivo e caminho.
+Wraps a file name and path.
 
 ```go
 type Name struct {
@@ -86,200 +86,200 @@ func (n Name) String() string
 func (n Name) Raw(fs FSAccess) string
 ```
 
-A classificação viaja **dentro** do `Name`. Um `Name` só é construído pelo estudo — que conhece classificação e salt — ou pela porta leve, que não tem estudo e constrói sempre `Name` público. Não existe estado global consultado em `String()`.
+The classification travels **inside** the `Name`. A `Name` is built only by the study — which knows the classification and the salt — or by the light door, which has no study and always builds a public `Name`. There is no global state consulted in `String()`.
 
-`String()` devolve `raw` se `restricted` é falso e `opaque` se é verdadeiro.
+`String()` returns `raw` if `restricted` is false and `opaque` if it is true.
 
-`Raw()` é a única porta para o valor real e exige um `FSAccess`: token cujo construtor é não exportado e vive no pacote de filesystem interno. Export, log e manifesto não conseguem obter um `FSAccess`, portanto não conseguem chamar `Raw()` — o erro é de compilação, não de runtime. Versão anterior desta seção dizia que `Raw()` "retorna erro em contexto de export ou log"; isso não é detectável em runtime sem parâmetro explícito, e foi substituído pelo token.
+`Raw()` is the only door to the real value and requires an `FSAccess`: a token whose constructor is unexported and lives in the internal filesystem package. Export, log and manifest cannot obtain an `FSAccess`, therefore cannot call `Raw()` — the error is a compile error, not a runtime one. An earlier version of this section said that `Raw()` "returns an error in an export or log context"; that is not detectable at runtime without an explicit parameter, and was replaced by the token.
 
 ### `Endpoint`
 
-Envelopa URL. `String()` em estudo restrito devolve `scheme://host/[REDACTED]`. Query string **nunca** aparece, em nenhuma classe, porque query é onde credencial se esconde.
+Wraps a URL. `String()` in a restricted study returns `scheme://host/[REDACTED]`. The query string **never** appears, in any class, because the query is where a credential hides.
 
-### Consequência
+### Consequence
 
-O logger não aceita `string` para campos de caminho, URL ou credencial. A assinatura exige os tipos:
+The logger does not accept `string` for path, URL or credential fields. The signature requires the types:
 
 ```go
-log.Warn("download falhou", logf.Name("file", f.Name), logf.Endpoint("url", f.URL))
+log.Warn("download failed", logf.Name("file", f.Name), logf.Endpoint("url", f.URL))
 ```
 
-Passar `string` cru para um campo desses não compila. É isto que faz o mecanismo ser estrutural.
+Passing a raw `string` to one of those fields does not compile. This is what makes the mechanism structural.
 
-### 3.1 O que o compilador não pega
+### 3.1 What the compiler does not catch
 
-A garantia acima só vale se não existir porta lateral. `logf` não tem campo `String` genérico, mas nada impede `fmt.Sprintf("%s", raw)` seguido de `logf.Text`, nem um `string` com caminho atravessando código que não usa `logf`. O fechamento é um analisador `go/analysis` próprio, rodando no CI:
+The guarantee above only holds if there is no side door. `logf` has no generic `String` field, but nothing prevents `fmt.Sprintf("%s", raw)` followed by `logf.Text`, nor a `string` with a path crossing code that does not use `logf`. The closure is a custom `go/analysis` analyzer, running in CI:
 
-- Proíbe conversão de `secret.Name`, `secret.Endpoint` e `secret.Secret` para `string` fora de `internal/fsaccess` e `transport/`.
-- Proíbe campos e parâmetros `string` com nome que casa `(?i)(path|url|uri|file|name|token|secret|key)` em pacotes do core, exceto onde anotados por tipo.
-- Falha o build, não emite aviso.
+- It forbids converting `secret.Name`, `secret.Endpoint` and `secret.Secret` to `string` outside `internal/fsaccess` and `transport/`.
+- It forbids `string` fields and parameters whose name matches `(?i)(path|url|uri|file|name|token|secret|key)` in core packages, except where annotated by type.
+- It fails the build, it does not emit a warning.
 
-Tipo mais analisador é a garantia. Tipo sozinho é intenção.
-
----
-
-## 4. Identificadores opacos
-
-Estudo restrito precisa de identificadores estáveis para auditoria sem expor nomes.
-
-- Na criação do estudo, gera-se um **salt** de 32 bytes de `crypto/rand`, gravado em `study_meta`.
-- `opaque(nome) = hex(BLAKE3(salt || nome))[:16]`.
-- Estável dentro do estudo: o mesmo arquivo tem sempre o mesmo id opaco, então diffs de manifesto funcionam.
-- Não correlacionável entre estudos: salts diferentes.
-- Não reversível sem o salt.
-
-**O salt nunca sai do banco.** Não vai para manifesto, export, log, relatório de bug ou backup de configuração. Toda rotina de export tem teste que falha se o salt aparecer no output.
+Type plus analyzer is the guarantee. Type alone is intent.
 
 ---
 
-## 5. As pontas, uma por uma
+## 4. Opaque identifiers
 
-### 5.1 Banco de dados
+A restricted study needs stable identifiers for auditing without exposing names.
 
-`raw_responses` é a maior superfície: guarda respostas de API na íntegra.
+- At study creation, a 32-byte **salt** is generated from `crypto/rand`, written to `study_meta`.
+- `opaque(name) = hex(BLAKE3(salt || name))[:16]`.
+- Stable within the study: the same file always has the same opaque id, so manifest diffs work.
+- Not correlatable across studies: different salts.
+- Not reversible without the salt.
 
-| Classe       | Comportamento                                                       |
-| ------------ | ------------------------------------------------------------------- |
-| `public`     | Corpo gravado comprimido (zstd), TTL padrão 90d.                    |
-| `restricted` | **Corpo não é gravado.** Grava-se `body_hash`, tamanho e timestamp. |
+**The salt never leaves the database.** It does not go to a manifest, export, log, bug report or configuration backup. Every export routine has a test that fails if the salt appears in the output.
 
-Enforçado na camada `store`, consultando a classificação do estudo. O chamador não tem parâmetro para desligar. Um adapter malicioso ou bugado não consegue persistir corpo restrito porque a decisão não é dele.
+---
 
-A auditoria sobrevive: hash e tamanho provam que a resposta foi a mesma entre duas execuções, que é o que a auditoria precisa responder.
+## 5. The ends, one by one
 
-### 5.2 Permissões de arquivo
+### 5.1 Database
 
-Na abertura de estudo restrito:
+`raw_responses` is the largest surface: it stores API responses in full.
 
-- Plataforma POSIX obrigatória: Linux, macOS ou WSL. Estudo restrito em Windows nativo é recusado — as permissões abaixo não têm equivalente direto, e OneDrive é a pasta sincronizada padrão do sistema.
-- Arquivo do banco: `0600`. Diretório do estudo: `0700`.
-- Permissão mais frouxa → **erro**, não aviso. Override explícito `--allow-insecure-permissions`, que grava evento em `tool_runs`.
-- WAL e SHM herdam o modo do banco; verificado após a primeira escrita, porque o SQLite os cria.
-- Estudo público: aviso apenas.
+| Class        | Behaviour                                                               |
+| ------------ | ----------------------------------------------------------------------- |
+| `public`     | Body stored compressed (zstd), default TTL 90d.                         |
+| `restricted` | **The body is not stored.** `body_hash`, size and timestamp are stored. |
 
-### 5.3 Diretórios de sincronização
+Enforced in the `store` layer, consulting the study's classification. The caller has no parameter to turn it off. A malicious or buggy adapter cannot persist a restricted body because the decision is not its own.
 
-Na abertura e no `doctor`, o caminho do estudo é comparado contra padrões conhecidos de sincronização de nuvem (`Dropbox`, `Google Drive`, `OneDrive`, `iCloud Drive`, `Sync`, `Nextcloud`, e o conteúdo de `COLLIGO_SYNC_DIRS`).
+The audit survives: hash and size prove that the response was the same between two runs, which is what the audit needs to answer.
 
-Estudo restrito dentro de um deles → **erro**. Override `--allow-synced-path`, registrado.
+### 5.2 File permissions
 
-Não é paranoia: é o vetor mais comum de vazamento acidental de dado de pesquisa.
+On opening a restricted study:
 
-### 5.4 Credenciais
+- A POSIX platform is mandatory: Linux, macOS or WSL. A restricted study on native Windows is refused — the permissions below have no direct equivalent, and OneDrive is the system's default synced folder.
+- Database file: `0600`. Study directory: `0700`.
+- Looser permission → **error**, not a warning. Explicit override `--allow-insecure-permissions`, which writes an event to `tool_runs`.
+- WAL and SHM inherit the database's mode; checked after the first write, because SQLite creates them.
+- Public study: warning only.
 
-**Credencial em TOML é erro de carregamento.** O parser rejeita qualquer chave que casa com `(?i)(password|passwd|secret|token|api_?key|credential|bearer)` sob `[sources.*]`, nomeando a chave e a linha.
+### 5.3 Sync directories
 
-Origens permitidas, nesta ordem:
+On opening and in `doctor`, the study path is compared against known cloud-sync patterns (`Dropbox`, `Google Drive`, `OneDrive`, `iCloud Drive`, `Sync`, `Nextcloud`, and the contents of `COLLIGO_SYNC_DIRS`).
 
-1. Variável de ambiente, nome declarado: `credential_env = "COLLIGO_DBGAP_TOKEN"`.
-2. Comando externo: `credential_command = "pass show dbgap/token"`. Stdout capturado como `Secret`, stderr descartado, timeout de 10s.
-3. Arquivo apontado por `credential_file`, que precisa ser `0600`.
+Restricted study inside one of them → **error**. Override `--allow-synced-path`, recorded.
 
-**Nunca em `argv`.** Colligo não tem flag que aceite credencial. `ps` não revela nada.
+This is not paranoia: it is the most common vector of accidental leakage of research data.
 
-**Nunca em query string.** Credencial vai em header. Se uma fonte só aceita credencial em query, ela é marcada `credential_in_query = true`, e nesse caso a URL nunca é persistida nem logada — grava-se URL com query removida mais `url_query_stripped = 1`, e a query é remontada da config no momento do request.
+### 5.4 Credentials
+
+**A credential in TOML is a load error.** The parser rejects any key that matches `(?i)(password|passwd|secret|token|api_?key|credential|bearer)` under `[sources.*]`, naming the key and the line.
+
+Allowed origins, in this order:
+
+1. Environment variable, with the name declared: `credential_env = "COLLIGO_DBGAP_TOKEN"`.
+2. External command: `credential_command = "pass show dbgap/token"`. Stdout captured as a `Secret`, stderr discarded, 10s timeout.
+3. File pointed to by `credential_file`, which must be `0600`.
+
+**Never in `argv`.** Colligo has no flag that accepts a credential. `ps` reveals nothing.
+
+**Never in a query string.** The credential goes in a header. If a source only accepts a credential in the query, it is marked `credential_in_query = true`, and in that case the URL is never persisted or logged — the URL is stored with the query removed plus `url_query_stripped = 1`, and the query is reassembled from the config at request time.
 
 ### 5.5 Logs
 
-- Campos de caminho, URL e credencial exigem os tipos da §3.
-- Estudo restrito: nível de log máximo é `info`. `debug` em estudo restrito → erro, porque debug imprime corpos de resposta.
-- Nenhum log grava corpo de resposta em estudo restrito, em nenhum nível.
+- Path, URL and credential fields require the types of §3.
+- Restricted study: the maximum log level is `info`. `debug` in a restricted study → error, because debug prints response bodies.
+- No log writes a response body in a restricted study, at any level.
 
-### 5.6 Erros e pânicos
+### 5.6 Errors and panics
 
-- Erros tipados carregam `Name` e `Endpoint`, nunca `string`. Um erro embrulhado imprime redigido em qualquer profundidade de `%w`.
-- `recover` no topo de todo worker: converte pânico em erro tipado, grava tipo e local, **descarta a mensagem original** em estudo restrito, porque mensagem de pânico costuma conter valores.
-- `GOTRACEBACK` é forçado para `none` em estudo restrito, para não despejar valores de variáveis na saída.
+- Typed errors carry `Name` and `Endpoint`, never `string`. A wrapped error prints redacted at any depth of `%w`.
+- `recover` at the top of every worker: converts a panic into a typed error, records the type and location, **discards the original message** in a restricted study, because a panic message usually contains values.
+- `GOTRACEBACK` is forced to `none` in a restricted study, so as not to dump variable values to the output.
 
-### 5.7 Manifesto
+### 5.7 Manifest
 
-O manifesto é feito para circular. É a ponta de maior risco.
+The manifest is made to circulate. It is the end of highest risk.
 
-| Campo               | `public` | `restricted`     |
-| ------------------- | -------- | ---------------- |
-| nome / caminho      | real     | id opaco         |
-| URL de origem       | real     | omitido          |
-| tamanho             | sim      | sim              |
-| raiz e outboard     | sim      | sim              |
-| checksum da fonte   | sim      | sim              |
-| formato e custódia  | sim      | sim              |
-| accession           | real     | id opaco         |
-| salt                | nunca    | nunca            |
+| Field              | `public` | `restricted` |
+| ------------------ | -------- | ------------ |
+| name / path        | real     | opaque id    |
+| source URL         | real     | omitted      |
+| size               | yes      | yes          |
+| root and outboard  | yes      | yes          |
+| source checksum    | yes      | yes          |
+| format and custody | yes      | yes          |
+| accession          | real     | opaque id    |
+| salt               | never    | never        |
 
-Manifesto de estudo restrito carrega `"classification": "restricted"` e `"redacted": true` no cabeçalho, para quem recebe saber que os nomes são opacos.
+A restricted study's manifest carries `"classification": "restricted"` and `"redacted": true` in the header, so that the recipient knows the names are opaque.
 
-Um manifesto restrito continua **completamente funcional** para atestação: `colligo attest` compara hashes, e hashes não são sensíveis.
+A restricted manifest remains **fully functional** for attestation: `colligo attest` compares hashes, and hashes are not sensitive.
 
-### 5.8 Export tabular
+### 5.8 Tabular export
 
-TSV/CSV/JSON de estudo restrito usa nomes opacos nas mesmas regras do manifesto. O sidecar `.custody.json` segue a mesma tabela.
+TSV/CSV/JSON of a restricted study uses opaque names under the same rules as the manifest. The `.custody.json` sidecar follows the same table.
 
-Export de estudo restrito para caminho fora da raiz do estudo → aviso com o caminho de destino, e erro se o destino for diretório sincronizado.
+Export of a restricted study to a path outside the study root → a warning with the destination path, and an error if the destination is a synced directory.
 
-### 5.9 Repositório
+### 5.9 Repository
 
 - `.gitignore`: `testdata/real/`, `*.local.toml`, `*.db`, `*.db-wal`, `*.db-shm`, `.colligo/`.
-- Hook de pre-commit com `gitleaks` no diff.
-- Check de CI: `git ls-files` casado contra padrões proibidos; qualquer arquivo sob `testdata/real/` rastreado **falha o build**.
-- Nada específico de instituição em código: host, projeto, nome de campo interno e identificador de estudo controlado são configuração. Ver `CONTRIBUTING.md` §Adapter para fonte privada.
+- Pre-commit hook with `gitleaks` on the diff.
+- CI check: `git ls-files` matched against forbidden patterns; any tracked file under `testdata/real/` **fails the build**.
+- Nothing institution-specific in code: host, project, internal field name and controlled-study identifier are configuration. See `CONTRIBUTING.md` §Adapter for a private source.
 
-### 5.10 Testes
+### 5.10 Tests
 
-Duas categorias de fixture, nunca misturadas. Detalhe em `TESTING.md` §2.
+Two categories of fixture, never mixed. Detail in `TESTING.md` §2.
 
-- `testdata/synthetic/` — versionada. Mesma **forma** do real, valores inventados.
-- `testdata/real/` — nunca versionada.
+- `testdata/synthetic/` — versioned. The same **shape** as the real thing, invented values.
+- `testdata/real/` — never versioned.
 
-Teste que depende de fixture real fica atrás da build tag `restricted`. Sem a tag, não compila. Com a tag e sem a fixture, **falha** — não pula em silêncio, porque pular em silêncio é o erro silencioso que este projeto existe para evitar.
+A test that depends on a real fixture sits behind the `restricted` build tag. Without the tag, it does not compile. With the tag and without the fixture, it **fails** — it does not skip silently, because skipping silently is the silent error this project exists to avoid.
 
-Falha de teste envolvendo fixture real imprime hash e offset, nunca conteúdo.
+A test failure involving a real fixture prints hash and offset, never content.
 
-### 5.11 Rede
+### 5.11 Network
 
-Colligo não tem telemetria, crash reporting, verificação de versão nem analytics. Isto é garantia, não intenção, e tem teste:
+Colligo has no telemetry, crash reporting, version check or analytics. This is a guarantee, not an intention, and it has a test:
 
-O `DialContext` do cliente HTTP é instrumentado em teste para registrar todo host contactado. A suíte falha se o conjunto de hosts não for subconjunto das fontes configuradas. Nenhum host adicional, nunca.
+The HTTP client's `DialContext` is instrumented in test to record every host contacted. The suite fails if the set of hosts is not a subset of the configured sources. No additional host, ever.
 
-### 5.12 Relatório de bug
+### 5.12 Bug report
 
-`colligo redact-report` produz saída segura para colar em público:
+`colligo redact-report` produces output that is safe to paste in public:
 
-Inclui — versão da ferramenta, git SHA, Go, OS/arch, hash da config, classificação por fonte, PRAGMAs efetivos, contagem de arquivos por estado, tipos de erro das últimas 20 falhas, resultado do `doctor`.
+Includes — tool version, git SHA, Go, OS/arch, config hash, classification per source, effective PRAGMAs, file count per state, error types of the last 20 failures, result of `doctor`.
 
-Exclui — nomes, caminhos, URLs, accessions, corpos, salt, credenciais, e qualquer valor com entropia.
+Excludes — names, paths, URLs, accessions, bodies, salt, credentials, and any value with entropy.
 
-Formato estável, para que se possa fazer diff entre duas máquinas.
-
----
-
-## 6. Invariantes verificáveis
-
-Toda linha desta tabela é um teste. Se algum falhar, o build falha.
-
-| Invariante                                                    | Como é testado                                       |
-| ------------------------------------------------------------- | ---------------------------------------------------- |
-| Salt não aparece em nenhum output                             | grep no output de todo comando de export             |
-| Credencial não aparece em nenhum output                       | credencial sentinela de alta entropia; grep global   |
-| Corpo restrito não chega ao banco                             | inspeção de `raw_responses` após fetch restrito      |
-| `%v` de todo tipo do domínio é seguro                         | reflexão sobre os tipos exportados; formata e grep   |
-| `Raw()` inalcançável fora do filesystem                       | analisador §3.1 e teste de compilação negativo       |
-| Nenhum host além dos configurados                             | dialer instrumentado                                 |
-| Permissão do banco restrito é `0600`                          | stat após abertura, incluindo WAL e SHM              |
-| Manifesto restrito não contém nome real                       | manifesto de fixture com nome sentinela; grep        |
-| `debug` em estudo restrito falha                              | teste de erro esperado                               |
-| Fixture real nunca rastreada                                  | `git ls-files` no CI                                 |
-| Derivado de pai restrito é restrito                           | registro de derivado misto                           |
-
-A técnica da sentinela merece nota: injeta-se um valor único e improvável (`COLLIGO_CANARY_7f3a…`) como nome de arquivo, credencial e corpo de resposta nos fixtures de teste, e a suíte faz grep dele em **todo** artefato produzido — log, export, manifesto, relatório, banco. Um único vazamento em qualquer ponta aparece.
+Stable format, so that two machines can be diffed.
 
 ---
 
-## 7. O que este documento não resolve
+## 6. Verifiable invariants
 
-Ditos com clareza para não gerar falsa confiança:
+Every line of this table is a test. If any fails, the build fails.
 
-- **Não criptografa nada em repouso.** Se o disco não é criptografado, o dado está em claro. Use criptografia de disco do sistema operacional.
-- **Não impede exfiltração deliberada** por quem tem acesso ao banco e ao salt.
-- **Não substitui aprovação de acesso.** Colligo não sabe se você tem direito ao dado.
-- **Não anonimiza o conteúdo dos arquivos.** Um FASTQ é identificável por natureza; nenhum nome opaco muda isso. Colligo protege metadado e trilha de auditoria, não o dado primário.
-- **Não protege contra o pipeline downstream.** Se sua próxima ferramenta escreve caminhos em log, o problema volta.
+| Invariant                                        | How it is tested                                       |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| Salt does not appear in any output               | grep on the output of every export command             |
+| Credential does not appear in any output         | high-entropy sentinel credential; global grep          |
+| Restricted body does not reach the database      | inspection of `raw_responses` after a restricted fetch |
+| `%v` of every domain type is safe                | reflection over the exported types; format and grep    |
+| `Raw()` unreachable outside the filesystem       | analyzer §3.1 and a negative compile test              |
+| No host other than the configured ones           | instrumented dialer                                    |
+| Restricted database permission is `0600`         | stat after opening, including WAL and SHM              |
+| Restricted manifest does not contain a real name | fixture manifest with a sentinel name; grep            |
+| `debug` in a restricted study fails              | expected-error test                                    |
+| Real fixture never tracked                       | `git ls-files` in CI                                   |
+| Derivative of a restricted parent is restricted  | registration of a mixed derivative                     |
+
+The sentinel technique deserves a note: a unique, improbable value (`COLLIGO_CANARY_7f3a…`) is injected as a file name, credential and response body in the test fixtures, and the suite greps for it in **every** artifact produced — log, export, manifest, report, database. A single leak at any end shows up.
+
+---
+
+## 7. What this document does not solve
+
+Stated clearly so as not to create false confidence:
+
+- **It does not encrypt anything at rest.** If the disk is not encrypted, the data is in the clear. Use the operating system's disk encryption.
+- **It does not prevent deliberate exfiltration** by someone with access to the database and the salt.
+- **It does not replace access approval.** Colligo does not know whether you have the right to the data.
+- **It does not anonymise the content of the files.** A FASTQ is identifiable by nature; no opaque name changes that. Colligo protects metadata and the audit trail, not the primary data.
+- **It does not protect against the downstream pipeline.** If your next tool writes paths to a log, the problem comes back.

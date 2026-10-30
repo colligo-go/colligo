@@ -10,7 +10,7 @@ colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz
 colligo check . --certificate
 ```
 
-Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 interrupted.
+Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 interrupted, 5 quick check found nothing in what it read (content not read in full).
 
 - **identify** — which release, assembly and sequence collection this file actually is, from its content
 - **verify** — it is whole, and it is what the source and you declared

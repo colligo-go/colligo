@@ -16,15 +16,17 @@ func TestExitCodeTable(t *testing.T) {
 		"blocking": put(t, dir, "mystery.dat", []byte{0, 1, 2, 3}),
 		"fatal":    put(t, dir, "page.gtf.gz", []byte("<!DOCTYPE html><title>Error</title>")),
 	}
-	severityCode := func(severity string, permissive bool) int {
+	severityCode := func(severity string, permissive, quick bool) int {
 		switch severity {
 		case "fatal":
 			return verifier.ExitFatal
 		case "blocking":
-			if permissive {
-				return verifier.ExitOK
+			if !permissive {
+				return verifier.ExitIncomplete
 			}
-			return verifier.ExitIncomplete
+		}
+		if quick {
+			return verifier.ExitQuick
 		}
 		return verifier.ExitOK
 	}
@@ -39,7 +41,7 @@ func TestExitCodeTable(t *testing.T) {
 					if permissive {
 						args = append(args, "--permissive")
 					}
-					want := severityCode(severity, permissive)
+					want := severityCode(severity, permissive, quick)
 					if command == "validate" && quick {
 						want = verifier.ExitUsage
 					}
