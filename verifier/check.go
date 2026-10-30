@@ -41,8 +41,8 @@ func newReport(name secret.Name, passStatus string) *FileReport {
 	return &FileReport{Name: name, passStatus: passStatus}
 }
 
-// CheckFile reads the file once and evaluates its assertions. The only
-// error it returns is cancellation: every other failure becomes an assertion.
+// CheckFile returns an error only for cancellation: every other failure
+// becomes an assertion.
 func CheckFile(ctx context.Context, name secret.Name, opts Options) (*FileReport, error) {
 	if opts.Quick {
 		return checkQuick(ctx, name, opts)
