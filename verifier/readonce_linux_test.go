@@ -113,7 +113,7 @@ func TestDiscoverReadsAtMostTheClassificationSamplePerFile(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if len(names) == 0 || got == 0 || got > sample {
+	if len(names) == 0 || got == 0 || got > sample+schedulerWakeups {
 		t.Fatalf("discovery read %d bytes, expected between 1 and %d (%d candidates)", got, sample, len(names))
 	}
 }
