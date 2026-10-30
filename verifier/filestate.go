@@ -31,6 +31,10 @@ func (a fileState) differences(b fileState) []string {
 	return changed
 }
 
+func (a fileState) sameFile(b fileState) bool {
+	return a.inode == b.inode && a.dev == b.dev
+}
+
 func statFailure(err error) error {
 	var pe *os.PathError
 	if errors.As(err, &pe) {

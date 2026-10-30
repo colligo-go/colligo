@@ -61,3 +61,28 @@ func TestCreateAppendsSuffix(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestStatErrorNeverCarriesThePathAndKeepsTheCause(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "patient-123.fastq")
+	_, err := Stat(named(missing))
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if strings.Contains(err.Error(), "patient-123") {
+		t.Fatalf("the error carries the path: %v", err)
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("the cause was lost: %v", err)
+	}
+}
+
+func TestStatDescribesTheFileAtThePath(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "x.fastq")
+	if err := os.WriteFile(p, []byte("abc"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info, err := Stat(named(p))
+	if err != nil || info.Size() != 3 {
+		t.Fatalf("%v %v", info, err)
+	}
+}
