@@ -891,8 +891,11 @@ Além de `https` e `ftp`, o campo de URL aceita `drs://` (GA4GH Data Repository 
 
 | Questão | Como resolver |
 | ------- | ------------- |
-| `lukechampine.com/blake3` expõe o CV de uma subárvore em offset arbitrário durante o streaming? O pacote `bao` expõe `Encode` com grupo configurável e `VerifyChunk`. | Verificar na Fatia 1. Se não expuser, manter BLAKE3 por grupo como hash independente só para resume e raiz global à parte, e registrar a troca aqui. |
 | Fonte de checksums oficiais do Ensembl para `identify` | Levantar formato do arquivo de checksum por release na Fatia 2 antes de implementar. |
+
+### Resolvida na Fatia 1
+
+`lukechampine.com/blake3` expõe o que a árvore por grupo precisa: o subpacote `lukechampine.com/blake3/guts` oferece `CompressBuffer`, `ParentNode` e `ChainingValue`, o suficiente para calcular o CV de cada grupo de 8 MiB durante o streaming e combiná-los até a raiz. O outboard montado por `facts` bate byte a byte com o do pacote `bao` (`TestOutboardMatchesBao`), então a alternativa de BLAKE3 por grupo como hash independente não foi necessária.
 
 ---
 
