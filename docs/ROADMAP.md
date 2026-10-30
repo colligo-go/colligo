@@ -1,6 +1,6 @@
 # Colligo — Roadmap
 
-> **Current slice: 1 — Light door: `colligo check`.** Slice 0 is closed. Nothing outside Slice 1 should be built yet.
+> **Current slice: 2 — Declared against the source.** Slices 0 and 1 are closed and released as `v0.1.0`. Nothing outside Slice 2 should be built yet.
 
 The rule of this document: build a thin slice end to end before generalising in breadth.
 
@@ -32,7 +32,7 @@ Moved to later: `doctor`, `redact-report`, canary, sync-folder detection, databa
 
 ---
 
-## Slice 1 — Light door: `colligo check` (current)
+## Slice 1 — Light door: `colligo check` (closed, `v0.1.0`)
 
 The smallest useful unit. No database, no TOML, no state.
 
@@ -62,7 +62,7 @@ Definition of done:
 
 ---
 
-## Slice 2 — Declared against the source
+## Slice 2 — Declared against the source (current)
 
 The light door starts asking the source.
 
