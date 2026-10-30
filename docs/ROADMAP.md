@@ -179,4 +179,8 @@ v1.0.0 — interface pública congelada, semver estrito
 
 Permanece em v0 até a interface estar estável e testada em uso real. A porta leve pode ganhar releases próprias de v0 desde a Fatia 1.
 
+**A versão vem só da tag do git.** Não existe constante de versão no código. Cada fatia fechada sobe a minor: Fatia 1 → `v0.1.0`, Fatia 2 → `v0.2.0`. Correção publicada sobre uma release sobe o patch: `v0.1.1`. Entre tags, o binário se identifica pela pseudo-versão do Go, com data e commit (`v0.0.0-20261029173537-1d27b8e84ac6` antes da primeira tag), e com `+dirty` quando foi compilado com mudança não comitada. `colligo version` e todo certificado registram versão e commit, de modo que qualquer resultado aponta para o código exato que o produziu.
+
+Tag só a partir de `main` com o CI verde, anotada, com as notas da versão vindas do `CHANGELOG.md`.
+
 O repositório é público desde a Fatia 0. Não por ideologia: desenvolver fechado torna o projeto inelegível para os veículos que pedem histórico público de desenvolvimento, e cada mês fechado é um mês que não conta.
