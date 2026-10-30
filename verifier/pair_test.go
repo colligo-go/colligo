@@ -252,3 +252,33 @@ func TestMatesInDifferentDirectoriesOrWithDifferentChunksEachMissTheirMate(t *te
 		}
 	}
 }
+
+func spots(accession string, n int, mate string) []string {
+	headers := make([]string, n)
+	for i := range headers {
+		headers[i] = fmt.Sprintf("%s.%d%s", accession, i+1, mate)
+	}
+	return headers
+}
+
+func TestFastqDumpReadIDsPairWithoutPairIDs(t *testing.T) {
+	dir := t.TempDir()
+	r1 := write(t, dir, "SRR001666_1.fastq", fastqWithHeaders(spots("SRR001666", 10, ".1")...))
+	r2 := write(t, dir, "SRR001666_2.fastq", fastqWithHeaders(spots("SRR001666", 10, ".2")...))
+	rep := run(t, Options{}, r1, r2)
+	for _, f := range rep.Files {
+		if got := failed(f); len(got) != 0 {
+			t.Errorf("%s: failed %v", f.Name, got)
+		}
+	}
+}
+
+func TestDistinctSpotsEndingInDotOneAndDotTwoStillGivePairIDs(t *testing.T) {
+	dir := t.TempDir()
+	r1 := write(t, dir, "SRR1_1.fastq", fastqWithHeaders("SRR1.1", "SRR1.3"))
+	r2 := write(t, dir, "SRR1_2.fastq", fastqWithHeaders("SRR1.2", "SRR1.3"))
+	rep := run(t, Options{}, r1, r2)
+	if got := failed(rep.Files[0]); fmt.Sprint(got) != fmt.Sprint([]string{diagnoses.PairIDs}) {
+		t.Errorf("failed %v, want [pair_ids]", got)
+	}
+}

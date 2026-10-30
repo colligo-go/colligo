@@ -36,6 +36,8 @@ Colligo falha fechado. Três severidades:
 
 `--expected` com a mesma chave repetida (sem diferenciar maiúscula de minúscula, mesmo com valor igual) é erro de uso, código 1, antes de ler qualquer arquivo: dois valores para a mesma chave são ambíguos e deixar o último vencer esconderia um erro de cópia.
 
+`--expected` com hash malformado também é erro de uso, código 1, antes de ler qualquer arquivo: MD5 tem 32 hexadecimais, SHA-256 e BLAKE3 têm 64, sem diferenciar maiúscula. Valor esperado malformado é erro de quem digitou, não evidência de arquivo corrompido, então nunca vira `checksum_mismatch` fatal.
+
 `--cross-check` escreve `colligo.sha256` e `colligo.b3` no formato do GNU: se o nome tem `\` ou quebra de linha, a linha começa com `\` e o nome sai com `\\` e `\n`, o que `sha256sum -c` e `b3sum -c` entendem. Link simbólico para diretório nunca é seguido (evita ciclos com `--recursive`); sai como "symbolic link to a directory, not followed" e em `skipped_directory_links` no JSON, e não como arquivo não reconhecido.
 
 Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
@@ -116,7 +118,7 @@ Contagens diferentes de reads, ou arquivos de amostras diferentes pareados por e
 **Defesa.** Quando ambos os membros de um `pair_id` chegam a validado:
 
 - Contagem de registros idêntica.
-- ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`).
+- ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`, e o `.1`/`.2` do `fastq-dump --readids`, só na forma `<acesso>.<spot>.<1|2>`, como `SRR001666.1.1`). Um `.1` ou `.2` final fora desse formato é parte do ID: `SRR1.1` e `SRR1.2` são spots diferentes.
 
 Divergência → `blocking` nos dois arquivos, com `pair_mismatch`. Nenhum dos dois vira `done`.
 

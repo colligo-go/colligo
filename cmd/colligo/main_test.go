@@ -55,7 +55,7 @@ func TestUsageErrorsExit1(t *testing.T) {
 		{"check"},
 		{"check", "--format", "bogus", "x"},
 		{"check", "--expected", "md5", "x"},
-		{"check", "--expected", "md5=00", "a", "b"},
+		{"check", "--expected", "md5=" + strings.Repeat("0", 32), "a", "b"},
 		{"check", "--no-such-flag", "x"},
 	} {
 		if code, _, _ := invoke(args...); code != verifier.ExitUsage {
