@@ -325,15 +325,15 @@ Platform: the usage target is Linux (HPC, servers, WSL). Development also happen
 
 Pluggable profiles over an agnostic core, plus `generic` as a fallback without a schema.
 
-| Tag          | Type                          | Main sources                | Control           |
-| ------------ | ----------------------------- | --------------------------- | ----------------- |
-| `rnaseq`     | Bulk RNA-seq                  | GEO, ENA, dbGaP             | No                |
-| `singlecell` | scRNA-seq (acquisition)       | GEO, ENA                    | No                |
-| `tabular`    | MAF, VCF, dose-response, clinical, signature matrix | cBioPortal, portals, adoption | No |
-| `reference`  | FASTA, GTF/GFF3, transcripts  | GENCODE, Ensembl, Dfam      | N/A               |
-| `structure`  | PDB, mmCIF, protein FASTA     | RCSB PDB, adoption          | N/A               |
-| `chipseq`    | ChIP-seq                      | ENCODE, ENA, GEO            | Yes — Input/IgG   |
-| `generic`    | Unknown                       | Any                         | No                |
+| Tag          | Type                                                | Main sources                  | Control         |
+| ------------ | --------------------------------------------------- | ----------------------------- | --------------- |
+| `rnaseq`     | Bulk RNA-seq                                        | GEO, ENA, dbGaP               | No              |
+| `singlecell` | scRNA-seq (acquisition)                             | GEO, ENA                      | No              |
+| `tabular`    | MAF, VCF, dose-response, clinical, signature matrix | cBioPortal, portals, adoption | No              |
+| `reference`  | FASTA, GTF/GFF3, transcripts                        | GENCODE, Ensembl, Dfam        | N/A             |
+| `structure`  | PDB, mmCIF, protein FASTA                           | RCSB PDB, adoption            | N/A             |
+| `chipseq`    | ChIP-seq                                            | ENCODE, ENA, GEO              | Yes — Input/IgG |
+| `generic`    | Unknown                                             | Any                           | No              |
 
 `atacseq`, `methylation` and `wgs` left v1 for `BACKLOG.md`. Not because they are hard — the pattern is the same — but because no active project uses them, and a type built speculatively is a type not tested against reality.
 

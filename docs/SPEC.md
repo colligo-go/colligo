@@ -306,18 +306,18 @@ Schemas of `atacseq_samples`, `methylation_samples` and `wgs_samples` to be defi
 
 Fact kinds of v1:
 
-| `kind`         | Content                                                         |
-| -------------- | --------------------------------------------------------------- |
-| `digests`      | MD5, SHA-256, size                                              |
-| `structure`    | detected format, valid or not, reason, offset of the problem    |
-| `records`      | count of records and bases, length histogram                    |
-| `read_ends`    | first and last read ID, without pair suffix                     |
-| `seq_names`    | sampled sequence names; inferred chromosome convention          |
-| `seqcol`       | Sequence Collection digest and `sorted_name_length_pairs`       |
-| `gtf_header`   | pragmas of the GTF/GFF3 header                                  |
-| `read_header`  | instrument, run, flowcell and lanes observed in the read IDs    |
-| `barcode`      | R1 length and hit rate against chemistry whitelists             |
-| `matrix`       | column names, row count, gene ID namespace                      |
+| `kind`        | Content                                                      |
+| ------------- | ------------------------------------------------------------ |
+| `digests`     | MD5, SHA-256, size                                           |
+| `structure`   | detected format, valid or not, reason, offset of the problem |
+| `records`     | count of records and bases, length histogram                 |
+| `read_ends`   | first and last read ID, without pair suffix                  |
+| `seq_names`   | sampled sequence names; inferred chromosome convention       |
+| `seqcol`      | Sequence Collection digest and `sorted_name_length_pairs`    |
+| `gtf_header`  | pragmas of the GTF/GFF3 header                               |
+| `read_header` | instrument, run, flowcell and lanes observed in the read IDs |
+| `barcode`     | R1 length and hit rate against chemistry whitelists          |
+| `matrix`      | column names, row count, gene ID namespace                   |
 
 Assertions have no table. They are comparisons computed on demand between facts, `*_expected` columns and declarations of the TOML. An assertion that fails becomes a row in `discrepancies`. A file's custody state is a function of the set of assertions; there is no custody column updated by hand.
 
@@ -349,25 +349,25 @@ CREATE UNIQUE INDEX idx_files_part_unique ON files(path_part) WHERE path_part IS
 
 Each transition is a new row in `file_events`, with `run_id`. Never a destructive UPDATE.
 
-| From        | To          | Trigger                                       |
-| ----------- | ----------- | --------------------------------------------- |
-| pending     | queued      | enqueued                                      |
-| queued      | downloading | worker picked it up                           |
-| downloading | verifying   | bytes complete                                |
-| downloading | failed      | network/server error                          |
-| verifying   | validating  | global checksum matches                       |
-| verifying   | failed      | checksum does not match                       |
-| validating  | done        | format and pair invariants match              |
-| validating  | invalid     | format or pair does not match                 |
-| failed      | retrying    | within the attempt limit                      |
-| retrying    | downloading | new attempt                                   |
-| failed      | abandoned   | attempts exhausted                            |
-| done        | stale       | reverification detected a change              |
-| stale       | verifying   | revalidation triggered                        |
-| invalid     | verifying   | revalidation triggered                        |
+| From        | To          | Trigger                                            |
+| ----------- | ----------- | -------------------------------------------------- |
+| pending     | queued      | enqueued                                           |
+| queued      | downloading | worker picked it up                                |
+| downloading | verifying   | bytes complete                                     |
+| downloading | failed      | network/server error                               |
+| verifying   | validating  | global checksum matches                            |
+| verifying   | failed      | checksum does not match                            |
+| validating  | done        | format and pair invariants match                   |
+| validating  | invalid     | format or pair does not match                      |
+| failed      | retrying    | within the attempt limit                           |
+| retrying    | downloading | new attempt                                        |
+| failed      | abandoned   | attempts exhausted                                 |
+| done        | stale       | reverification detected a change                   |
+| stale       | verifying   | revalidation triggered                             |
+| invalid     | verifying   | revalidation triggered                             |
 | done        | superseded  | source published different content at the same URL |
-| pending     | adopted     | `adopt` registered a pre-existing file        |
-| adopted     | verifying   | content verification triggered                |
+| pending     | adopted     | `adopt` registered a pre-existing file             |
+| adopted     | verifying   | content verification triggered                     |
 
 Only `done` counts toward completeness. The table is the code: the map of valid transitions is a variable and the property test reads from it.
 
@@ -627,16 +627,16 @@ Inspectable via `errors.As`. On the light door, the failure of a file is not one
 
 ## 11. Network error strategy
 
-| Error                     | Strategy                                  |
-| ------------------------- | ----------------------------------------- |
-| Timeout / 5xx             | Retry with exponential backoff + jitter   |
-| 429 / 503 with Retry-After | Honour the header above its own backoff  |
-| Diverging group CV        | Re-download only the group                |
-| 200 when 206 was expected | Permanent (`RangeUnsupportedError`)       |
-| 412 or diverging ETag     | `SupersededError`, blocking               |
-| 404                       | Permanent                                 |
-| 401 / 403                 | Permanent, warns the user                 |
-| ENOSPC                    | `fatal`, after writing the safe offset    |
+| Error                      | Strategy                                |
+| -------------------------- | --------------------------------------- |
+| Timeout / 5xx              | Retry with exponential backoff + jitter |
+| 429 / 503 with Retry-After | Honour the header above its own backoff |
+| Diverging group CV         | Re-download only the group              |
+| 200 when 206 was expected  | Permanent (`RangeUnsupportedError`)     |
+| 412 or diverging ETag      | `SupersededError`, blocking             |
+| 404                        | Permanent                               |
+| 401 / 403                  | Permanent, warns the user               |
+| ENOSPC                     | `fatal`, after writing the safe offset  |
 
 Backoff: `min(2^N, 300s) + jitter`. Rate limiter shared per API key.
 
@@ -798,11 +798,11 @@ Per `CONTRACT.md`. Colligo owns `samples`, `files` and `facts`, which Scribo rea
 
 **Signals in custody.** When evaluating the assertions of a file, the `input_signals` signals with the same root enter as additional assertions:
 
-| Signal | Assertion | Severity |
-| ------ | --------- | -------- |
-| `suspect` | `post_pipeline_consistency` failed, with `source` and `detail` | `advisory` |
-| `identity_confirmed` | `identity` passed | — |
-| `identity_mismatch` | `identity` failed | `blocking` |
+| Signal               | Assertion                                                      | Severity   |
+| -------------------- | -------------------------------------------------------------- | ---------- |
+| `suspect`            | `post_pipeline_consistency` failed, with `source` and `detail` | `advisory` |
+| `identity_confirmed` | `identity` passed                                              | —          |
+| `identity_mismatch`  | `identity` failed                                              | `blocking` |
 
 The original custody state is never overwritten. `status` lists suspect files with the source of the signal; the certificate includes the `identity` assertion when it exists.
 
@@ -826,39 +826,39 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 
 **Light door** — no database, no TOML, no state. It does not import `store`.
 
-| Command    | Slice | Function                                                                  |
-| ---------- | ----- | ------------------------------------------------------------------------- |
-| `check`    | 1     | facts + assertions of loose files; `--json`                               |
-| `validate` | 1     | format structure only                                                     |
-| `check .`  | 1     | discovers formats by content and pairs by name; zero configuration        |
-| `check --quick` | 1 | only magic bytes, end of file and sample of the start; never `verified`; exits 5 |
-| `check --certificate` | 1 | emits a certificate verifiable by third parties (§13)         |
-| `check --source` | 2 | compares against the source                                             |
-| `check --samplesheet` | 2 | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated |
-| `identify` | 2     | identity by content: seqcol, GTF header, hash against official checksums  |
-| `get`      | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database |
-| `lock`     | 4     | generates `colligo.lock` from loose files or from a study                 |
-| `check --lock` | 4 | checks the collection against a `colligo.lock`                            |
-| `compat`   | 6     | compares coordinate systems between FASTA, `.fai`, BAM, VCF, GTF, BED     |
-| `verify`   | —     | standalone with `--expected` or a checksums file; today `check --expected` and `check --cross-check` cover the use |
-| `check --cross-extract` | — | runs the Go and an external extractor on the same file and compares the facts; only with an external extractor present |
+| Command                 | Slice | Function                                                                                                                         |
+| ----------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `check`                 | 1     | facts + assertions of loose files; `--json`                                                                                      |
+| `validate`              | 1     | format structure only                                                                                                            |
+| `check .`               | 1     | discovers formats by content and pairs by name; zero configuration                                                               |
+| `check --quick`         | 1     | only magic bytes, end of file and sample of the start; never `verified`; exits 5                                                 |
+| `check --certificate`   | 1     | emits a certificate verifiable by third parties (§13)                                                                            |
+| `check --source`        | 2     | compares against the source                                                                                                      |
+| `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated |
+| `identify`              | 2     | identity by content: seqcol, GTF header, hash against official checksums                                                         |
+| `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
+| `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
+| `check --lock`          | 4     | checks the collection against a `colligo.lock`                                                                                   |
+| `compat`                | 6     | compares coordinate systems between FASTA, `.fai`, BAM, VCF, GTF, BED                                                            |
+| `verify`                | —     | standalone with `--expected` or a checksums file; today `check --expected` and `check --cross-check` cover the use               |
+| `check --cross-extract` | —     | runs the Go and an external extractor on the same file and compares the facts; only with an external extractor present           |
 
 The `--json` output of `check` and `validate` is an object with `schema_version` (today 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` and `exit_code`. Each assertion carries `id` (from the `diagnoses/` catalogue), `mode`, `severity`, `passed`, `skipped`, `declared` and `observed`, and, when it failed, `observation`, `probable_cause` and `suggested_action`. A new field requires bumping `schema_version`.
 
 **Heavy door** — study with a database.
 
-| Command         | Slice | Function                                                      |
-| --------------- | ----- | ------------------------------------------------------------- |
-| `fetch`         | 3     | main flow: metadata, download, verification                   |
-| `verify`        | 3     | with a database: funnel of §7 and scrub (scrub in Slice 4)    |
-| `status`        | 3     | state of the study; `--require-complete` (Slice 5) exits 3 if incomplete |
-| `adopt`         | 4     | registers a pre-existing file under custody                   |
-| `manifest`      | 4     | exports a portable manifest                                   |
-| `attest`        | 4     | compares the collection against a manifest                    |
-| `recheck`       | 5     | `--upstream`: re-queries the source and compares with the stored one |
-| `doctor`        | 7     | environment diagnosis                                         |
-| `redact-report` | 7     | bug report safe to publish                                    |
-| `export`        | 7     | TSV/JSON/CSV with custody                                     |
+| Command         | Slice | Function                                                                                      |
+| --------------- | ----- | --------------------------------------------------------------------------------------------- |
+| `fetch`         | 3     | main flow: metadata, download, verification                                                   |
+| `verify`        | 3     | with a database: funnel of §7 and scrub (scrub in Slice 4)                                    |
+| `status`        | 3     | state of the study; `--require-complete` (Slice 5) exits 3 if incomplete                      |
+| `adopt`         | 4     | registers a pre-existing file under custody                                                   |
+| `manifest`      | 4     | exports a portable manifest                                                                   |
+| `attest`        | 4     | compares the collection against a manifest                                                    |
+| `recheck`       | 5     | `--upstream`: re-queries the source and compares with the stored one                          |
+| `doctor`        | 7     | environment diagnosis                                                                         |
+| `redact-report` | 7     | bug report safe to publish                                                                    |
+| `export`        | 7     | TSV/JSON/CSV with custody                                                                     |
 | `gc`            | —     | cleanup of orphan `.part` and expired `raw_responses`; `--dry-run` mandatory before `--force` |
 
 **The CLI contains no logic.** It reads flags, resolves config, calls the library, translates an error into an exit code. Behaviour that exists only in the CLI is a bug.
@@ -883,24 +883,24 @@ The `--json` output of `check` and `validate` is an object with `schema_version`
 
 ## 18. Decisions formerly open, now resolved
 
-| Question                                  | Decision                                                                |
-| ----------------------------------------- | ----------------------------------------------------------------------- |
-| Retention of `raw_responses`              | zstd, TTL 90d, `--keep-raw` turns off the TTL; restricted stores only the hash |
-| `.part` when attempts are exhausted       | never deleted automatically; `gc --dry-run` before `--force`            |
-| `experiments` ↔ reference                 | `experiment_references` table, not an FK; an experiment admits two builds |
+| Question                                  | Decision                                                                                                                                                                   |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Retention of `raw_responses`              | zstd, TTL 90d, `--keep-raw` turns off the TTL; restricted stores only the hash                                                                                             |
+| `.part` when attempts are exhausted       | never deleted automatically; `gc --dry-run` before `--force`                                                                                                               |
+| `experiments` ↔ reference                 | `experiment_references` table, not an FK; an experiment admits two builds                                                                                                  |
 | Generation of `files.id`                  | `fetched`: `hex(BLAKE3(sample_id \|\| url \|\| supersedes))[:32]`. `adopted`: `hex(BLAKE3(sample_id \|\| path))[:32]`. Re-fetch and re-adoption idempotent by construction |
-| Integrity structure                       | BLAKE3 tree with Bao outboard; CVs at the 8 MiB level in `file_groups`; grid of independent hashes discarded |
-| CVs and outboard after final verification | all of them, forever; they enable reverification and attestation by slice |
-| Group size                                | fixed 8 MiB, power of 2 of 1 KiB chunks; not configurable in v1        |
-| Structural revalidation                   | only when the extractor version changes; same hash implies same structure |
-| `stat` gate                               | decides what to read; never produces `verified`                         |
-| Writer batch                              | 100 events or 50ms; `fatal` without batch                               |
-| Speculative prefetch                      | out of v1                                                               |
+| Integrity structure                       | BLAKE3 tree with Bao outboard; CVs at the 8 MiB level in `file_groups`; grid of independent hashes discarded                                                               |
+| CVs and outboard after final verification | all of them, forever; they enable reverification and attestation by slice                                                                                                  |
+| Group size                                | fixed 8 MiB, power of 2 of 1 KiB chunks; not configurable in v1                                                                                                            |
+| Structural revalidation                   | only when the extractor version changes; same hash implies same structure                                                                                                  |
+| `stat` gate                               | decides what to read; never produces `verified`                                                                                                                            |
+| Writer batch                              | 100 events or 50ms; `fatal` without batch                                                                                                                                  |
+| Speculative prefetch                      | out of v1                                                                                                                                                                  |
 
 ### Open questions
 
-| Question | How to resolve |
-| -------- | -------------- |
+| Question                                              | How to resolve                                                                     |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | Source of Ensembl's official checksums for `identify` | Survey the format of the checksum file per release in Slice 2 before implementing. |
 
 ### Resolved in Slice 1

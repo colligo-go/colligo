@@ -22,23 +22,23 @@ func TestGENCODE(t *testing.T) {
 
 What `sourcetest.Run` asserts, without the contributor being able to turn it off:
 
-| Invariant                        | Verification                                                       |
-| -------------------------------- | ------------------------------------------------------------------ |
-| Cancellation respected           | ctx cancelled before the call → `ctx.Err()`, zero effects          |
-| Determinism                      | same fixture 2× → byte-identical output after serialisation        |
-| No global HTTP client            | injected `RoundTripper`; real dial → `t.Fatal`                     |
-| Rate limit honoured              | fake clock; N calls with a 1/s limit take ≥ N−1s                   |
-| Valid roles                      | every `Sample.Role` ∈ `Profile.ValidRoles()`                       |
-| Safe name                        | hostile fixtures (see §2) → rejected or sanitised under the root   |
-| Correct typed errors             | 404/401/429/503/412 → `errors.As` matches; 429 honours `Retry-After` |
-| Raw persisted before the parse   | a parse that fails still leaves an audit trail                     |
-| No goroutine leak                | `goleak` at the end of each subtest                                |
-| No disk write                    | instrumented FS; any `open` for writing → `t.Fatal`                |
-| No access to `Store`             | guaranteed by the signature; the adapter does not receive a `Store` |
-| Sentinel does not leak           | sentinel value in the fixtures; grep over the whole adapter output |
-| Declared format is known         | `Artifact.Format` ∈ the `format/` registry                         |
-| Declared counts coherent         | `ReadCount`, `BaseCount` ≥ 0; `BaseCount` ≥ `ReadCount` when both present |
-| Metadata without download       | `Fetch` and `Resolve` never request the body of a data file        |
+| Invariant                      | Verification                                                              |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| Cancellation respected         | ctx cancelled before the call → `ctx.Err()`, zero effects                 |
+| Determinism                    | same fixture 2× → byte-identical output after serialisation               |
+| No global HTTP client          | injected `RoundTripper`; real dial → `t.Fatal`                            |
+| Rate limit honoured            | fake clock; N calls with a 1/s limit take ≥ N−1s                          |
+| Valid roles                    | every `Sample.Role` ∈ `Profile.ValidRoles()`                              |
+| Safe name                      | hostile fixtures (see §2) → rejected or sanitised under the root          |
+| Correct typed errors           | 404/401/429/503/412 → `errors.As` matches; 429 honours `Retry-After`      |
+| Raw persisted before the parse | a parse that fails still leaves an audit trail                            |
+| No goroutine leak              | `goleak` at the end of each subtest                                       |
+| No disk write                  | instrumented FS; any `open` for writing → `t.Fatal`                       |
+| No access to `Store`           | guaranteed by the signature; the adapter does not receive a `Store`       |
+| Sentinel does not leak         | sentinel value in the fixtures; grep over the whole adapter output        |
+| Declared format is known       | `Artifact.Format` ∈ the `format/` registry                                |
+| Declared counts coherent       | `ReadCount`, `BaseCount` ≥ 0; `BaseCount` ≥ `ReadCount` when both present |
+| Metadata without download      | `Fetch` and `Resolve` never request the body of a data file               |
 
 `storetest` and `profiletest` follow the same pattern. `storetest` is a prerequisite for any alternative implementation of `Store`.
 
@@ -209,23 +209,23 @@ Versioned in the repository, reproducible by anyone. It is not optimisation — 
 
 The `mutants/` package generates, from valid synthetic files, versions corrupted on purpose. Each mutant class declares which failure mode of `RELIABILITY.md` it represents.
 
-| Class                          | Mutation                                                       | Mode |
-| ------------------------------ | -------------------------------------------------------------- | ---- |
-| `truncate`                     | cuts at a random offset, including in the middle of a gzip member | M4   |
-| `truncate-record`              | removes the whole last record, file remains well formed        | M6, M15 |
-| `html-body`                    | HTML error page with the format's extension                    | M3   |
-| `flip-byte`                    | one byte changed at a random offset                            | disk |
-| `shift`                        | bytes inserted or removed in the middle                        | disk |
-| `short-mate`                   | R2 with shortened reads, valid structure                       | M15  |
-| `pair-desync`                  | one read removed from R2 only                                  | M5   |
-| `pair-swap`                    | R2 of another sample                                           | M5   |
-| `chrom-rename`                 | `chr1` → `1` in the annotation                                 | M11  |
-| `release-swap`                 | GTF of another release with the same name                      | M1   |
-| `superseded`                   | source publishes a different checksum at the same URL          | M2   |
-| `suppressed`                   | source marks the run as suppressed                             | M16  |
-| `chemistry-swap`               | R1 of 10x v2 with metadata declaring v3                        | M17  |
-| `matrix-colswap`               | two matrix columns with swapped names; one column removed      | M18  |
-| `duplicate-run`                | same content under two accessions                              | M19  |
+| Class             | Mutation                                                          | Mode    |
+| ----------------- | ----------------------------------------------------------------- | ------- |
+| `truncate`        | cuts at a random offset, including in the middle of a gzip member | M4      |
+| `truncate-record` | removes the whole last record, file remains well formed           | M6, M15 |
+| `html-body`       | HTML error page with the format's extension                       | M3      |
+| `flip-byte`       | one byte changed at a random offset                               | disk    |
+| `shift`           | bytes inserted or removed in the middle                           | disk    |
+| `short-mate`      | R2 with shortened reads, valid structure                          | M15     |
+| `pair-desync`     | one read removed from R2 only                                     | M5      |
+| `pair-swap`       | R2 of another sample                                              | M5      |
+| `chrom-rename`    | `chr1` → `1` in the annotation                                    | M11     |
+| `release-swap`    | GTF of another release with the same name                         | M1      |
+| `superseded`      | source publishes a different checksum at the same URL             | M2      |
+| `suppressed`      | source marks the run as suppressed                                | M16     |
+| `chemistry-swap`  | R1 of 10x v2 with metadata declaring v3                           | M17     |
+| `matrix-colswap`  | two matrix columns with swapped names; one column removed         | M18     |
+| `duplicate-run`   | same content under two accessions                                 | M19     |
 
 Two uses:
 
@@ -242,14 +242,14 @@ Runs against a local server, with no external network. Output in a versioned tab
 
 Speed is a measured requirement, not an impression. A versioned benchmark, running on the reference machine declared in the result itself (CPU, disk, filesystem).
 
-| Measurement | Comparison floor | Goal | Measured today? |
-| ----------- | ---------------- | ---- | --------------- |
-| Full `check` of `.fastq.gz` | pure-Go gunzip (`klauspost/compress`), same file and machine | ≤ 110% of the floor; `zcat \| wc -l` measured and reported | yes, `TestPerformanceFloor` with `COLLIGO_PERF=1` |
-| Full `check` of BAM | `samtools view -c` | ≤ 110% of the floor | no; BAM does not have a validator yet |
-| Hash of an uncompressed file | `b3sum` | ≤ 120% of the floor | no |
-| Second run, 10 thousand unchanged files | — | ≤ 5 s on SSD | no; depends on the `stat` gate (Slice 4) |
-| Allocations per record in the FASTQ parser | — | 0 | yes, `testing.AllocsPerRun` in `format` |
-| `get` with full verification | plain `curl`, same file and local server | ≤ 105% of the floor | no; `get` is Slice 3 |
+| Measurement                                | Comparison floor                                             | Goal                                                       | Measured today?                                   |
+| ------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------- |
+| Full `check` of `.fastq.gz`                | pure-Go gunzip (`klauspost/compress`), same file and machine | ≤ 110% of the floor; `zcat \| wc -l` measured and reported | yes, `TestPerformanceFloor` with `COLLIGO_PERF=1` |
+| Full `check` of BAM                        | `samtools view -c`                                           | ≤ 110% of the floor                                        | no; BAM does not have a validator yet             |
+| Hash of an uncompressed file               | `b3sum`                                                      | ≤ 120% of the floor                                        | no                                                |
+| Second run, 10 thousand unchanged files    | —                                                            | ≤ 5 s on SSD                                               | no; depends on the `stat` gate (Slice 4)          |
+| Allocations per record in the FASTQ parser | —                                                            | 0                                                          | yes, `testing.AllocsPerRun` in `format`           |
+| `get` with full verification               | plain `curl`, same file and local server                     | ≤ 105% of the floor                                        | no; `get` is Slice 3                              |
 
 CPU and memory profiles (`pprof`) of each measurement will be versioned together with the table, so that a regression shows up in a diff, and a change that worsens a measurement by more than 5% will fail the weekly job with the profile attached. Neither exists yet; Session 8 implements what is missing from this section.
 
@@ -261,13 +261,13 @@ The switch from `compress/gzip` to `klauspost/compress/gzip` only enters with th
 
 `Compute` is measured against hostile or large input, so that a memory regression breaks the suite instead of showing up on a server.
 
-| Test                                            | Input                                                                      | What it asserts                                                                          |
-| ----------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| gzip with a huge ratio                          | 2 GiB of zeros, ~2 MiB compressed, generated in streaming                  | terminates, exact `uncompressed_bytes`, heap peak ≤ 32 MiB above the baseline            |
-| 20 million short reads (`COLLIGO_SLOW=1`)       | ~1.1 GiB generated in streaming, lengths 20 to 24                          | exact histogram, `read_ends`, MD5 and counts; peak ≤ 32 MiB; last quarter does not grow  |
-| file that shrinks or grows during the read      | truncated or appended when half was read                                   | `Compute`: size and hashes are of the bytes actually read and it does not flag the change; what flags it is `CheckFile` (`changed_during_read`, `RELIABILITY.md` M2) |
-| allocations per MiB read                        | plain FASTQ and gzip FASTQ, slope between a small and a large input        | ≤ 8 allocations and ≤ 16 KiB allocated per additional MiB                                |
-| single read                                     | `CheckFile` and `CheckAll`, measured by `rchar` of `/proc/self/io` (Linux) | each byte read exactly once; `Discover` reads at most 64 KiB per file                    |
+| Test                                       | Input                                                                      | What it asserts                                                                                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| gzip with a huge ratio                     | 2 GiB of zeros, ~2 MiB compressed, generated in streaming                  | terminates, exact `uncompressed_bytes`, heap peak ≤ 32 MiB above the baseline                                                                                        |
+| 20 million short reads (`COLLIGO_SLOW=1`)  | ~1.1 GiB generated in streaming, lengths 20 to 24                          | exact histogram, `read_ends`, MD5 and counts; peak ≤ 32 MiB; last quarter does not grow                                                                              |
+| file that shrinks or grows during the read | truncated or appended when half was read                                   | `Compute`: size and hashes are of the bytes actually read and it does not flag the change; what flags it is `CheckFile` (`changed_during_read`, `RELIABILITY.md` M2) |
+| allocations per MiB read                   | plain FASTQ and gzip FASTQ, slope between a small and a large input        | ≤ 8 allocations and ≤ 16 KiB allocated per additional MiB                                                                                                            |
+| single read                                | `CheckFile` and `CheckAll`, measured by `rchar` of `/proc/self/io` (Linux) | each byte read exactly once; `Discover` reads at most 64 KiB per file                                                                                                |
 
 The limits start from the structural floor, not from what today's machine does: the read ring has 8 buffers of 1 MiB and the decompressor plus the extractor stay below 1 MiB, so the measured peak is between 8 and 13 MiB and the 32 MiB ceiling leaves headroom for the garbage collector. Retaining more than 1.5% of the decompressed output (32 MiB of 2 GiB) already exceeds the ceiling. The measured allocation slope is zero within noise (at most one allocation and a few hundred bytes per MiB); the limits catch one allocation per record (thousands per MiB) or a new buffer per chunk (1 MiB per MiB).
 
@@ -279,19 +279,19 @@ The limits start from the structural floor, not from what today's machine does: 
 
 None of them depends on someone remembering.
 
-| Rule                               | Tool                                                |
-| ---------------------------------- | --------------------------------------------------- |
-| Core does not import `source/*`    | test with `x/tools/go/packages`, or `depguard`      |
-| Light door does not import `store` | same import-graph test                              |
-| Raw `string` where `secret.*` fits | own `go/analysis` analyzer                          |
-| No `init()` with side effects      | custom lint                                         |
-| Stable public surface              | `apidiff` against the last tag                      |
-| Race                               | `go test -race -count=2 ./...`                      |
-| Goroutine leak                     | `goleak` in every concurrency test                  |
-| Secret in the diff                 | `gitleaks` in pre-commit and in CI                  |
-| Tracked real fixture               | `git ls-files` matched against forbidden patterns   |
-| Real assertion coverage            | `gremlins` (mutation), quarterly, core only         |
-| No non-configured host             | instrumented dialer, across the whole suite         |
+| Rule                               | Tool                                              |
+| ---------------------------------- | ------------------------------------------------- |
+| Core does not import `source/*`    | test with `x/tools/go/packages`, or `depguard`    |
+| Light door does not import `store` | same import-graph test                            |
+| Raw `string` where `secret.*` fits | own `go/analysis` analyzer                        |
+| No `init()` with side effects      | custom lint                                       |
+| Stable public surface              | `apidiff` against the last tag                    |
+| Race                               | `go test -race -count=2 ./...`                    |
+| Goroutine leak                     | `goleak` in every concurrency test                |
+| Secret in the diff                 | `gitleaks` in pre-commit and in CI                |
+| Tracked real fixture               | `git ls-files` matched against forbidden patterns |
+| Real assertion coverage            | `gremlins` (mutation), quarterly, core only       |
+| No non-configured host             | instrumented dialer, across the whole suite       |
 
 `-count=2` catches state leaking between runs. Mutation score is the only metric that answers "would my suite catch a hidden bug?" — coverage only says how much code ran.
 
@@ -301,26 +301,26 @@ None of them depends on someone remembering.
 
 Some tests compare Colligo with programs that are not ours: the verifier `tools/verify_cert.py` (Python with the `blake3` package) and `b3sum`. A test that depends on them never passes silently without having run:
 
-| Situation | Result |
-| --------- | ------ |
-| `COLLIGO_PYTHON` set and the interpreter does not import `blake3` | fails |
-| `COLLIGO_REQUIRE_PYTHON=1` and no Python with `blake3` | fails |
-| nothing set and no Python with `blake3` | skips, and the message says how to turn the skip into a failure |
-| `COLLIGO_REQUIRE_B3SUM=1` and no `b3sum` | fails |
-| no `b3sum` and no variable | the comparison does not run and the test logs that |
+| Situation                                                         | Result                                                          |
+| ----------------------------------------------------------------- | --------------------------------------------------------------- |
+| `COLLIGO_PYTHON` set and the interpreter does not import `blake3` | fails                                                           |
+| `COLLIGO_REQUIRE_PYTHON=1` and no Python with `blake3`            | fails                                                           |
+| nothing set and no Python with `blake3`                           | skips, and the message says how to turn the skip into a failure |
+| `COLLIGO_REQUIRE_B3SUM=1` and no `b3sum`                          | fails                                                           |
+| no `b3sum` and no variable                                        | the comparison does not run and the test logs that              |
 
 CI sets `COLLIGO_REQUIRE_PYTHON=1` and `COLLIGO_REQUIRE_B3SUM=1`. The performance benchmark is opt-in via `COLLIGO_PERF=1`, because it measures speed and not correctness. The resource tests that take minutes are opt-in via `COLLIGO_SLOW=1`, because they cost time and no extra correctness in day-to-day work.
 
 ### `COLLIGO_*` variables
 
-| Variable | Effect |
-| -------- | ------ |
-| `COLLIGO_PYTHON` | path of the Python interpreter with `blake3` used by the `tools/verify_cert.py` tests; if set and the interpreter does not import `blake3`, it fails |
-| `COLLIGO_REQUIRE_PYTHON` | `1` turns the absence of Python with `blake3` into a failure, instead of a skip |
-| `COLLIGO_REQUIRE_B3SUM` | `1` turns the absence of `b3sum` into a failure, instead of a log record |
-| `COLLIGO_PERF` | any non-empty value turns on `TestPerformanceFloor`; without it the test skips |
-| `COLLIGO_PERF_DIR` | directory where the benchmark stores and reuses the generated `.fastq.gz`; without it, it uses a temporary directory of the test and generates again on each run |
-| `COLLIGO_SLOW` | any non-empty value turns on the resource tests that take minutes (§7.2) |
+| Variable                 | Effect                                                                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `COLLIGO_PYTHON`         | path of the Python interpreter with `blake3` used by the `tools/verify_cert.py` tests; if set and the interpreter does not import `blake3`, it fails             |
+| `COLLIGO_REQUIRE_PYTHON` | `1` turns the absence of Python with `blake3` into a failure, instead of a skip                                                                                  |
+| `COLLIGO_REQUIRE_B3SUM`  | `1` turns the absence of `b3sum` into a failure, instead of a log record                                                                                         |
+| `COLLIGO_PERF`           | any non-empty value turns on `TestPerformanceFloor`; without it the test skips                                                                                   |
+| `COLLIGO_PERF_DIR`       | directory where the benchmark stores and reuses the generated `.fastq.gz`; without it, it uses a temporary directory of the test and generates again on each run |
+| `COLLIGO_SLOW`           | any non-empty value turns on the resource tests that take minutes (§7.2)                                                                                         |
 
 ### Performance benchmark
 
@@ -334,22 +334,22 @@ The test generates a `.fastq.gz` with 1 GiB of decompressed FASTQ (100-base read
 
 ## 9. What CI runs
 
-| Check | When | Runs today / planned |
-| ----- | ---- | -------------------- |
-| branch name, PR title and message of each commit (`.github/check-names.sh`, which also self-tests) | PR | runs today |
-| `gitleaks` over the history | PR and `main` | runs today |
-| tracked real fixture (`git ls-files testdata/real`) | PR and `main` | runs today |
-| `gofmt`, `go build`, `go vet` | PR and `main` | runs today |
-| `secret` type analyzer (`noleak`) | PR and `main` | runs today |
-| `go test -race -count=2 ./...`, which includes the import-graph and two-doors rule tests, the Python verifier and the comparison with `b3sum` | PR and `main` | runs today |
-| `Fuzz*` targets running only the corpus seed (inside `go test`) | PR and `main` | runs today |
-| lint beyond `vet` | PR | planned |
-| `sourcetest` of all public sources | PR | planned, Slice 2 onwards |
-| Colligo's mutant suite | PR | planned, Slice 7 |
-| fuzz 60 s per target | PR | planned |
-| `apidiff` against the last tag | PR | planned, after the first tag |
-| fixture drift, fuzz 4 h per target, mutant benchmark against external tools, performance benchmark | weekly | planned |
-| mutation testing | quarterly | planned |
+| Check                                                                                                                                         | When          | Runs today / planned         |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------- |
+| branch name, PR title and message of each commit (`.github/check-names.sh`, which also self-tests)                                            | PR            | runs today                   |
+| `gitleaks` over the history                                                                                                                   | PR and `main` | runs today                   |
+| tracked real fixture (`git ls-files testdata/real`)                                                                                           | PR and `main` | runs today                   |
+| `gofmt`, `go build`, `go vet`                                                                                                                 | PR and `main` | runs today                   |
+| `secret` type analyzer (`noleak`)                                                                                                             | PR and `main` | runs today                   |
+| `go test -race -count=2 ./...`, which includes the import-graph and two-doors rule tests, the Python verifier and the comparison with `b3sum` | PR and `main` | runs today                   |
+| `Fuzz*` targets running only the corpus seed (inside `go test`)                                                                               | PR and `main` | runs today                   |
+| lint beyond `vet`                                                                                                                             | PR            | planned                      |
+| `sourcetest` of all public sources                                                                                                            | PR            | planned, Slice 2 onwards     |
+| Colligo's mutant suite                                                                                                                        | PR            | planned, Slice 7             |
+| fuzz 60 s per target                                                                                                                          | PR            | planned                      |
+| `apidiff` against the last tag                                                                                                                | PR            | planned, after the first tag |
+| fixture drift, fuzz 4 h per target, mutant benchmark against external tools, performance benchmark                                            | weekly        | planned                      |
+| mutation testing                                                                                                                              | quarterly     | planned                      |
 
 CI runs on `pull_request` and on `push` to `main`, never on the push of a branch without a PR.
 
