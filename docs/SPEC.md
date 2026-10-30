@@ -26,7 +26,7 @@ colligo/
 │   └── dfam/
 ├── transport/        HTTP, FTP, DRS; superfície mínima
 ├── profile/          perfis plugáveis
-├── facts/            leitura única em streaming: raiz BLAKE3, MD5, SHA-256 e fatos de formato
+├── facts/            leitura única em streaming: árvore BLAKE3 com outboard Bao, MD5, SHA-256 e fatos de formato
 ├── downloader/       worker pools, retry, rate limit, resume
 ├── adopt/            registro de arquivo pré-existente sob custódia
 ├── verifier/         funil: stat gate, fatos, afirmações, scrub
@@ -37,17 +37,20 @@ colligo/
 ├── validator/        validação de metadados em duas fases
 ├── manifest/         export e atestação de manifesto portátil
 ├── exporter/         TSV/JSON/CSV com custódia
-├── checksum/         árvore BLAKE3 (outboard Bao); MD5/SHA streaming; vetores conhecidos
+├── checksum/         vetores conhecidos de BLAKE3, MD5 e SHA-256, rodados antes de qualquer hash
+├── logf/             campos de log tipados; sem campo `string` para caminho, URL ou credencial
 ├── retry/            políticas: exponential, linear, custom
 ├── sourcetest/       suíte de conformidade de adapters (API pública)
 ├── storetest/        suíte de conformidade de Store
-├── mutants/          gerador de falhas silenciosas para teste e benchmark
+├── mutants/          (planejado, Fatia 7) gerador de falhas silenciosas para teste e benchmark
 ├── diagnoses/        catálogo versionado de diagnósticos: observação, causa provável, ação
 ├── spec/             modelos TLA+ do resume, rename e máquina de estados
 ├── tools/            verificador independente de certificado (Python)
 ├── cmd/colligo/      CLI: porta leve e porta pesada (§16)
-└── internal/         helpers não exportados
+└── internal/         helpers não exportados: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
+
+A árvore é o destino. Os pacotes entram nas fatias do `ROADMAP.md`: hoje existem `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (só o certificado), `diagnoses`, `tools` e `cmd/colligo`. Sem `mutants/`, a cobertura de modos de falha vem do corpus sintético versionado e dos testes de cada defesa.
 
 **Regra de grafo de import, verificada em teste:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` e `checksum` não importam `source/*`. Registro de fonte é explícito via option; não há `init()` com efeito colateral.
 
@@ -456,7 +459,7 @@ Antes de qualquer verificação: vetores conhecidos de hash e canário do estudo
 
 ### Descoberta e diagnóstico
 
-`check .` e `get` classificam cada arquivo pelos bytes mágicos e pela primeira linha, nunca só pela extensão; divergência entre extensão e conteúdo é `advisory`. Pares são formados por sufixo (`_R1`/`_R2`, `_1`/`_2`, `.1`/`.2`) e confirmados pelos fatos `read_ends`; par cujo sufixo casa mas cujos IDs não casam é `blocking`.
+`check .` e `get` classificam cada arquivo pelos bytes mágicos e pela primeira linha, nunca só pela extensão; divergência entre extensão e conteúdo é `advisory`. Pares são formados por sufixo (`_R1`/`_R2`, `_1`/`_2`, `.1`/`.2`, com o número do pedaço `_001` quando houver, que precisa ser igual nos dois) e confirmados pelos fatos `read_ends`; par cujo sufixo casa mas cujos IDs não casam é `blocking`.
 
 Toda afirmação que falha referencia uma entrada do catálogo `diagnoses/`, versionado com o código. Cada entrada tem: identificador, modo de falha de `RELIABILITY.md`, frase de observação com os valores, causa provável, ação sugerida. A saída legível imprime a frase; `--json` inclui o identificador. Afirmação sem entrada no catálogo é bug e falha a suíte.
 
@@ -618,7 +621,7 @@ type SelfTestError struct{ ... }
 type ClockError struct{ ... }
 ```
 
-Inspecionáveis via `errors.As`. Todo campo de caminho, URL ou credencial usa os tipos de `secret/` — incluindo `RangeUnsupportedError`, `SourceError` e `ChecksumError`, que hoje carregam `string`. Cada erro carrega `Severity()`.
+Inspecionáveis via `errors.As`. Na porta leve, a falha de um arquivo não é um desses erros: é uma afirmação do catálogo `diagnoses/` com severidade, e `check` não aborta por ela. Hoje só `SelfTestError` (`checksum/`) existe; os demais chegam com o `store` e as fatias que os usam. Todo campo de caminho, URL ou credencial usa os tipos de `secret/` — incluindo `RangeUnsupportedError`, `SourceError` e `ChecksumError`, que hoje carregam `string`. Cada erro carrega `Severity()`.
 
 ---
 
@@ -653,7 +656,7 @@ Estes defaults existem para não queimar o IP da sua instituição. Aumentá-los
 
 HTTP: `Accept-Encoding: identity` para arquivos já comprimidos; reuso de conexão via `MaxIdleConnsPerHost`; `io.CopyBuffer` de 1MB. Conteúdo de arquivo nunca em memória.
 
-Concorrência de leitura local ajustada ao armazenamento: vários arquivos ao mesmo tempo em SSD e sistema de arquivos de rede; um por vez em disco rotacional, onde leitura concorrente vira busca aleatória. Default conservador de 2; `--jobs` muda.
+Concorrência de leitura local ajustada ao armazenamento: vários arquivos ao mesmo tempo em SSD e sistema de arquivos de rede; um por vez em disco rotacional, onde leitura concorrente vira busca aleatória. Default conservador de 2; `--jobs` muda. Hoje o default é 2 em qualquer armazenamento: a detecção de disco rotacional ainda não existe.
 
 ### Desempenho
 
@@ -664,7 +667,7 @@ Ordem de custo, do maior para o menor: rede, descompressão, parser, hash, banco
 **Descompressão.**
 
 - `github.com/klauspost/compress/gzip` no lugar de `compress/gzip`, condicionado a benchmark que mostre ganho na máquina de referência.
-- BGZF e BAM: blocos independentes, descomprimidos em paralelo por um pool limitado, com reordenação antes do extrator.
+- BGZF e BAM: blocos independentes, descomprimidos em paralelo por um pool limitado, com reordenação antes do extrator. Meta da Fatia 7 (`ROADMAP.md`); hoje o BGZF passa pelo mesmo descompressor sequencial do gzip.
 - Gzip simples não tem paralelismo trivial. Descompressão especulativa paralela, como a do rapidgzip, fica no `BACKLOG.md`.
 
 **Parser de FASTQ sem alocação.** Nada de `bufio.Scanner` linha a linha. Contagem de linhas por `bytes.IndexByte` sobre o próprio buffer; soma do comprimento das linhas de sequência; conferência de que qualidade e sequência têm o mesmo comprimento; registro partido entre dois buffers tratado por um resto de no máximo uma linha. Zero alocação por registro, verificado por `testing.AllocsPerRun`.
@@ -683,7 +686,7 @@ Ordem de custo, do maior para o menor: rede, descompressão, parser, hash, banco
 - O teto é o limite por domínio desta seção, configurável. Os defaults deixam de ser valor fixo e passam a ser teto.
 - Cada decisão é registrada em log `debug` com a vazão observada; o resumo por domínio vai para `tool_runs`.
 
-**Modo rápido honesto.** `check --quick` lê só bytes mágicos, o fim do arquivo (bloco EOF de BGZF, trailer de gzip) e uma amostra do início. Leva segundos. O resultado é `quick`, nunca `verified`: o relatório diz que o conteúdo não foi lido por inteiro, e nenhum estado de custódia é atualizado a partir dele.
+**Modo rápido honesto.** `check --quick` lê só bytes mágicos, o fim do arquivo (o bloco EOF de BGZF; em texto puro, se o último byte é newline) e uma amostra do início. Em gzip simples não há o que conferir no fim sem descomprimir tudo: CRC e ISIZE só batem contra o conteúdo. Leva segundos. O resultado é `quick`, nunca `verified`, e o código de saída é 5 quando nada é encontrado (`RELIABILITY.md` §1): o relatório diz que o conteúdo não foi lido por inteiro, e nenhum estado de custódia é atualizado a partir dele.
 
 ---
 
@@ -707,7 +710,7 @@ Atestação funciona com manifesto redigido, porque hashes não são sensíveis.
 
 `colligo check --certificate` grava `<arquivo>.colligo-cert.json` com: versão do esquema, versão da ferramenta, tamanho, `blake3_root`, `group_size`, MD5, SHA-256, fatos por `kind` com `extractor_version`, e cada afirmação avaliada com declarado, observado e resultado.
 
-O repositório mantém um verificador de referência em `tools/verify_cert.py`: Python com biblioteca padrão mais o pacote `blake3`, ~200 linhas, sem importar nada do Colligo. Ele recalcula tamanho, hashes e os fatos de `records` para FASTQ, confere contra o certificado e confere também as afirmações: `checksum_mismatch`, `size_mismatch`, `count_mismatch` e `structure_invalid` precisam concordar com o que ele recalcula, inclusive o `passed`. A raiz BLAKE3 de arquivo com mais de um grupo é conferida inteira; o outboard não é conferido porque o certificado não o carrega. Divergência entre verificador e certificado é bug de uma das duas implementações e falha a suíte. Códigos de saída do verificador: 0 concorda, 1 discorda, 2 não consegue julgar (uso, entrada ilegível, `schema_version` desconhecido, campo obrigatório ausente ou campo desconhecido) — "não sei" nunca vira "discordo" nem "concordo". Ao concordar, o verificador imprime em seguida uma linha `UNCHECKED fact <tipo> (<versão do extrator>)` ou `UNCHECKED assertion <id>` para cada fato e afirmação que não recalculou, para que `AGREE` não seja lido como mais do que é. Adicionar campo ao certificado exige subir `schema_version`: o verificador sai 2 diante de campo desconhecido, então um campo novo sem nova versão faria todo verificador existente recusar o certificado.
+O repositório mantém um verificador de referência em `tools/verify_cert.py`: Python com biblioteca padrão mais o pacote `blake3`, sem importar nada do Colligo. Ele recalcula tamanho, hashes e os fatos de `records` para FASTQ, confere contra o certificado e confere também as afirmações: `checksum_mismatch`, `size_mismatch`, `count_mismatch` e `structure_invalid` precisam concordar com o que ele recalcula, inclusive o `passed`. A raiz BLAKE3 de arquivo com mais de um grupo é conferida inteira; o outboard não é conferido porque o certificado não o carrega. Divergência entre verificador e certificado é bug de uma das duas implementações e falha a suíte. Códigos de saída do verificador: 0 concorda, 1 discorda, 2 não consegue julgar (uso, entrada ilegível, `schema_version` desconhecido, campo obrigatório ausente ou campo desconhecido) — "não sei" nunca vira "discordo" nem "concordo". Ao concordar, o verificador imprime em seguida uma linha `UNCHECKED fact <tipo> (<versão do extrator>)` ou `UNCHECKED assertion <id>` para cada fato e afirmação que não recalculou, para que `AGREE` não seja lido como mais do que é. Adicionar campo ao certificado exige subir `schema_version`: o verificador sai 2 diante de campo desconhecido, então um campo novo sem nova versão faria todo verificador existente recusar o certificado.
 
 Certificado de estudo restrito segue a tabela de `CONFIDENTIALITY.md` §5.7: nome opaco, sem URL.
 
@@ -817,39 +820,46 @@ Além de `https` e `ftp`, o campo de URL aceita `drs://` (GA4GH Data Repository 
 
 ## 16. CLI
 
+Implementado hoje: `check`, `validate` e `version`, com as flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` e `--certificate`. A coluna "Fatia" diz quando cada comando ou flag do resto chega (`ROADMAP.md`); "—" é o que ainda não tem fatia.
+
+`--recursive` desce em subdiretórios (sem ela, só o diretório dado; nomes que começam com `.` são ignorados, e link simbólico para diretório nunca é seguido). `--format` declara o formato (`fastq`, `fasta`, `gtf`, `gzip` ou `bgzf`). `--jobs` é o número de arquivos lidos ao mesmo tempo.
+
 **Porta leve** — sem banco, sem TOML, sem estado. Não importa `store`.
 
-| Comando    | Função                                                                    |
-| ---------- | ------------------------------------------------------------------------- |
-| `check`    | fatos + afirmações de arquivos soltos; `--source` compara contra a fonte; `--json` |
-| `validate` | só estrutura de formato                                                   |
-| `verify`   | standalone com `--expected` ou arquivo de checksums; `--cross-check`      |
-| `identify` | identidade por conteúdo: seqcol, cabeçalho de GTF, hash contra checksums oficiais |
-| `compat`   | compara sistemas de coordenadas entre FASTA, `.fai`, BAM, VCF, GTF, BED   |
-| `check --samplesheet` | confere uma samplesheet de pipeline nf-core pelo conteúdo: arquivos existem, R1 e R2 casam, contagens batem, amostras não se repetem |
-| `check --lock` | confere o acervo contra um `colligo.lock`                                 |
-| `check --quick` | só bytes mágicos, fim do arquivo e amostra do início; nunca `verified`  |
-| `check --cross-extract` | roda extrator Go e externo sobre o mesmo arquivo e compara os fatos; só com extrator externo presente |
-| `lock`     | gera `colligo.lock` a partir de arquivos soltos ou de um estudo           |
-| `get`      | accession → download com verificação sobreposta → `samplesheet.csv` + `colligo.lock`; sem banco |
-| `check .`  | descobre formatos pelo conteúdo e pares pelo nome; zero configuração      |
-| `check --certificate` | emite certificado verificável por terceiros (§13)             |
+| Comando    | Fatia | Função                                                                    |
+| ---------- | ----- | ------------------------------------------------------------------------- |
+| `check`    | 1     | fatos + afirmações de arquivos soltos; `--json`                           |
+| `validate` | 1     | só estrutura de formato                                                   |
+| `check .`  | 1     | descobre formatos pelo conteúdo e pares pelo nome; zero configuração      |
+| `check --quick` | 1 | só bytes mágicos, fim do arquivo e amostra do início; nunca `verified`; sai 5 |
+| `check --certificate` | 1 | emite certificado verificável por terceiros (§13)             |
+| `check --source` | 2 | compara contra a fonte                                                |
+| `check --samplesheet` | 2 | confere uma samplesheet de pipeline nf-core pelo conteúdo: arquivos existem, R1 e R2 casam, contagens batem, amostras não se repetem |
+| `identify` | 2     | identidade por conteúdo: seqcol, cabeçalho de GTF, hash contra checksums oficiais |
+| `get`      | 3     | accession → download com verificação sobreposta → `samplesheet.csv` + `colligo.lock`; sem banco |
+| `lock`     | 4     | gera `colligo.lock` a partir de arquivos soltos ou de um estudo           |
+| `check --lock` | 4 | confere o acervo contra um `colligo.lock`                                 |
+| `compat`   | 6     | compara sistemas de coordenadas entre FASTA, `.fai`, BAM, VCF, GTF, BED   |
+| `verify`   | —     | standalone com `--expected` ou arquivo de checksums; hoje `check --expected` e `check --cross-check` cobrem o uso |
+| `check --cross-extract` | — | roda extrator Go e externo sobre o mesmo arquivo e compara os fatos; só com extrator externo presente |
+
+A saída de `--json` do `check` e do `validate` é um objeto com `schema_version` (hoje 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` e `exit_code`. Cada afirmação carrega `id` (do catálogo `diagnoses/`), `mode`, `severity`, `passed`, `skipped`, `declared` e `observed`, e, quando falhou, `observation`, `probable_cause` e `suggested_action`. Campo novo exige subir `schema_version`.
 
 **Porta pesada** — estudo com banco.
 
-| Comando         | Função                                                        |
-| --------------- | ------------------------------------------------------------- |
-| `fetch`         | fluxo principal: metadados, download, verificação             |
-| `verify`        | com banco: funil da §7 e scrub                                |
-| `adopt`         | registra arquivo pré-existente sob custódia                   |
-| `status`        | estado do estudo; `--require-complete` sai 3 se incompleto    |
-| `recheck`       | `--upstream`: reconsulta a fonte e compara com o guardado     |
-| `manifest`      | exporta manifesto portátil                                    |
-| `attest`        | compara acervo contra manifesto                               |
-| `doctor`        | diagnóstico de ambiente                                       |
-| `redact-report` | relatório de bug seguro para publicar                         |
-| `gc`            | limpeza de `.part` órfão e `raw_responses` expirado; `--dry-run` obrigatório antes de `--force` |
-| `export`        | TSV/JSON/CSV com custódia                                     |
+| Comando         | Fatia | Função                                                        |
+| --------------- | ----- | ------------------------------------------------------------- |
+| `fetch`         | 3     | fluxo principal: metadados, download, verificação             |
+| `verify`        | 3     | com banco: funil da §7 e scrub (scrub na Fatia 4)             |
+| `status`        | 3     | estado do estudo; `--require-complete` (Fatia 5) sai 3 se incompleto |
+| `adopt`         | 4     | registra arquivo pré-existente sob custódia                   |
+| `manifest`      | 4     | exporta manifesto portátil                                    |
+| `attest`        | 4     | compara acervo contra manifesto                               |
+| `recheck`       | 5     | `--upstream`: reconsulta a fonte e compara com o guardado     |
+| `doctor`        | 7     | diagnóstico de ambiente                                       |
+| `redact-report` | 7     | relatório de bug seguro para publicar                         |
+| `export`        | 7     | TSV/JSON/CSV com custódia                                     |
+| `gc`            | —     | limpeza de `.part` órfão e `raw_responses` expirado; `--dry-run` obrigatório antes de `--force` |
 
 **O CLI não contém lógica.** Lê flags, resolve config, chama a biblioteca, traduz erro em código de saída. Comportamento que existe só no CLI é bug.
 
