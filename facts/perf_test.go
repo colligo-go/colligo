@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ type perfBaseline struct {
 	Machine          string                   `json:"machine"`
 	Go               string                   `json:"go"`
 	TolerancePercent float64                  `json:"tolerance_percent"`
+	Conditions       map[string]string        `json:"conditions,omitempty"`
 	Runs             map[string][]perfMeasure `json:"runs"`
 }
 
@@ -65,6 +67,11 @@ func recordPerfRun(t *testing.T, name string, m perfMeasure) {
 	t.Helper()
 	b := readPerfBaseline(t)
 	b.Go = runtime.Version()
+	now := readPerfConditions("/sys")
+	if mismatches := perfConditionMismatches(b.Conditions, now); len(mismatches) > 0 {
+		t.Fatalf("refusing to record: the conditions differ from the ones already in the baseline: %s", strings.Join(mismatches, "; "))
+	}
+	b.Conditions = now
 	if v := os.Getenv("COLLIGO_PERF_TOLERANCE_PERCENT"); v != "" {
 		if _, err := fmt.Sscan(v, &b.TolerancePercent); err != nil {
 			t.Fatal(err)
@@ -140,6 +147,12 @@ func runPerf(t *testing.T, name string, gated []string, measure func(*testing.T)
 	runs := baseline.Runs[name]
 	if len(runs) == 0 {
 		t.Fatalf("no %q baseline for machine %q in %s: record one with COLLIGO_PERF_RECORD=1", name, machine, perfBaselinePath())
+	}
+	if len(baseline.Conditions) == 0 {
+		t.Log("the baseline records no measurement conditions: nothing to check them against")
+	}
+	if mismatches := perfConditionMismatches(baseline.Conditions, readPerfConditions("/sys")); len(mismatches) > 0 {
+		t.Fatalf("refusing to compare with the baseline of %q, the measurement conditions changed:\n  %s", machine, strings.Join(mismatches, "\n  "))
 	}
 	rounds := make([]perfMeasure, perfRounds)
 	for i := range rounds {
