@@ -16,8 +16,7 @@ type FSAccess struct{}
 
 func newFSAccess() FSAccess { return FSAccess{} }
 
-// Reveal calls fn with a freshly built FSAccess. fn is normally the method
-// value of secret.Name.Raw, e.g. fsaccess.Reveal(name.Raw).
+// Reveal is called as fsaccess.Reveal(name.Raw).
 func Reveal(fn func(FSAccess) string) string { return fn(newFSAccess()) }
 
 // Entry is one directory entry. A symbolic link to a directory has DirLink

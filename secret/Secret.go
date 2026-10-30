@@ -1,7 +1,6 @@
 package secret
 
-// Secret wraps a credential. Never exposes the real value through printing
-// or serialization.
+// Secret never exposes its value through printing or serialization.
 type Secret struct{ v string }
 
 func (Secret) String() string               { return "[REDACTED]" }
