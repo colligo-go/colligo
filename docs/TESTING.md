@@ -286,7 +286,7 @@ O CI define `COLLIGO_REQUIRE_PYTHON=1` e `COLLIGO_REQUIRE_B3SUM=1`. O benchmark 
 
 ## 9. O que o CI roda
 
-**Em todo PR:** build Linux, `vet`, lint, analisador de tipos `secret`, `-race -count=2`, `sourcetest` de todas as fontes públicas, suíte de mutantes do Colligo, fuzz 60s por alvo, `apidiff`, `gitleaks`, check de fixture rastreada, check de grafo de import e da regra das duas portas.
+**Em todo PR:** nome do branch, título do PR e mensagem de cada commit (`.github/check-names.sh`, que também se autotesta), build Linux, `vet`, lint, analisador de tipos `secret`, `-race -count=2`, `sourcetest` de todas as fontes públicas, suíte de mutantes do Colligo, fuzz 60s por alvo, `apidiff`, `gitleaks`, check de fixture rastreada, check de grafo de import e da regra das duas portas.
 
 **Semanal:** drift de fixtures, fuzz 4h por alvo, benchmark de mutantes contra ferramentas externas, benchmark de desempenho.
 
