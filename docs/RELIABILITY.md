@@ -31,6 +31,7 @@ Colligo falha fechado. Três severidades:
 | 2      | `fatal`: integridade, identidade, autenticação, disco                 |
 | 3      | Incompleto: `blocking` pendente                                       |
 | 4      | Interrompido: cancelado, estado salvo, retomável                      |
+| 5      | `check --quick`: nada encontrado no que foi lido, conteúdo não lido por inteiro |
 
 **Alcance do `fatal`.** Falha da própria ferramenta (vetores conhecidos de hash, canário) aborta a execução inteira: nada mais é confiável. Falha `fatal` de um arquivo (ilegível, página HTML, checksum que não confere) encerra a verificação *daquele* arquivo; na porta leve os demais continuam sendo verificados, porque não há estado a salvar e parar esconderia o diagnóstico deles. O código de saída é o da pior severidade encontrada.
 
@@ -39,6 +40,8 @@ Colligo falha fechado. Três severidades:
 `--expected` com hash malformado também é erro de uso, código 1, antes de ler qualquer arquivo: MD5 tem 32 hexadecimais, SHA-256 e BLAKE3 têm 64, sem diferenciar maiúscula. Valor esperado malformado é erro de quem digitou, não evidência de arquivo corrompido, então nunca vira `checksum_mismatch` fatal.
 
 `--cross-check` escreve `colligo.sha256` e `colligo.b3` no formato do GNU: se o nome tem `\` ou quebra de linha, a linha começa com `\` e o nome sai com `\\` e `\n`, o que `sha256sum -c` e `b3sum -c` entendem. Link simbólico para diretório nunca é seguido (evita ciclos com `--recursive`); sai como "symbolic link to a directory, not followed" e em `skipped_directory_links` no JSON, e não como arquivo não reconhecido.
+
+O `5` existe porque `colligo check --quick x && pipeline` não pode seguir como se o arquivo tivesse sido verificado: um gzip truncado no meio passa no quick. O `0` fica reservado para "completo e verificado". Problema encontrado no quick continua saindo `2` ou `3`; `--permissive` baixa um `blocking` para o `5`, nunca para `0`.
 
 Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
 
