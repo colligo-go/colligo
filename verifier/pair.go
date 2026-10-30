@@ -42,8 +42,9 @@ func pairable(r *FileReport) (mate, bool) {
 }
 
 // EvaluatePairs forms pairs by file-name suffix and confirms them by the
-// read_ends and records facts. A pair whose suffix matches but whose reads
-// do not is blocking on both files.
+// read_ends and records facts. A pair whose reads do not match is blocking
+// on both files. A mate whose other half is not among reports gets the
+// advisory pair_missing, but only when reports holds more than one file.
 func EvaluatePairs(reports []*FileReport) {
 	type slot [3]*FileReport
 	groups := map[string]*slot{}
