@@ -15,6 +15,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import sys
 import zlib
 
@@ -110,11 +111,18 @@ class Fastq:
         self.problem = None
 
 
+FASTQ_DUMP_READ_ID = re.compile(rb"([SED]RR[0-9]+\.[0-9]+)\.[12]")
+
+
 def read_id(header):
     token = header[1:].split(None, 1)[0] if len(header) > 1 else b""
     token = token.rstrip(b"\r")
     if len(token) >= 2 and token[-2:-1] == b"/" and token[-1:] in (b"1", b"2"):
         token = token[:-2]
+    else:
+        dump = FASTQ_DUMP_READ_ID.fullmatch(token)
+        if dump:
+            token = dump.group(1)
     return token.decode("utf-8", "replace")
 
 

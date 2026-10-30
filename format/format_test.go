@@ -510,3 +510,29 @@ func TestMateName(t *testing.T) {
 		t.Error("a name without a mate suffix has no mate")
 	}
 }
+
+func TestStripMateSuffixOnlyKnowsSlashAndFastqDumpReadIDs(t *testing.T) {
+	for in, want := range map[string]string{
+		"SRR001666.1.1": "SRR001666.1",
+		"SRR001666.1.2": "SRR001666.1",
+		"ERR12.345.2":   "ERR12.345",
+		"DRR7.9.1":      "DRR7.9",
+		"SRR1.1/1":      "SRR1.1",
+		"SRR1.1":        "SRR1.1",
+		"SRR1.2":        "SRR1.2",
+		"SRR1.1.3":      "SRR1.1.3",
+		"SRR1.1.":       "SRR1.1.",
+		"SRR.1.1":       "SRR.1.1",
+		"SRR1x.1.1":     "SRR1x.1.1",
+		"XRR1.1.1":      "XRR1.1.1",
+		"read.1.1":      "read.1.1",
+		"1.1":           "1.1",
+		".1":            ".1",
+		"1":             "1",
+		"":              "",
+	} {
+		if got := string(stripMateSuffix([]byte(in))); got != want {
+			t.Errorf("%q -> %q, want %q", in, got, want)
+		}
+	}
+}
