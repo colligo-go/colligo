@@ -29,7 +29,7 @@ func AssertionIDs() []string {
 		diagnoses.ReadFailed, diagnoses.HTMLBody, diagnoses.MagicMismatch,
 		diagnoses.ChecksumMismatch, diagnoses.SizeMismatch, diagnoses.StructureInvalid,
 		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.CountMismatch,
-		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
+		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
 	}
 }
 
