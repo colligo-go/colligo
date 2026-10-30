@@ -2,7 +2,9 @@ package verifier
 
 import (
 	"context"
+	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -84,9 +86,22 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 	}
 	rep.Result = res
 	rep.Container, rep.Content, rep.Size = res.Container, res.Content, res.Size
-	if changed := before.differences(stateOf(info)); len(changed) > 0 {
+	opened := stateOf(info)
+	observed := ""
+	if changed := before.differences(opened); len(changed) > 0 {
+		observed = strings.Join(changed, ", ") + " changed"
+	}
+	switch pathInfo, err := fsaccess.Stat(rep.Name.Raw); {
+	case errors.Is(err, fs.ErrNotExist):
+		observed = "removed"
+	case err != nil:
+		return unreadable(rep, err), nil
+	case !opened.sameFile(stateOf(pathInfo)):
+		observed = "replaced"
+	}
+	if observed != "" {
 		rep.Assertions = append(
-			[]model.Assertion{newAssertion(diagnoses.ChangedDuringRead, false, diagnoses.Values{Declared: "unchanged", Observed: strings.Join(changed, ", ") + " changed"})},
+			[]model.Assertion{newAssertion(diagnoses.ChangedDuringRead, false, diagnoses.Values{Declared: "unchanged", Observed: observed})},
 			skipped(evaluatedIDs(), diagnoses.ChangedDuringRead)...)
 		rep.finalize()
 		return rep, nil
