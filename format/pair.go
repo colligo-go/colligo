@@ -41,7 +41,9 @@ func PairKey(name secret.Name) (stem string, mate int, ok bool) {
 	return filepath.Join(filepath.Dir(full), m[1]+m[2]+"#"+m[4]), mate, true
 }
 
-// MateName returns the base name the other mate of a pair would have.
+// MateName returns the base name, without the directory, that the other mate
+// would have: name's stem, chunk number and extensions around the flipped
+// mate digit. ok is false when name carries no mate suffix.
 func MateName(name secret.Name) (string, bool) {
 	m, extensions := splitMate(filepath.Base(name.String()))
 	if m == nil {
