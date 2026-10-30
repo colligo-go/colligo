@@ -16,6 +16,6 @@ Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 in
 - **verify** — it is whole, and it is what the source and you declared
 - **watch** — it still holds, on disk and at the source
 
-Status: pre-release, under active development. See `docs/ROADMAP.md`.
+Status: pre-release, under active development. The first release, `v0.1.0`, closes slice 1; see `CHANGELOG.md` and `docs/ROADMAP.md`.
 
 License: MIT.
