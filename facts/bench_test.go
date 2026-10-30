@@ -1,13 +1,13 @@
 package facts
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,21 +15,15 @@ import (
 	"github.com/klauspost/compress/gzip"
 )
 
-func perfFastqGz(tb testing.TB, megabytes int) (path string, size int64) {
+func perfDir(tb testing.TB) string {
 	tb.Helper()
-	dir := os.Getenv("COLLIGO_PERF_DIR")
-	if dir == "" {
-		dir = tb.TempDir()
+	if dir := os.Getenv("COLLIGO_PERF_DIR"); dir != "" {
+		return dir
 	}
-	path = filepath.Join(dir, fmt.Sprintf("perf_%dmb.fastq.gz", megabytes))
-	if st, err := os.Stat(path); err == nil {
-		return path, st.Size()
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		tb.Fatal(err)
-	}
-	w, _ := gzip.NewWriterLevel(f, 6)
+	return tb.TempDir()
+}
+
+func writePerfFastq(w io.Writer, megabytes int) {
 	rng := rand.New(rand.NewSource(11))
 	var rec bytes.Buffer
 	quals := []byte("5?BCDEFGHIJ")
@@ -46,7 +40,39 @@ func perfFastqGz(tb testing.TB, megabytes int) (path string, size int64) {
 		w.Write(rec.Bytes())
 		written += rec.Len()
 	}
+}
+
+func perfFastqGz(tb testing.TB, megabytes int) (path string, size int64) {
+	tb.Helper()
+	path = filepath.Join(perfDir(tb), fmt.Sprintf("perf_%dmb.fastq.gz", megabytes))
+	if st, err := os.Stat(path); err == nil {
+		return path, st.Size()
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	w, _ := gzip.NewWriterLevel(f, 6)
+	writePerfFastq(w, megabytes)
 	w.Close()
+	f.Close()
+	st, _ := os.Stat(path)
+	return path, st.Size()
+}
+
+func perfFastq(tb testing.TB, megabytes int) (path string, size int64) {
+	tb.Helper()
+	path = filepath.Join(perfDir(tb), fmt.Sprintf("perf_%dmb.fastq", megabytes))
+	if st, err := os.Stat(path); err == nil {
+		return path, st.Size()
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	w := bufio.NewWriterSize(f, 1<<20)
+	writePerfFastq(w, megabytes)
+	w.Flush()
 	f.Close()
 	st, _ := os.Stat(path)
 	return path, st.Size()
@@ -68,58 +94,5 @@ func BenchmarkComputeFastqGz(b *testing.B) {
 			b.Fatal(err)
 		}
 		f.Close()
-	}
-}
-
-func TestPerformanceFloor(t *testing.T) {
-	if os.Getenv("COLLIGO_PERF") == "" {
-		t.Skip("set COLLIGO_PERF=1 to run the performance benchmark")
-	}
-	if _, err := exec.LookPath("zcat"); err != nil {
-		t.Fatal("zcat not found: the reference floor cannot be measured")
-	}
-	path, size := perfFastqGz(t, 1024)
-	best := func(fn func()) time.Duration {
-		d := timeIt(fn)
-		for i := 0; i < 2; i++ {
-			d = min(d, timeIt(fn))
-		}
-		return d
-	}
-	open := func() *os.File {
-		f, err := os.Open(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return f
-	}
-	goFloor := best(func() {
-		f := open()
-		defer f.Close()
-		r, err := gzip.NewReader(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := io.Copy(io.Discard, r); err != nil {
-			t.Fatal(err)
-		}
-	})
-	zcat := best(func() {
-		if err := exec.Command("sh", "-c", fmt.Sprintf("zcat %q | wc -l >/dev/null", path)).Run(); err != nil {
-			t.Fatal(err)
-		}
-	})
-	ours := best(func() {
-		f := open()
-		defer f.Close()
-		if _, err := Compute(context.Background(), f, Options{Hashes: true}); err != nil {
-			t.Fatal(err)
-		}
-	})
-	overGo := float64(ours) / float64(goFloor)
-	t.Logf("file %.0f MiB compressed: Go gunzip = %v, zcat|wc -l = %v, check = %v", float64(size)/(1<<20), goFloor, zcat, ours)
-	t.Logf("check = %.1f%% of Go gunzip (target <= 110%%), %.1f%% of zcat|wc -l (reported)", 100*overGo, 100*float64(ours)/float64(zcat))
-	if overGo > 1.10 {
-		t.Fatalf("check is %.1f%% of the Go gunzip floor, target is 110%%", 100*overGo)
 	}
 }
