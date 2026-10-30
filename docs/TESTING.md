@@ -130,7 +130,9 @@ Seed with the synthetic fixtures. Invariants:
 - Allocation does not grow disproportionately to the input
 - Never returns a format outside the registry
 
-Planned, not running yet (see §9): PR CI 60s per target, weekly job 4h per target. Interesting corpus versioned.
+Every PR runs each target for 60 s in the `fuzz` job of `ci.yml`, parallel to `test` and informative: it is not in `.github/rulesets/main.json`, because fuzzing is random and could block a PR over an old bug. The weekly job (`weekly.yml`) runs each target for 30 min, one job per target, restoring and saving the fuzz corpus with `actions/cache` between weeks. A target that finds a failure uploads the input as an artifact.
+
+Every case fuzzing finds becomes a file in `testdata/fuzz/<Target>/` inside the package that owns the target (for example `format/testdata/fuzz/FuzzValidateFastq/`), committed with the fix. That is the directory `go test` reads on its own, so the required `test` check replays the case on every run, deterministically.
 
 This is the item of highest value per line written against a bug that nobody imagined.
 
@@ -346,11 +348,13 @@ The test generates a `.fastq.gz` with 1 GiB of decompressed FASTQ (100-base read
 | lint beyond `vet`                                                                                                                             | PR            | planned                      |
 | `sourcetest` of all public sources                                                                                                            | PR            | planned, Slice 2 onwards     |
 | Colligo's mutant suite                                                                                                                        | PR            | planned, Slice 7             |
-| fuzz 60 s per target                                                                                                                          | PR            | planned                      |
+| fuzz 60 s per target (`fuzz` job, parallel to `test`, informative, not required)                                                              | PR            | runs today                   |
 | `apidiff` against the last tag                                                                                                                | PR            | planned, after the first tag |
-| fixture drift, fuzz 4 h per target, mutant benchmark against external tools, performance benchmark                                            | weekly        | planned                      |
+| `COLLIGO_SLOW=1 go test -race ./...` (`slow` job of `weekly.yml`)                                                                             | weekly        | runs today                   |
+| fuzz 30 min per target, corpus cached between weeks (`fuzz` job of `weekly.yml`)                                                              | weekly        | runs today                   |
+| fixture drift, mutant benchmark against external tools                                                                                        | weekly        | planned                      |
 | mutation testing                                                                                                                              | quarterly     | planned                      |
 
-CI runs on `pull_request` and on `push` to `main`, never on the push of a branch without a PR.
+CI runs on `pull_request` and on `push` to `main`, never on the push of a branch without a PR. The weekly workflow runs on `schedule` and `workflow_dispatch`. GitHub disables scheduled workflows after 60 days without activity in the repository; a quiet repository needs a manual `workflow_dispatch` (or any commit) to bring the weekly job back.
 
 **Never in CI:** any test with the `restricted` build tag.
