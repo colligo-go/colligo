@@ -53,6 +53,11 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 				write(t, dir, "ids_R1.fastq", fastqText("AAA", 10, "ACGT")),
 				write(t, dir, "ids_R2.fastq", fastqText("BBB", 10, "ACGT")))
 		},
+		diagnoses.PairMissing: func() Report {
+			return run(t, Options{},
+				write(t, dir, "lonely_R1.fastq", reads(5)),
+				write(t, dir, "other.fastq", reads(5)))
+		},
 		diagnoses.ExtensionMismatch: func() Report {
 			return run(t, Options{}, write(t, dir, "genome.fasta", reads(5)))
 		},

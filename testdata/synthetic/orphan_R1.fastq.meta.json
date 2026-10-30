@@ -1,0 +1,14 @@
+{
+  "generator": "internal/corpus",
+  "description": "first mate whose second mate is not in the corpus",
+  "size": 10951,
+  "sha256": "b047468fc4e771e75f2065fa29c5dd76b62d08b82140de157c8af78aa16b7f8a",
+  "recorded_at": "2026-10-29T17:09:20Z",
+  "expect": {
+    "records": 80,
+    "bases": 4800,
+    "failed": [
+      "pair_missing"
+    ]
+  }
+}

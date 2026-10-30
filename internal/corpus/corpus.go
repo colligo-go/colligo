@@ -115,6 +115,8 @@ func Generate() []Fixture {
 	pair1 := randomReads(2, "PAIR", "/1", 300, 76, 76)
 	pair2 := randomReads(3, "PAIR", "/2", 300, 76, 76)
 
+	orphan := randomReads(9, "ORPHAN", "/1", 80, 60, 60)
+
 	desync1 := randomReads(4, "DSYNC", "/1", 120, 60, 60)
 	desync2 := randomReads(5, "DSYNC", "/2", 119, 60, 60)
 
@@ -148,6 +150,7 @@ func Generate() []Fixture {
 		valid("pair_R2.fastq.gz", "second mate of a consistent pair", gz(pair2.text.Bytes()), pair2),
 		valid("desync_R1.fastq", "first mate of a pair whose second mate lost one read", desync1.text.Bytes(), desync1, "pair_count"),
 		valid("desync_R2.fastq", "second mate with one read fewer than the first", desync2.text.Bytes(), desync2, "pair_count"),
+		valid("orphan_R1.fastq", "first mate whose second mate is not in the corpus", orphan.text.Bytes(), orphan, "pair_missing"),
 		valid("crlf.fastq", "FASTQ with CRLF line endings; \\r is not a base", crlf.text.Bytes(), crlf),
 		valid("trailing-blank.fastq", "complete FASTQ followed by two blank lines", blankData, blank, "trailing_blank_lines"),
 		valid("bgzf.fastq.bgz", "FASTQ in BGZF with the EOF block", bgzf(bgz.text.Bytes(), true), bgz),

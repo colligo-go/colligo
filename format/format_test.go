@@ -492,3 +492,21 @@ func TestFastaSemicolonLinesAreRejected(t *testing.T) {
 		}
 	}
 }
+
+func TestMateName(t *testing.T) {
+	for in, want := range map[string]string{
+		"a_R1.fastq.gz":        "a_R2.fastq.gz",
+		"a_R2.fq":              "a_R1.fq",
+		"x_1.fastq":            "x_2.fastq",
+		"S1_L001_R1_001.fastq": "S1_L001_R2_001.fastq",
+		"d.1.fastq.gz":         "d.2.fastq.gz",
+	} {
+		got, ok := MateName(secret.NewName("/data/" + in))
+		if !ok || got != want {
+			t.Errorf("%s: %q %v, want %q", in, got, ok, want)
+		}
+	}
+	if _, ok := MateName(secret.NewName("reads.fastq")); ok {
+		t.Error("a name without a mate suffix has no mate")
+	}
+}
