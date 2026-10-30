@@ -132,7 +132,7 @@ Seed with the synthetic fixtures. Invariants:
 
 Every PR runs each target for 60 s in the `fuzz` job of `ci.yml`, parallel to `test` and informative: it is not in `.github/rulesets/main.json`, because fuzzing is random and could block a PR over an old bug. The weekly job (`weekly.yml`) runs each target for 30 min, one job per target, restoring and saving the fuzz corpus with `actions/cache` between weeks. A target that finds a failure uploads the input as an artifact.
 
-Every case fuzzing finds becomes a file in `testdata/fuzz/<Target>/` inside the package that owns the target (for example `format/testdata/fuzz/FuzzValidateFastq/`), committed with the fix. That is the directory `go test` reads on its own, so the required `test` check replays the case on every run, deterministically.
+Every case fuzzing finds becomes a file at `<package>/testdata/fuzz/<Target>/`, inside the package that owns the target (for example `format/testdata/fuzz/FuzzValidateFastq/`; never in a `testdata/fuzz/` at the repository root), committed with the fix. That is the directory `go test` reads on its own, so the required `test` check replays the case on every run, deterministically.
 
 This is the item of highest value per line written against a bug that nobody imagined.
 
@@ -248,18 +248,16 @@ Speed is a measured requirement, not an impression. A versioned benchmark, runni
 | ------------------------------------------ | ------------------------------------------------------------ | ---------------------------- | ----------------------------------------------- |
 | Full `check` of `.fastq.gz`                | pure-Go gunzip (`klauspost/compress`), same file and machine | ≤ 110% of the floor; `zcat \ | wc -l` measured and reported                    |
 | Full `check` of BAM                        | `samtools view -c`                                           | ≤ 110% of the floor          | no; BAM does not have a validator yet           |
-| Hash of an uncompressed file               | `b3sum`                                                      | ≤ 120% of the floor          | yes, `TestPerformanceHash`; goal not met (§7.1) |
+| Hash of an uncompressed file               | the slowest of `md5sum`, `sha256sum`, `b3sum -j1`            | ≤ 120% of the floor          | yes, `TestPerformanceHash`; goal not met (§7.1) |
 | Second run, 10 thousand unchanged files    | —                                                            | ≤ 5 s on SSD                 | no; depends on the `stat` gate (Slice 4)        |
 | Allocations per record in the FASTQ parser | —                                                            | 0                            | yes, `testing.AllocsPerRun` in `format`         |
 | `get` with full verification               | plain `curl`, same file and local server                     | ≤ 105% of the floor          | no; `get` is Slice 3                            |
 
 The reference machine and the baseline live in `testdata/perf/<machine>/`: `machine.md` (hardware, governor, power), `baseline.json` (three recorded runs per test) and the CPU and memory profiles `cpu.pprof` and `mem.pprof`. The profiles are built with `-trimpath` and scrubbed of the binary path, and nothing with a user name or a directory is committed.
 
-**Regression gate.** With `COLLIGO_PERF_MACHINE=<machine>`, `TestPerformanceFloor` and `TestPerformanceHash` compare the gated measurements (the time of `Compute`, and for gzip also its ratio to each floor) with the best of the recorded runs, and fail when every one of three rounds is more than 5% worse. Interference on a machine only makes a run slower, so the best time is the one that estimates the machine, and a single noisy round does not fail the test. The ratio against `b3sum` is reported and not gated: `b3sum` finishes in under 0.2 s, and a few milliseconds of noise there move the ratio by tens of percent. It is a local check on the reference machine and never runs in CI: the GitHub runner is a different, shared machine in every run, so a time recorded here means nothing there and the variation between runners is larger than 5%. With `COLLIGO_PERF_RECORD=1` the run is appended to the baseline instead.
+**Regression gate.** With `COLLIGO_PERF_MACHINE=<machine>`, `TestPerformanceFloor` and `TestPerformanceHash` measure five rounds, take the median of each gated measurement (the time of `Compute` and its ratio to each floor) and compare it with the median of the recorded runs. The test fails when the median is worse than the tolerance recorded in `baseline.json` (`tolerance_percent`, 5% when absent; 10% on the reference machine, see its `machine.md`). The median, not the best, because a baseline made of best times is a number the machine reaches only on its best day. The baseline is recorded in quiet conditions: mains power, turbo off for the duration of the measurement, no other programs, five runs appended with `COLLIGO_PERF_RECORD=1`. If identical measurements still spread by more than the tolerance, `machine.md` says the machine is not a valid reference. It is a local check and never runs in CI: the GitHub runner is a different, shared machine in every run, so a time recorded here means nothing there and the variation between runners is larger than the tolerance.
 
-On the reference machine the best-of-3 of the same measurement varied by up to 8% between runs, so the 5% gate is only meaningful on a quiet machine.
-
-The `Hash of an uncompressed file` goal is reported, not enforced: `Compute` also computes MD5 and SHA-256 and validates the format in the same read, and `b3sum` does only BLAKE3.
+**Hash floor.** `Compute` computes BLAKE3, MD5 and SHA-256 in parallel from one read (SPEC §7), so the floor is the slowest of the three run alone on the same file: `md5sum`, `sha256sum` and `b3sum --num-threads 1`. On the reference machine, without SHA-NI, that is `sha256sum`. The goal is 120% of that floor, and the test enforces it. `b3sum` with all threads is only reported: it computes one hash on every core.
 
 The switch from `compress/gzip` to `klauspost/compress/gzip` only enters with the result of this benchmark showing a gain.
 
@@ -329,6 +327,7 @@ CI sets `COLLIGO_REQUIRE_PYTHON=1` and `COLLIGO_REQUIRE_B3SUM=1`. The performanc
 | `COLLIGO_PERF`           | any non-empty value turns on `TestPerformanceFloor`; without it the test skips                                                                                   |
 | `COLLIGO_PERF_DIR`       | directory where the benchmark stores and reuses the generated `.fastq.gz`; without it, it uses a temporary directory of the test and generates again on each run |
 | `COLLIGO_PERF_MACHINE`   | name of the directory in `testdata/perf/` with the baseline of this machine; turns on the 5% regression gate of §7.1                                             |
+| `COLLIGO_PERF_TOLERANCE_PERCENT` | with `COLLIGO_PERF_RECORD`, stores this tolerance in `baseline.json` |
 | `COLLIGO_PERF_RECORD`    | any non-empty value appends the run to `baseline.json` instead of comparing (needs `COLLIGO_PERF_MACHINE`)                                                       |
 | `COLLIGO_SLOW`           | any non-empty value turns on the resource tests that take minutes (§7.2)                                                                                         |
 
@@ -338,7 +337,7 @@ CI sets `COLLIGO_REQUIRE_PYTHON=1` and `COLLIGO_REQUIRE_B3SUM=1`. The performanc
 COLLIGO_PERF=1 COLLIGO_PERF_DIR=/path/with/space go test ./facts -run TestPerformance -v
 ```
 
-The test generates a `.fastq.gz` with 1 GiB of decompressed FASTQ (100-base reads, fixed seed), measures three times (best time) the pure-Go gunzip, `zcat | wc -l` and `Compute` with hashes, and prints the three times and the ratios. It fails if `Compute` exceeds 110% of the pure-Go floor; the ratio against `zcat | wc -l` is only reported. `TestPerformanceHash` generates 1 GiB of uncompressed FASTQ and measures `Compute` with hashes against `b3sum` and `b3sum --num-threads 1`; the ratio is reported, the goal of 120% is not enforced. It needs `b3sum`, and `COLLIGO_REQUIRE_B3SUM=1` turns its absence into a failure. `TestPerformanceFloor` requires `zcat` on the `PATH`. `go test ./facts -bench ComputeFastqGz` measures the same `Compute` over a generated file with 256 MiB decompressed as a plain Go benchmark, with no goal.
+The test generates a `.fastq.gz` with 1 GiB of decompressed FASTQ (100-base reads, fixed seed), measures three times (best time) the pure-Go gunzip, `zcat | wc -l` and `Compute` with hashes, and prints the three times and the ratios. It fails if `Compute` exceeds 110% of the pure-Go floor; the ratio against `zcat | wc -l` is only reported. `TestPerformanceHash` generates 1 GiB of uncompressed FASTQ and measures `Compute` with hashes against the slowest single hash (goal 120%, enforced) and against `b3sum` (reported). It needs `b3sum`, `md5sum` and `sha256sum`, and `COLLIGO_REQUIRE_B3SUM=1` turns the absence of `b3sum` into a failure. `TestPerformanceFloor` requires `zcat` on the `PATH`. `go test ./facts -bench ComputeFastqGz` measures the same `Compute` over a generated file with 256 MiB decompressed as a plain Go benchmark, with no goal.
 
 ---
 

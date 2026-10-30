@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 	"time"
 
@@ -19,17 +20,25 @@ import (
 )
 
 const (
-	perfTolerance = 1.05
-	perfRounds    = 3
-	perfTrials    = 3
+	perfDefaultTolerancePercent = 5
+	perfRounds                  = 5
+	perfTrials                  = 3
 )
 
 type perfMeasure map[string]float64
 
 type perfBaseline struct {
-	Machine string                   `json:"machine"`
-	Go      string                   `json:"go"`
-	Runs    map[string][]perfMeasure `json:"runs"`
+	Machine          string                   `json:"machine"`
+	Go               string                   `json:"go"`
+	TolerancePercent float64                  `json:"tolerance_percent"`
+	Runs             map[string][]perfMeasure `json:"runs"`
+}
+
+func (b perfBaseline) tolerance() float64 {
+	if b.TolerancePercent == 0 {
+		return 1 + perfDefaultTolerancePercent/100.0
+	}
+	return 1 + b.TolerancePercent/100
 }
 
 func perfBaselinePath() string {
@@ -56,6 +65,11 @@ func recordPerfRun(t *testing.T, name string, m perfMeasure) {
 	t.Helper()
 	b := readPerfBaseline(t)
 	b.Go = runtime.Version()
+	if v := os.Getenv("COLLIGO_PERF_TOLERANCE_PERCENT"); v != "" {
+		if _, err := fmt.Sscan(v, &b.TolerancePercent); err != nil {
+			t.Fatal(err)
+		}
+	}
 	b.Runs[name] = append(b.Runs[name], m)
 	raw, err := json.MarshalIndent(b, "", "  ")
 	if err != nil {
@@ -69,23 +83,41 @@ func recordPerfRun(t *testing.T, name string, m perfMeasure) {
 	}
 }
 
-func bestRecorded(runs []perfMeasure, key string) float64 {
-	best := runs[0][key]
-	for _, run := range runs[1:] {
-		best = min(best, run[key])
+func medianRecorded(runs []perfMeasure, key string) float64 {
+	values := make([]float64, 0, len(runs))
+	for _, run := range runs {
+		values = append(values, run[key])
 	}
-	return best
+	sort.Float64s(values)
+	return values[len(values)/2]
 }
 
-func perfRegressions(runs []perfMeasure, now perfMeasure, gated []string) []string {
+func medianMeasure(rounds []perfMeasure) perfMeasure {
+	median := perfMeasure{}
+	for key := range rounds[0] {
+		median[key] = medianRecorded(rounds, key)
+	}
+	return median
+}
+
+func perfRegressions(runs []perfMeasure, now perfMeasure, gated []string, tolerance float64) []string {
 	var worse []string
 	for _, key := range gated {
-		base := bestRecorded(runs, key)
-		if now[key] > base*perfTolerance {
+		base := medianRecorded(runs, key)
+		if now[key] > base*tolerance {
 			worse = append(worse, fmt.Sprintf("%s %.3f vs baseline %.3f (+%.1f%%)", key, now[key], base, 100*(now[key]/base-1)))
 		}
 	}
 	return worse
+}
+
+func perfSpread(runs []perfMeasure, key string) float64 {
+	values := make([]float64, 0, len(runs))
+	for _, run := range runs {
+		values = append(values, run[key])
+	}
+	sort.Float64s(values)
+	return (values[len(values)-1] - values[0]) / values[len(values)/2]
 }
 
 func runPerf(t *testing.T, name string, gated []string, measure func(*testing.T) perfMeasure) perfMeasure {
@@ -104,23 +136,24 @@ func runPerf(t *testing.T, name string, gated []string, measure func(*testing.T)
 		recordPerfRun(t, name, m)
 		return m
 	}
-	runs := readPerfBaseline(t).Runs[name]
+	baseline := readPerfBaseline(t)
+	runs := baseline.Runs[name]
 	if len(runs) == 0 {
 		t.Fatalf("no %q baseline for machine %q in %s: record one with COLLIGO_PERF_RECORD=1", name, machine, perfBaselinePath())
 	}
-	var m perfMeasure
-	var worse []string
-	for round := 1; round <= perfRounds; round++ {
-		m = measure(t)
-		worse = perfRegressions(runs, m, gated)
-		if len(worse) == 0 {
-			t.Logf("no regression against the baseline of %q (round %d of %d, tolerance %.0f%%)", machine, round, perfRounds, 100*(perfTolerance-1))
-			return m
-		}
-		t.Logf("round %d of %d regressed: %v", round, perfRounds, worse)
+	rounds := make([]perfMeasure, perfRounds)
+	for i := range rounds {
+		rounds[i] = measure(t)
 	}
-	t.Fatalf("every one of %d rounds is more than %.0f%% worse than the baseline of %q: %v", perfRounds, 100*(perfTolerance-1), machine, worse)
-	return m
+	median := medianMeasure(rounds)
+	for _, key := range gated {
+		t.Logf("%s: median of %d rounds %.3f, spread between rounds %.1f%%", key, perfRounds, median[key], 100*perfSpread(rounds, key))
+	}
+	if worse := perfRegressions(runs, median, gated, baseline.tolerance()); len(worse) > 0 {
+		t.Fatalf("the median of %d rounds is more than %.0f%% worse than the baseline of %q: %v", perfRounds, 100*(baseline.tolerance()-1), machine, worse)
+	}
+	t.Logf("no regression against the baseline of %q (median of %d rounds, tolerance %.0f%%)", machine, perfRounds, 100*(baseline.tolerance()-1))
+	return median
 }
 
 func bestOf(fn func()) time.Duration {
@@ -195,32 +228,46 @@ func TestPerformanceHash(t *testing.T) {
 	if !ok {
 		t.Skip("b3sum not found: the hash floor cannot be measured")
 	}
+	for _, tool := range []string{"md5sum", "sha256sum"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Fatalf("%s not found: the hash floor cannot be measured", tool)
+		}
+	}
 	path, size := perfFastq(t, 1024)
-	m := runPerf(t, "hash", []string{"hash_s"}, func(t *testing.T) perfMeasure {
-		run := func(args ...string) time.Duration {
+	m := runPerf(t, "hash", []string{"hash_s", "hash_vs_floor"}, func(t *testing.T) perfMeasure {
+		alone := func(tool string, args ...string) float64 {
 			return bestOf(func() {
-				if err := exec.Command(b3sum, append(args, path)...).Run(); err != nil {
+				if err := exec.Command(tool, append(args, path)...).Run(); err != nil {
 					t.Fatal(err)
 				}
-			})
+			}).Seconds()
 		}
-		floor := run()
-		floorOneThread := run("--num-threads", "1")
+		md5 := alone("md5sum")
+		sha := alone("sha256sum")
+		blake := alone(b3sum, "--num-threads", "1")
+		b3 := alone(b3sum)
+		floor := max(md5, sha, blake)
 		ours := bestOf(func() {
 			f := openOrFail(t, path)
 			defer f.Close()
 			if _, err := Compute(context.Background(), f, Options{Hashes: true}); err != nil {
 				t.Fatal(err)
 			}
-		})
+		}).Seconds()
 		return perfMeasure{
-			"b3sum_s":               floor.Seconds(),
-			"b3sum_1thread_s":       floorOneThread.Seconds(),
-			"hash_s":                ours.Seconds(),
-			"hash_vs_b3sum":         float64(ours) / float64(floor),
-			"hash_vs_b3sum_1thread": float64(ours) / float64(floorOneThread),
+			"md5sum_s":        md5,
+			"sha256sum_s":     sha,
+			"b3sum_1thread_s": blake,
+			"b3sum_s":         b3,
+			"hash_floor_s":    floor,
+			"hash_s":          ours,
+			"hash_vs_floor":   ours / floor,
+			"hash_vs_b3sum":   ours / b3,
 		}
 	})
-	t.Logf("file %.0f MiB uncompressed: b3sum = %.2fs, b3sum --num-threads 1 = %.2fs, Compute = %.2fs", float64(size)/(1<<20), m["b3sum_s"], m["b3sum_1thread_s"], m["hash_s"])
-	t.Logf("Compute = %.1f%% of b3sum (target <= 120%%, reported), %.1f%% of single-thread b3sum", 100*m["hash_vs_b3sum"], 100*m["hash_vs_b3sum_1thread"])
+	t.Logf("file %.0f MiB uncompressed: md5sum = %.2fs, sha256sum = %.2fs, b3sum --num-threads 1 = %.2fs, floor (slowest) = %.2fs, Compute = %.2fs", float64(size)/(1<<20), m["md5sum_s"], m["sha256sum_s"], m["b3sum_1thread_s"], m["hash_floor_s"], m["hash_s"])
+	t.Logf("Compute = %.1f%% of the slowest single hash (target <= 120%%), %.1f%% of b3sum with all threads (reported)", 100*m["hash_vs_floor"], 100*m["hash_vs_b3sum"])
+	if m["hash_vs_floor"] > 1.20 {
+		t.Fatalf("Compute is %.1f%% of the slowest single hash, target is 120%%", 100*m["hash_vs_floor"])
+	}
 }
