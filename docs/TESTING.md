@@ -74,10 +74,6 @@ Mesma **forma** da resposta real, valores inventados. É o que roda no CI e para
 
 Para os validadores de formato, o corpus sintético é produzido por um gerador versionado, `internal/corpus`: `go test ./internal/corpus -record` grava os arquivos e um `.meta.json` irmão com gerador, tamanho, SHA-256, data de gravação e o que o gerador sabe que escreveu — contagem de registros e bases, e quais afirmações devem falhar. Sem a flag, o teste falha se um arquivo divergir do gerador ou se aparecer arquivo que o gerador não produz. O esperado nunca vem de um parser: `check` sobre o diretório e o verificador Python são conferidos contra ele. O gerador comprime com `klauspost/compress`, fixado no `go.sum`: a saída do `compress/gzip` da stdlib muda entre versões do Go, e o corpus precisa dos mesmos bytes em qualquer toolchain.
 
-### `testdata/real/` — nunca versionada
-
-Capturas reais. Fica na máquina de quem tem acesso. Bloqueada por `.gitignore` e por check de CI que falha se algum arquivo sob esse caminho estiver rastreado.
-
 Para regravar o corpus depois de mudar o gerador ou a versão de um extrator:
 
 ```
@@ -86,6 +82,10 @@ git diff --stat testdata/synthetic
 ```
 
 Revise o diff antes de comitar: arquivo que mudou sem o gerador ter mudado é sinal de bug.
+
+### `testdata/real/` — nunca versionada
+
+Capturas reais. Fica na máquina de quem tem acesso. Bloqueada por `.gitignore` e por check de CI que falha se algum arquivo sob esse caminho estiver rastreado.
 
 ### Regras de gravação
 
