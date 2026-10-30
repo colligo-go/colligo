@@ -32,6 +32,11 @@ func Open(name func(FSAccess) string) (*os.File, error) {
 	return f, sanitize(err)
 }
 
+func Stat(name func(FSAccess) string) (os.FileInfo, error) {
+	info, err := os.Stat(Reveal(name))
+	return info, sanitize(err)
+}
+
 func Create(name func(FSAccess) string, suffix string) (*os.File, error) {
 	f, err := os.Create(Reveal(name) + suffix)
 	return f, sanitize(err)

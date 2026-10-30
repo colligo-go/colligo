@@ -122,6 +122,46 @@ func TestFileTruncatedDuringTheReadIsInvalidated(t *testing.T) {
 	requireChanged(t, rep)
 }
 
+func requireChangedBecause(t *testing.T, rep *FileReport, observed string) {
+	t.Helper()
+	requireChanged(t, rep)
+	for _, a := range rep.Assertions {
+		if a.ID == diagnoses.ChangedDuringRead && a.Observed != observed {
+			t.Errorf("observed %q, want %q", a.Observed, observed)
+		}
+	}
+}
+
+func TestFileReplacedByRenameDuringTheReadIsInvalidated(t *testing.T) {
+	data := bigFastq()
+	rep, fired := checkWhileChanging(t, data, func(path string) {
+		replacement := path + ".new"
+		if err := os.WriteFile(replacement, data, 0o644); err != nil {
+			t.Error(err)
+			return
+		}
+		if err := os.Rename(replacement, path); err != nil {
+			t.Error(err)
+		}
+	})
+	if !fired {
+		t.Fatal("the file was never replaced")
+	}
+	requireChangedBecause(t, rep, "replaced")
+}
+
+func TestFileRemovedDuringTheReadIsInvalidated(t *testing.T) {
+	rep, fired := checkWhileChanging(t, bigFastq(), func(path string) {
+		if err := os.Remove(path); err != nil {
+			t.Error(err)
+		}
+	})
+	if !fired {
+		t.Fatal("the file was never removed")
+	}
+	requireChangedBecause(t, rep, "removed")
+}
+
 func TestFileThatDoesNotChangeIsNeverInvalidated(t *testing.T) {
 	for _, data := range [][]byte{nil, fastqText("SRR1", 3, "ACGT"), bigFastq()} {
 		rep, fired := checkWhileChanging(t, data, func(string) {})
