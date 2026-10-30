@@ -14,7 +14,7 @@ func processReadCounter(t *testing.T) (value, selfRead int64) {
 	t.Helper()
 	text, err := os.ReadFile("/proc/self/io")
 	if err != nil {
-		t.Skipf("per-process read accounting is unavailable: %v", err)
+		t.Fatalf("per-process read accounting is unavailable: %v", err)
 	}
 	for _, line := range strings.Split(string(text), "\n") {
 		if field, ok := strings.CutPrefix(line, "rchar: "); ok {
@@ -25,7 +25,7 @@ func processReadCounter(t *testing.T) (value, selfRead int64) {
 			return n, int64(len(text))
 		}
 	}
-	t.Skip("/proc/self/io has no rchar line")
+	t.Fatal("/proc/self/io has no rchar line")
 	return 0, 0
 }
 
