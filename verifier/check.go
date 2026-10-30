@@ -3,6 +3,7 @@ package verifier
 import (
 	"context"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -56,6 +57,20 @@ func CheckFile(ctx context.Context, name secret.Name, opts Options) (*FileReport
 		return unreadable(rep, err), nil
 	}
 	defer f.Close()
+	return checkSource(ctx, rep, f, opts)
+}
+
+type readSource interface {
+	io.Reader
+	Stat() (os.FileInfo, error)
+}
+
+func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Options) (*FileReport, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return unreadable(rep, statFailure(err)), nil
+	}
+	before := stateOf(info)
 	res, err := facts.Compute(ctx, f, facts.Options{Format: contentFormat(opts.Format), Hashes: !opts.Structure})
 	if err != nil {
 		if ctx.Err() != nil {
@@ -63,8 +78,19 @@ func CheckFile(ctx context.Context, name secret.Name, opts Options) (*FileReport
 		}
 		return unreadable(rep, err), nil
 	}
+	info, err = f.Stat()
+	if err != nil {
+		return unreadable(rep, statFailure(err)), nil
+	}
 	rep.Result = res
 	rep.Container, rep.Content, rep.Size = res.Container, res.Content, res.Size
+	if changed := before.differences(stateOf(info)); len(changed) > 0 {
+		rep.Assertions = append(
+			[]model.Assertion{newAssertion(diagnoses.ChangedDuringRead, false, diagnoses.Values{Declared: "unchanged", Observed: strings.Join(changed, ", ") + " changed"})},
+			skipped(evaluatedIDs(), diagnoses.ChangedDuringRead)...)
+		rep.finalize()
+		return rep, nil
+	}
 	exp := opts.Expected
 	if opts.Structure {
 		exp = Expected{}
@@ -75,6 +101,18 @@ func CheckFile(ctx context.Context, name secret.Name, opts Options) (*FileReport
 	rep.Assertions = Evaluate(rep.Name, res, exp, opts.Format, !opts.Structure)
 	rep.finalize()
 	return rep, nil
+}
+
+func evaluatedIDs() []string {
+	var ids []string
+	for _, id := range AssertionIDs() {
+		switch id {
+		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing:
+		default:
+			ids = append(ids, id)
+		}
+	}
+	return ids
 }
 
 func unreadable(rep *FileReport, err error) *FileReport {
