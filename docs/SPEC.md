@@ -1,87 +1,87 @@
-# Colligo — Especificação Técnica
+# Colligo — Technical Specification
 
-Documento declarativo. Descreve **o que existe**, sem narrativa. Para o porquê, ver `DESIGN.md`. Para as defesas contra erro silencioso, `RELIABILITY.md`. Para vazamento de dado restrito, `CONFIDENTIALITY.md`. Implemente a partir daqui.
+Declarative document. It describes **what exists**, without narrative. For the why, see `DESIGN.md`. For the defences against silent error, `RELIABILITY.md`. For leakage of restricted data, `CONFIDENTIALITY.md`. Implement from here.
 
-Módulo: `github.com/<org>/colligo`
-Go: estável mais recente.
-Driver SQLite: `modernc.org/sqlite`.
-BLAKE3: `lukechampine.com/blake3` ou `zeebo/blake3`.
+Module: `github.com/<org>/colligo`
+Go: latest stable.
+SQLite driver: `modernc.org/sqlite`.
+BLAKE3: `lukechampine.com/blake3` or `zeebo/blake3`.
 
 ---
 
-## 1. Estrutura de pacotes
+## 1. Package structure
 
 ```
 colligo/
-├── colligo.go        entry point público: Open(), Config, Export, SourceFor
-├── model/            tipos centrais exportados
+├── colligo.go        public entry point: Open(), Config, Export, SourceFor
+├── model/            exported core types
 ├── secret/           Secret, Name, Endpoint
-├── store/            implementação SQLite de Store; migrations embarcadas
-├── source/           uma sub-package por fonte, sem acesso a disco ou banco
+├── store/            SQLite implementation of Store; embedded migrations
+├── source/           one sub-package per source, with no access to disk or database
 │   ├── gencode/
 │   ├── ensembl/
 │   ├── geo/
 │   ├── cbioportal/
 │   ├── pdb/
 │   └── dfam/
-├── transport/        HTTP, FTP, DRS; superfície mínima
-├── profile/          perfis plugáveis
-├── facts/            leitura única em streaming: árvore BLAKE3 com outboard Bao, MD5, SHA-256 e fatos de formato
+├── transport/        HTTP, FTP, DRS; minimal surface
+├── profile/          pluggable profiles
+├── facts/            single streaming read: BLAKE3 tree with Bao outboard, MD5, SHA-256 and format facts
 ├── downloader/       worker pools, retry, rate limit, resume
-├── adopt/            registro de arquivo pré-existente sob custódia
-├── verifier/         funil: stat gate, fatos, afirmações, scrub
-├── format/           validadores estruturais que também extraem fatos
-├── identity/         identificação por conteúdo: seqcol, cabeçalho de GTF, hash contra checksums oficiais
-├── compat/           comparação de sistemas de coordenadas por Sequence Collections
-├── upstream/         reconsulta de metadados na fonte e comparação com o guardado
-├── validator/        validação de metadados em duas fases
-├── manifest/         export e atestação de manifesto portátil
-├── exporter/         TSV/JSON/CSV com custódia
-├── checksum/         vetores conhecidos de BLAKE3, MD5 e SHA-256, rodados antes de qualquer hash
-├── logf/             campos de log tipados; sem campo `string` para caminho, URL ou credencial
-├── retry/            políticas: exponential, linear, custom
-├── sourcetest/       suíte de conformidade de adapters (API pública)
-├── storetest/        suíte de conformidade de Store
-├── mutants/          (planejado, Fatia 7) gerador de falhas silenciosas para teste e benchmark
-├── diagnoses/        catálogo versionado de diagnósticos: observação, causa provável, ação
-├── spec/             modelos TLA+ do resume, rename e máquina de estados
-├── tools/            verificador independente de certificado (Python)
-├── cmd/colligo/      CLI: porta leve e porta pesada (§16)
-└── internal/         helpers não exportados: noleak, fsaccess, exttool, corpus, buildinfo, archtest
+├── adopt/            registration of a pre-existing file under custody
+├── verifier/         funnel: stat gate, facts, assertions, scrub
+├── format/           structural validators that also extract facts
+├── identity/         identification by content: seqcol, GTF header, hash against official checksums
+├── compat/           comparison of coordinate systems by Sequence Collections
+├── upstream/         re-query of metadata at the source and comparison with the stored one
+├── validator/        two-phase metadata validation
+├── manifest/         export and attestation of a portable manifest
+├── exporter/         TSV/JSON/CSV with custody
+├── checksum/         known vectors of BLAKE3, MD5 and SHA-256, run before any hash
+├── logf/             typed log fields; no `string` field for path, URL or credential
+├── retry/            policies: exponential, linear, custom
+├── sourcetest/       adapter conformance suite (public API)
+├── storetest/        Store conformance suite
+├── mutants/          (planned, Slice 7) generator of silent failures for test and benchmark
+├── diagnoses/        versioned catalogue of diagnoses: observation, probable cause, action
+├── spec/             TLA+ models of resume, rename and the state machine
+├── tools/            independent certificate verifier (Python)
+├── cmd/colligo/      CLI: light door and heavy door (§16)
+└── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-A árvore é o destino. Os pacotes entram nas fatias do `ROADMAP.md`: hoje existem `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (só o certificado), `diagnoses`, `tools` e `cmd/colligo`. Sem `mutants/`, a cobertura de modos de falha vem do corpus sintético versionado e dos testes de cada defesa.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
-**Regra de grafo de import, verificada em teste:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` e `checksum` não importam `source/*`. Registro de fonte é explícito via option; não há `init()` com efeito colateral.
+**Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
-**Regra das duas portas, verificada em teste:** o caminho de `colligo check`, `validate`, `identify` e `compat` não importa `store`. `facts`, `format`, `identity`, `compat` e a parte de metadados de `source/*` não dependem de banco.
+**Two-doors rule, verified in test:** the path of `colligo check`, `validate`, `identify` and `compat` does not import `store`. `facts`, `format`, `identity`, `compat` and the metadata part of `source/*` do not depend on a database.
 
 ---
 
 ## 2. PRAGMAs
 
-Abertura conforme `CONTRACT.md` §2, idêntica no Scribo. Aplicar em toda conexão e **ler de volta** para confirmar que surtiram efeito.
+Opening per `CONTRACT.md` §2, identical in Scribo. Apply on every connection and **read back** to confirm they took effect.
 
 ```
 foreign_keys = ON
-journal_mode = <resolvido pelo filesystem>
+journal_mode = <resolved by the filesystem>
 synchronous  = NORMAL
 busy_timeout = 5000
 ```
 
-Journal mode: `statfs` no diretório do banco; filesystem local → `WAL`; filesystem de rede (`nfs`, `nfs4`, `cifs`, `smb2`, `lustre`, `gpfs`, `fuse.*`, `afs`, `9p`) → `DELETE`, com aviso. WAL exige memória compartilhada entre processos no mesmo host; sobre NFS é corrupção silenciosa. Override explícito registrado em `tool_runs`. Transações de escrita abrem com `_txlock=immediate`.
+Journal mode: `statfs` on the database directory; local filesystem → `WAL`; network filesystem (`nfs`, `nfs4`, `cifs`, `smb2`, `lustre`, `gpfs`, `fuse.*`, `afs`, `9p`) → `DELETE`, with a warning. WAL requires shared memory between processes on the same host; over NFS it is silent corruption. An explicit override is recorded in `tool_runs`. Write transactions open with `_txlock=immediate`.
 
-`*sql.DB` é pool; PRAGMA via `db.Exec` configura uma conexão só. Os PRAGMAs vão no DSN, que o driver aplica a toda conexão nova:
+`*sql.DB` is a pool; a PRAGMA via `db.Exec` configures only one connection. The PRAGMAs go in the DSN, which the driver applies to every new connection:
 
 ```
 file:study.db?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=busy_timeout(5000)&_txlock=immediate
 ```
 
-A leitura de volta roda no hook de conexão nova, não uma vez na abertura. Divergência entre valor pedido e valor lido → erro `fatal`. Tabelas usam `STRICT` (SQLite 3.37+). `mmap_size` e `cache_size` ajustáveis.
+The read-back runs in the new-connection hook, not once at opening. A divergence between the requested value and the value read → `fatal` error. Tables use `STRICT` (SQLite 3.37+). `mmap_size` and `cache_size` are tunable.
 
 ---
 
-## 3. Schema SQLite
+## 3. SQLite schema
 
 ```sql
 CREATE TABLE study_meta (
@@ -294,36 +294,36 @@ CREATE TABLE tabular_samples (
 ) STRICT;
 ```
 
-Schemas de `atacseq_samples`, `methylation_samples` e `wgs_samples` a definir ao implementar cada perfil.
+Schemas of `atacseq_samples`, `methylation_samples` and `wgs_samples` to be defined when each profile is implemented.
 
-`study_meta` guarda: `schema_version`, `study_id`, `classification`, `salt`, `canary_hash`, `created_at`. O `salt` nunca sai daqui.
+`study_meta` holds: `schema_version`, `study_id`, `classification`, `salt`, `canary_hash`, `created_at`. The `salt` never leaves here.
 
-`argv_shape` guarda a forma do comando com valores removidos (`fetch --config <path> --workers <int>`), nunca os valores.
+`argv_shape` holds the shape of the command with values removed (`fetch --config <path> --workers <int>`), never the values.
 
-### Fatos e afirmações
+### Facts and assertions
 
-`facts` é indexada pela raiz BLAKE3 do conteúdo, não por arquivo. Um fato é função pura de `(conteúdo, extrator, versão)`: nunca é recalculado enquanto a raiz e a versão do extrator não mudam, e dois arquivos com o mesmo conteúdo compartilham fatos. `value` é JSON canônico.
+`facts` is indexed by the BLAKE3 root of the content, not by file. A fact is a pure function of `(content, extractor, version)`: it is never recomputed while the root and the extractor version do not change, and two files with the same content share facts. `value` is canonical JSON.
 
-Tipos de fato da v1:
+Fact kinds of v1:
 
-| `kind`         | Conteúdo                                                        |
+| `kind`         | Content                                                         |
 | -------------- | --------------------------------------------------------------- |
-| `digests`      | MD5, SHA-256, tamanho                                           |
-| `structure`    | formato detectado, válido ou não, motivo, offset do problema    |
-| `records`      | contagem de registros e de bases, histograma de comprimento     |
-| `read_ends`    | primeiro e último ID de read, sem sufixo de par                 |
-| `seq_names`    | nomes de sequência amostrados; convenção de cromossomo inferida |
-| `seqcol`       | digest de Sequence Collection e `sorted_name_length_pairs`      |
-| `gtf_header`   | pragmas do cabeçalho de GTF/GFF3                                |
-| `read_header`  | instrumento, run, flowcell e lanes observados nos IDs de read   |
-| `barcode`      | comprimento do R1 e taxa de acerto contra whitelists de química |
-| `matrix`       | nomes de coluna, contagem de linhas, namespace de ID de gene    |
+| `digests`      | MD5, SHA-256, size                                              |
+| `structure`    | detected format, valid or not, reason, offset of the problem    |
+| `records`      | count of records and bases, length histogram                    |
+| `read_ends`    | first and last read ID, without pair suffix                     |
+| `seq_names`    | sampled sequence names; inferred chromosome convention          |
+| `seqcol`       | Sequence Collection digest and `sorted_name_length_pairs`       |
+| `gtf_header`   | pragmas of the GTF/GFF3 header                                  |
+| `read_header`  | instrument, run, flowcell and lanes observed in the read IDs    |
+| `barcode`      | R1 length and hit rate against chemistry whitelists             |
+| `matrix`       | column names, row count, gene ID namespace                      |
 
-Afirmações não têm tabela. São comparações calculadas sob demanda entre fatos, colunas `*_expected` e declarações do TOML. Afirmação que falha vira linha em `discrepancies`. O estado de custódia de um arquivo é função do conjunto de afirmações; não existe coluna de custódia atualizada à mão.
+Assertions have no table. They are comparisons computed on demand between facts, `*_expected` columns and declarations of the TOML. An assertion that fails becomes a row in `discrepancies`. A file's custody state is a function of the set of assertions; there is no custody column updated by hand.
 
-`file_groups` guarda os valores de encadeamento (CV) dos nós da árvore BLAKE3 no nível de 8 MiB. O outboard completo, em `outboard_path`, é reconstruível a partir deles. A raiz derivada dos CVs é igual a `blake3_root`; divergência é `fatal`.
+`file_groups` holds the chaining values (CVs) of the nodes of the BLAKE3 tree at the 8 MiB level. The complete outboard, in `outboard_path`, is reconstructible from them. The root derived from the CVs is equal to `blake3_root`; a divergence is `fatal`.
 
-### Índices
+### Indexes
 
 ```sql
 CREATE INDEX idx_files_status        ON files(status);
@@ -345,157 +345,157 @@ CREATE UNIQUE INDEX idx_files_part_unique ON files(path_part) WHERE path_part IS
 
 ---
 
-## 4. Máquina de estados de arquivo
+## 4. File state machine
 
-Cada transição é linha nova em `file_events`, com `run_id`. Nunca UPDATE destrutivo.
+Each transition is a new row in `file_events`, with `run_id`. Never a destructive UPDATE.
 
-| De          | Para        | Gatilho                                       |
+| From        | To          | Trigger                                       |
 | ----------- | ----------- | --------------------------------------------- |
-| pending     | queued      | enfileirado                                   |
-| queued      | downloading | worker pegou                                  |
-| downloading | verifying   | bytes completos                               |
-| downloading | failed      | erro de rede/servidor                         |
-| verifying   | validating  | checksum global confere                       |
-| verifying   | failed      | checksum não confere                          |
-| validating  | done        | formato e invariantes de par conferem         |
-| validating  | invalid     | formato ou par não confere                    |
-| failed      | retrying    | dentro do limite de tentativas                |
-| retrying    | downloading | nova tentativa                                |
-| failed      | abandoned   | tentativas esgotadas                          |
-| done        | stale       | reverificação detectou mudança                |
-| stale       | verifying   | revalidação disparada                         |
-| invalid     | verifying   | revalidação disparada                         |
-| done        | superseded  | fonte publicou conteúdo diferente na mesma URL |
-| pending     | adopted     | `adopt` registrou arquivo pré-existente       |
-| adopted     | verifying   | verificação de conteúdo disparada             |
+| pending     | queued      | enqueued                                      |
+| queued      | downloading | worker picked it up                           |
+| downloading | verifying   | bytes complete                                |
+| downloading | failed      | network/server error                          |
+| verifying   | validating  | global checksum matches                       |
+| verifying   | failed      | checksum does not match                       |
+| validating  | done        | format and pair invariants match              |
+| validating  | invalid     | format or pair does not match                 |
+| failed      | retrying    | within the attempt limit                      |
+| retrying    | downloading | new attempt                                   |
+| failed      | abandoned   | attempts exhausted                            |
+| done        | stale       | reverification detected a change              |
+| stale       | verifying   | revalidation triggered                        |
+| invalid     | verifying   | revalidation triggered                        |
+| done        | superseded  | source published different content at the same URL |
+| pending     | adopted     | `adopt` registered a pre-existing file        |
+| adopted     | verifying   | content verification triggered                |
 
-Somente `done` conta para completude. A tabela é o código: o mapa de transições válidas é uma variável e o teste de propriedade lê dela.
-
----
-
-## 5. Contrato de resume
-
-Entrada: um `File` com `path_part` existente e `file_groups`.
-
-1. `stat` no `.part` → tamanho real em disco.
-2. Reler do disco os grupos marcados `verified` e recalcular seus CVs. Ponto seguro: fim do maior prefixo contíguo de grupos cujo CV recalculado confere E ≤ tamanho em disco.
-3. Truncar o `.part` ao ponto seguro.
-4. Requisitar `Range: bytes=<ponto_seguro>-`, com `If-Range` do `etag` ou `last_modified` quando disponíveis.
-5. Resposta `200` → `RangeUnsupportedError`, não gravar.
-6. Resposta `412` ou ETag divergente → arquivo trocado na origem: transição para `superseded`, `blocking`, não gravar.
-7. Resposta `206` → gravar do ponto seguro, calculando o CV de cada grupo, marcando cada grupo `verified` ao fechar.
-8. No primeiro grupo gravado da sessão, checar bytes mágicos do formato declarado. Divergência → `fatal`, `.part` preservado.
-9. Ao completar: MD5, SHA-256 e os extratores de formato (§7) precisam ter visto o arquivo inteiro. Download sem interrupção: rodaram durante o streaming do passo 7, sem releitura. Download retomado: o estado deles não sobrevive entre sessões, então uma leitura do `.part` inteiro os alimenta. A raiz derivada dos CVs precisa igualar a raiz calculada. Confere com `md5_expected`/`sha256_expected` → `validating`.
-10. Em `validating`: afirmações de estrutura, de par se houver `pair_id`, e de contagem se houver `reads_expected`/`bases_expected`. Todas conferem → rename `.part` → final, `done`.
-
-No caminho sem interrupção, o arquivo é lido exatamente uma vez: enquanto chega da rede. Qualquer leitura adicional fora do caso de resume é bug.
-
-Invariante: após qualquer interrupção e retomada, o checksum global final sempre confere. Garantido por teste de propriedade.
-
-`ENOSPC` em qualquer ponto: gravar offset seguro **antes** de propagar o erro.
+Only `done` counts toward completeness. The table is the code: the map of valid transitions is a variable and the property test reads from it.
 
 ---
 
-## 6. Contrato de `adopt`
+## 5. Resume contract
 
-Registra arquivo que chegou por fora — `prefetch`, Globus, disco físico, compartilhamento institucional. É o caminho principal para dado controlado.
+Input: a `File` with an existing `path_part` and `file_groups`.
 
-Entrada: caminho no disco, fonte, experimento, amostra, formato declarado, checksum esperado (opcional).
+1. `stat` on the `.part` → actual size on disk.
+2. Re-read from disk the groups marked `verified` and recompute their CVs. Safe point: the end of the longest contiguous prefix of groups whose recomputed CV matches AND ≤ size on disk.
+3. Truncate the `.part` to the safe point.
+4. Request `Range: bytes=<safe_point>-`, with `If-Range` of the `etag` or `last_modified` when available.
+5. Response `200` → `RangeUnsupportedError`, do not write.
+6. Response `412` or divergent ETag → file swapped at the origin: transition to `superseded`, `blocking`, do not write.
+7. Response `206` → write from the safe point, computing the CV of each group, marking each group `verified` when it closes.
+8. On the first group written in the session, check the magic bytes of the declared format. Divergence → `fatal`, `.part` preserved.
+9. On completion: MD5, SHA-256 and the format extractors (§7) must have seen the whole file. Uninterrupted download: they ran during the streaming of step 7, with no re-read. Resumed download: their state does not survive between sessions, so a read of the whole `.part` feeds them. The root derived from the CVs must equal the computed root. Matches `md5_expected`/`sha256_expected` → `validating`.
+10. In `validating`: structure assertions, pair assertions if there is a `pair_id`, and count assertions if there is `reads_expected`/`bases_expected`. All match → rename `.part` → final, `done`.
 
-1. Verificar que o caminho está sob a raiz do estudo. Fora → erro.
-2. `stat`: tamanho e mtime.
-3. Uma leitura em streaming produzindo CVs dos grupos, raiz, outboard, MD5, SHA-256 e fatos de formato.
-4. Se a raiz já tem fatos em `facts` com a versão corrente dos extratores, a extração de formato é pulada.
-5. Afirmações de estrutura e, se houver declaração, de contagem.
-6. Registrar `origin='adopted'`, `url = NULL`, `path` relativo à raiz, baseline de verificação.
-7. Estado final: `done` se havia checksum esperado e conferiu; `adopted` se não havia esperado; `invalid` se conferiu e falhou.
+On the uninterrupted path, the file is read exactly once: while it arrives from the network. Any additional read outside the resume case is a bug.
 
-O arquivo **não é copiado nem movido**. Adoção é registro, não transferência.
+Invariant: after any interruption and resumption, the final global checksum always matches. Guaranteed by a property test.
 
-Sem `url`, não há resume — não há de onde retomar. Reverificação e scrub funcionam identicamente aos arquivos baixados, que é o propósito inteiro.
-
-`colligo adopt --manifest lista.csv` adota em lote a partir de um CSV com colunas `path,sample,format,md5`.
+`ENOSPC` at any point: write the safe offset **before** propagating the error.
 
 ---
 
-## 7. Funil de verificação
+## 6. `adopt` contract
+
+Registers a file that arrived from outside — `prefetch`, Globus, a physical disk, an institutional share. It is the main path for controlled data.
+
+Input: path on disk, source, experiment, sample, declared format, expected checksum (optional).
+
+1. Check that the path is under the study root. Outside → error.
+2. `stat`: size and mtime.
+3. A single streaming read producing the group CVs, root, outboard, MD5, SHA-256 and format facts.
+4. If the root already has facts in `facts` with the current version of the extractors, the format extraction is skipped.
+5. Structure assertions and, if there is a declaration, count assertions.
+6. Register `origin='adopted'`, `url = NULL`, `path` relative to the root, verification baseline.
+7. Final state: `done` if there was an expected checksum and it matched; `adopted` if there was no expected one; `invalid` if it matched and failed.
+
+The file is **neither copied nor moved**. Adoption is registration, not transfer.
+
+Without `url`, there is no resume — there is nowhere to resume from. Reverification and scrub work identically to downloaded files, which is the entire purpose.
+
+`colligo adopt --manifest list.csv` adopts in batch from a CSV with columns `path,sample,format,md5`.
+
+---
+
+## 7. Verification funnel
 
 ```
 verify(file):
-    se baseline existe e modo != deep e stat atual == baseline:
+    if baseline exists and mode != deep and current stat == baseline:
         return UNCHANGED
-    ler arquivo em buffer de 1MB, recalculando os CVs dos grupos
-    se algum CV divergir de file_groups: marcar grupos divergentes; status invalid; return lista
-    raiz confere com blake3_root
-    para cada kind de fato:
-        se facts tem (raiz, kind, versão corrente): reaproveitar
-        senão: extrair na mesma leitura
-    avaliar afirmações
-    atualizar last_verified_at e baseline
+    read file in a 1MB buffer, recomputing the group CVs
+    if any CV diverges from file_groups: mark diverging groups; status invalid; return list
+    root matches blake3_root
+    for each fact kind:
+        if facts has (root, kind, current version): reuse
+        else: extract in the same read
+    evaluate assertions
+    update last_verified_at and baseline
     return VERIFIED
 ```
 
-`UNCHANGED` não é `VERIFIED`. O gate de `stat` decide o que precisa ser lido; não atualiza `last_verified_at` nem leva estado de custódia a `verified`, porque corrupção silenciosa do disco não altera tamanho nem mtime.
+`UNCHANGED` is not `VERIFIED`. The `stat` gate decides what needs to be read; it does not update `last_verified_at` nor take the custody state to `verified`, because silent disk corruption changes neither size nor mtime.
 
-Hash igual implica estrutura igual: com a raiz conferindo, fatos de formato só são reextraídos quando a versão do extrator muda.
+The same hash implies the same structure: with the root matching, format facts are only re-extracted when the extractor version changes.
 
-Modos: `--trust-mtime` (só gate, nunca produz `VERIFIED`), `--deep` (sempre lê conteúdo; reaproveita fatos se a raiz confere, a menos que `--reextract`).
+Modes: `--trust-mtime` (gate only, never produces `VERIFIED`), `--deep` (always reads the content; reuses facts if the root matches, unless `--reextract`).
 
-Scrub: seleciona por número de resultados dependentes descendente (contagem em `result_inputs` do Scribo, quando existir), depois por `last_verified_at` ascendente; teto de I/O por execução; cobre o acervo de forma amortizada. Verificar primeiro o arquivo de que mais resultados dependem cobre o risco maior com o mesmo I/O.
+Scrub: selects by number of dependent results descending (count in Scribo's `result_inputs`, when it exists), then by `last_verified_at` ascending; I/O ceiling per run; covers the collection in an amortised way. Verifying first the file that the most results depend on covers the greater risk with the same I/O.
 
-Concorrência de verificação: default 1–2, configurável, sobe só em storage flash.
+Verification concurrency: default 1–2, configurable, rises only on flash storage.
 
-`check`, `validate` e `verify` standalone, stateless, sem banco: aceitam arquivo solto com `--expected`, arquivo de checksums, ou `--source` para comparar contra a fonte. `--cross-check` emite saída compatível com `sha256sum` e `b3sum`.
+`check`, `validate` and `verify` standalone, stateless, with no database: accept a loose file with `--expected`, a checksums file, or `--source` to compare against the source. `--cross-check` emits output compatible with `sha256sum` and `b3sum`.
 
-### Leitura única
+### Single read
 
-Uma leitura do arquivo alimenta todos os consumidores: árvore BLAKE3, MD5, SHA-256, e o extrator do formato declarado, que recebe o fluxo já descomprimido quando o formato é comprimido. Nenhum consumidor lê o arquivo por conta própria.
+One read of the file feeds all the consumers: BLAKE3 tree, MD5, SHA-256, and the extractor of the declared format, which receives the already decompressed stream when the format is compressed. No consumer reads the file on its own.
 
-Distribuição em paralelo, não em série. `io.MultiWriter` chama cada consumidor em sequência na mesma goroutine, e o custo vira a soma de todos; é proibido neste caminho. O leitor preenche buffers de um anel reaproveitado e entrega a mesma fatia, somente leitura, a uma goroutine por consumidor. O buffer volta ao anel quando todos confirmaram. Custo total da leitura: o do consumidor mais lento, não a soma. Ver §12, "Desempenho".
+Distribution in parallel, not in series. `io.MultiWriter` calls each consumer in sequence on the same goroutine, and the cost becomes the sum of all of them; it is forbidden on this path. The reader fills buffers of a reused ring and hands the same slice, read-only, to one goroutine per consumer. The buffer goes back to the ring when all have acknowledged. Total cost of the read: that of the slowest consumer, not the sum. See §12, "Performance".
 
-Antes de qualquer verificação: vetores conhecidos de hash e canário do estudo. Ver `RELIABILITY.md` §M9.
+Before any verification: known hash vectors and the study canary. See `RELIABILITY.md` §M9.
 
 ---
 
-### Descoberta e diagnóstico
+### Discovery and diagnosis
 
-`check .` e `get` classificam cada arquivo pelos bytes mágicos e pela primeira linha, nunca só pela extensão; divergência entre extensão e conteúdo é `advisory`. Pares são formados por sufixo (`_R1`/`_R2`, `_1`/`_2`, `.1`/`.2`, com o número do pedaço `_001` quando houver, que precisa ser igual nos dois) e confirmados pelos fatos `read_ends`; par cujo sufixo casa mas cujos IDs não casam é `blocking`.
+`check .` and `get` classify each file by the magic bytes and the first line, never by the extension alone; a divergence between extension and content is `advisory`. Pairs are formed by suffix (`_R1`/`_R2`, `_1`/`_2`, `.1`/`.2`, with the chunk number `_001` when there is one, which must be equal in both) and confirmed by the `read_ends` facts; a pair whose suffix matches but whose IDs do not is `blocking`.
 
-Toda afirmação que falha referencia uma entrada do catálogo `diagnoses/`, versionado com o código. Cada entrada tem: identificador, modo de falha de `RELIABILITY.md`, frase de observação com os valores, causa provável, ação sugerida. A saída legível imprime a frase; `--json` inclui o identificador. Afirmação sem entrada no catálogo é bug e falha a suíte.
+Every assertion that fails references an entry of the `diagnoses/` catalogue, versioned with the code. Each entry has: identifier, failure mode of `RELIABILITY.md`, observation sentence with the values, probable cause, suggested action. The readable output prints the sentence; `--json` includes the identifier. An assertion without an entry in the catalogue is a bug and fails the suite.
 
 ---
 
 ## 8. Writer goroutine
 
 ```
-workers → canal de eventos (cada evento + chan error) → writer → SQLite
+workers → event channel (each event + chan error) → writer → SQLite
 ```
 
-Writer único serializa escritas. Worker envia evento e espera ack. Erro de escrita propaga e aborta o pipeline.
+A single writer serialises writes. The worker sends an event and waits for the ack. A write error propagates and aborts the pipeline.
 
-Todo evento carrega o `run_id` corrente.
+Every event carries the current `run_id`.
 
-Shutdown: cancelar context → parar de aceitar eventos → drenar canal → commit final → fsync → gravar `ended_at` e `exit_code` em `tool_runs` → sair.
+Shutdown: cancel context → stop accepting events → drain channel → final commit → fsync → write `ended_at` and `exit_code` in `tool_runs` → exit.
 
-Batch: 100 eventos ou 50ms, o que vier primeiro, com commit forçado no cancelamento. Transições `fatal` são commitadas imediatamente, sem batch.
+Batch: 100 events or 50ms, whichever comes first, with a forced commit on cancellation. `fatal` transitions are committed immediately, without batching.
 
 ---
 
-## 9. Interfaces públicas
+## 9. Public interfaces
 
-Adapters são **puros**: não recebem `Store`, não recebem caminho de disco, não abrem arquivo, não escrevem. A parte de metadados de um adapter — `Fetch` e `Resolve` sem download — é o que a porta leve usa em `check --source` e o que `recheck --upstream` reexecuta.
+Adapters are **pure**: they do not receive a `Store`, do not receive a disk path, do not open files, do not write. The metadata part of an adapter — `Fetch` and `Resolve` without download — is what the light door uses in `check --source` and what `recheck --upstream` re-runs.
 
-O extrator recebe o conteúdo por `Write`, na leitura única, e devolve fatos em `Finish`. Não abre arquivo, não faz seek, não lê duas vezes. Formato cuja validação exige acesso aleatório é modelado como extrator que acumula só o necessário — o bloco EOF de BGZF são os últimos 28 bytes.
+The extractor receives the content through `Write`, in the single read, and returns facts in `Finish`. It does not open files, does not seek, does not read twice. A format whose validation requires random access is modelled as an extractor that accumulates only what is necessary — the BGZF EOF block is the last 28 bytes.
 
-**Fronteira de substituição.** O extrator é a única peça que pode ter implementação fora de Go. Contrato de um extrator externo:
+**Substitution boundary.** The extractor is the only piece that may have an implementation outside Go. Contract of an external extractor:
 
-- Executável no PATH com nome `colligo-<formato>`; o Colligo o descobre, nunca o exige.
-- Recebe o conteúdo pelo stdin e o formato e a `extractor_version` esperada por argumento.
-- Escreve em stdout os fatos em JSON canônico, no mesmo esquema da tabela `facts`, e sai com 0; qualquer outra saída é erro do extrator, não do arquivo.
-- Versão diferente da esperada → o Colligo recusa e usa o extrator Go.
-- Nunca lê caminho, rede, config nem banco; nunca escreve arquivo.
+- Executable on the PATH named `colligo-<format>`; Colligo discovers it, never requires it.
+- Receives the content on stdin and the format and the expected `extractor_version` as arguments.
+- Writes the facts to stdout as canonical JSON, in the same schema as the `facts` table, and exits with 0; any other output is an error of the extractor, not of the file.
+- A version different from the expected one → Colligo refuses and uses the Go extractor.
+- Never reads a path, the network, config or the database; never writes a file.
 
-Todo extrator externo passa pelo teste diferencial contra o extrator Go de mesma versão antes de ser aceito na suíte.
+Every external extractor goes through the differential test against the Go extractor of the same version before being accepted in the suite.
 
 ```go
 type Source interface {
@@ -580,9 +580,9 @@ type Logger interface {
 }
 ```
 
-`SaveRawResponse` decide sozinho gravar corpo ou só hash, consultando a classificação. O chamador não tem opção.
+`SaveRawResponse` decides on its own whether to store the body or only the hash, consulting the classification. The caller has no choice.
 
-Construção via functional options:
+Construction via functional options:
 
 ```go
 store, err := colligo.Open("study.db",
@@ -591,13 +591,13 @@ store, err := colligo.Open("study.db",
 )
 ```
 
-Iteração sobre estudos grandes via `iter.Seq2`.
+Iteration over large studies via `iter.Seq2`.
 
-`sourcetest` e `storetest` são API pública. Adicionar asserção é evento de semver.
+`sourcetest` and `storetest` are public API. Adding an assertion is a semver event.
 
 ---
 
-## 10. Erros tipados
+## 10. Typed errors
 
 ```go
 type ChecksumError struct{ ... }
@@ -621,116 +621,116 @@ type SelfTestError struct{ ... }
 type ClockError struct{ ... }
 ```
 
-Inspecionáveis via `errors.As`. Na porta leve, a falha de um arquivo não é um desses erros: é uma afirmação do catálogo `diagnoses/` com severidade, e `check` não aborta por ela. Hoje só `SelfTestError` (`checksum/`) existe; os demais chegam com o `store` e as fatias que os usam. Todo campo de caminho, URL ou credencial usa os tipos de `secret/` — incluindo `RangeUnsupportedError`, `SourceError` e `ChecksumError`, que hoje carregam `string`. Cada erro carrega `Severity()`.
+Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) exists; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
 
 ---
 
-## 11. Estratégia de erro de rede
+## 11. Network error strategy
 
-| Erro                      | Estratégia                                |
+| Error                     | Strategy                                  |
 | ------------------------- | ----------------------------------------- |
-| Timeout / 5xx             | Retry com backoff exponencial + jitter    |
-| 429 / 503 com Retry-After | Honrar o header acima do backoff próprio  |
-| CV de grupo divergente    | Rebaixar só o grupo                       |
-| 200 quando esperava 206   | Permanente (`RangeUnsupportedError`)      |
-| 412 ou ETag divergente    | `SupersededError`, blocking               |
-| 404                       | Permanente                                |
-| 401 / 403                 | Permanente, avisa usuário                 |
-| ENOSPC                    | `fatal`, após gravar offset seguro        |
+| Timeout / 5xx             | Retry with exponential backoff + jitter   |
+| 429 / 503 with Retry-After | Honour the header above its own backoff  |
+| Diverging group CV        | Re-download only the group                |
+| 200 when 206 was expected | Permanent (`RangeUnsupportedError`)       |
+| 412 or diverging ETag     | `SupersededError`, blocking               |
+| 404                       | Permanent                                 |
+| 401 / 403                 | Permanent, warns the user                 |
+| ENOSPC                    | `fatal`, after writing the safe offset    |
 
-Backoff: `min(2^N, 300s) + jitter`. Rate limiter compartilhado por chave de API.
+Backoff: `min(2^N, 300s) + jitter`. Rate limiter shared per API key.
 
 ---
 
-## 12. Concorrência
+## 12. Concurrency
 
 ```
-Metadata pool  → 20–50 goroutines, rate limitado por domínio
-Download pool  → 4–8 goroutines, limite de conexões por domínio
+Metadata pool  → 20–50 goroutines, rate limited per domain
+Download pool  → 4–8 goroutines, connection limit per domain
 Verify pool    → 1–2 goroutines
 ```
 
-Limites por domínio (default, configurável): `ftp.ebi.ac.uk` 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
+Per-domain limits (default, configurable): `ftp.ebi.ac.uk` 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
 
-Estes defaults existem para não queimar o IP da sua instituição. Aumentá-los é sua responsabilidade e fica registrado em `config_hash`.
+These defaults exist so as not to burn your institution's IP. Raising them is your responsibility and is recorded in `config_hash`.
 
-HTTP: `Accept-Encoding: identity` para arquivos já comprimidos; reuso de conexão via `MaxIdleConnsPerHost`; `io.CopyBuffer` de 1MB. Conteúdo de arquivo nunca em memória.
+HTTP: `Accept-Encoding: identity` for already compressed files; connection reuse via `MaxIdleConnsPerHost`; 1MB `io.CopyBuffer`. File content is never in memory.
 
-Concorrência de leitura local ajustada ao armazenamento: vários arquivos ao mesmo tempo em SSD e sistema de arquivos de rede; um por vez em disco rotacional, onde leitura concorrente vira busca aleatória. Default conservador de 2; `--jobs` muda. Hoje o default é 2 em qualquer armazenamento: a detecção de disco rotacional ainda não existe.
+Local read concurrency adjusted to the storage: several files at the same time on SSD and network filesystems; one at a time on a rotational disk, where concurrent reads turn into random seeks. Conservative default of 2; `--jobs` changes it. Today the default is 2 on any storage: detection of a rotational disk does not exist yet.
 
-### Desempenho
+### Performance
 
-Ordem de custo, do maior para o menor: rede, descompressão, parser, hash, banco. O banco e o driver `modernc` nunca são gargalo.
+Order of cost, from largest to smallest: network, decompression, parser, hash, database. The database and the `modernc` driver are never the bottleneck.
 
-**Piso físico.** Validar gzip simples e FASTQ exige descomprimir tudo. O piso de `check` completo é a descompressão em Go puro (`klauspost/compress/gzip`) do mesmo arquivo. Meta: `check` completo de um `.fastq.gz` custa no máximo 10% acima desse piso na mesma máquina — isto mede o que é nosso: leitura única, hashes e parser. `zcat arquivo | wc -l` continua medido e reportado; a distância até ele é a do inflate em Go contra o zlib em C, e fechá-la exige cgo ou descompressão especulativa (`BACKLOG.md`), que não entram à custa de confiabilidade. Medido no benchmark de `TESTING.md` §7.1.
+**Physical floor.** Validating plain gzip and FASTQ requires decompressing everything. The floor of a full `check` is pure-Go decompression (`klauspost/compress/gzip`) of the same file. Goal: a full `check` of a `.fastq.gz` costs at most 10% above that floor on the same machine — this measures what is ours: single read, hashes and parser. `zcat file | wc -l` is still measured and reported; the distance to it is that of Go's inflate against C's zlib, and closing it requires cgo or speculative decompression (`BACKLOG.md`), which do not enter at the expense of reliability. Measured in the benchmark of `TESTING.md` §7.1.
 
-**Descompressão.**
+**Decompression.**
 
-- `github.com/klauspost/compress/gzip` no lugar de `compress/gzip`, condicionado a benchmark que mostre ganho na máquina de referência.
-- BGZF e BAM: blocos independentes, descomprimidos em paralelo por um pool limitado, com reordenação antes do extrator. Meta da Fatia 7 (`ROADMAP.md`); hoje o BGZF passa pelo mesmo descompressor sequencial do gzip.
-- Gzip simples não tem paralelismo trivial. Descompressão especulativa paralela, como a do rapidgzip, fica no `BACKLOG.md`.
+- `github.com/klauspost/compress/gzip` in place of `compress/gzip`, conditioned on a benchmark showing a gain on the reference machine.
+- BGZF and BAM: independent blocks, decompressed in parallel by a bounded pool, with reordering before the extractor. A Slice 7 goal (`ROADMAP.md`); today BGZF goes through the same sequential decompressor as gzip.
+- Plain gzip has no trivial parallelism. Speculative parallel decompression, like rapidgzip's, is in `BACKLOG.md`.
 
-**Parser de FASTQ sem alocação.** Nada de `bufio.Scanner` linha a linha. Contagem de linhas por `bytes.IndexByte` sobre o próprio buffer; soma do comprimento das linhas de sequência; conferência de que qualidade e sequência têm o mesmo comprimento; registro partido entre dois buffers tratado por um resto de no máximo uma linha. Zero alocação por registro, verificado por `testing.AllocsPerRun`.
+**Allocation-free FASTQ parser.** No line-by-line `bufio.Scanner`. Line counting by `bytes.IndexByte` over the buffer itself; sum of the length of the sequence lines; check that quality and sequence have the same length; a record split between two buffers handled by a remainder of at most one line. Zero allocations per record, verified by `testing.AllocsPerRun`.
 
-**Não fazer.** Fatos indexados por raiz tornam a reexecução sobre arquivos inalterados um `stat` por arquivo. A segunda execução é medida e tem meta própria.
+**Not doing.** Facts indexed by root make a rerun over unchanged files one `stat` per file. The second run is measured and has its own goal.
 
-**Download com várias conexões.** Um arquivo grande pode ser baixado por várias faixas `Range` em paralelo, cada uma alinhada a grupos de 8 MiB com CV próprio, sem exceder o limite de conexões do domínio. Default: 1 conexão por arquivo; `--connections` aumenta. Faixas terminam fora de ordem; o arquivo só avança para `verifying` quando todos os grupos estão `verified`, e MD5/SHA-256, que são sequenciais, são calculados na leitura final como no caso de resume.
+**Multi-connection download.** A large file can be downloaded by several `Range` slices in parallel, each aligned to 8 MiB groups with its own CV, without exceeding the domain's connection limit. Default: 1 connection per file; `--connections` raises it. Slices finish out of order; the file only advances to `verifying` when all groups are `verified`, and MD5/SHA-256, which are sequential, are computed on the final read as in the resume case.
 
-**Verificação sobreposta ao download.** O downloader não grava e depois relê: cada buffer que chega da rede vai, ao mesmo tempo, para o `.part` e para os consumidores da leitura única (§7). Quando o último byte chega, os fatos estão prontos. A única releitura é a do caso de resume (§5, passo 9). Meta: `get` com verificação completa ≤ 105% do tempo de `curl` puro para o mesmo arquivo e servidor.
+**Verification overlapped with the download.** The downloader does not write and then re-read: each buffer that arrives from the network goes, at the same time, to the `.part` and to the consumers of the single read (§7). When the last byte arrives, the facts are ready. The only re-read is that of the resume case (§5, step 9). Goal: `get` with full verification ≤ 105% of the time of plain `curl` for the same file and server.
 
-**Concorrência adaptativa por domínio (AIMD).**
+**Adaptive concurrency per domain (AIMD).**
 
-- Começa com 1 conexão por domínio.
-- A cada janela de 5 s, se a vazão agregada do domínio cresceu mais de 5% desde a janela anterior, soma 1 conexão (aumento aditivo), até o teto.
-- Resposta 429 ou 503, timeout, reset de conexão, ou queda de vazão acima de 20% entre janelas: divide o número de conexões por 2, mínimo 1 (redução multiplicativa). `Retry-After` é honrado acima de tudo.
-- O teto é o limite por domínio desta seção, configurável. Os defaults deixam de ser valor fixo e passam a ser teto.
-- Cada decisão é registrada em log `debug` com a vazão observada; o resumo por domínio vai para `tool_runs`.
+- Starts with 1 connection per domain.
+- At each 5 s window, if the domain's aggregate throughput grew by more than 5% since the previous window, add 1 connection (additive increase), up to the ceiling.
+- A 429 or 503 response, timeout, connection reset, or throughput drop above 20% between windows: divide the number of connections by 2, minimum 1 (multiplicative decrease). `Retry-After` is honoured above everything.
+- The ceiling is the per-domain limit of this section, configurable. The defaults stop being a fixed value and become a ceiling.
+- Each decision is recorded in a `debug` log with the observed throughput; the per-domain summary goes to `tool_runs`.
 
-**Modo rápido honesto.** `check --quick` lê só bytes mágicos, o fim do arquivo (o bloco EOF de BGZF; em texto puro, se o último byte é newline) e uma amostra do início. Em gzip simples não há o que conferir no fim sem descomprimir tudo: CRC e ISIZE só batem contra o conteúdo. Leva segundos. O resultado é `quick`, nunca `verified`, e o código de saída é 5 quando nada é encontrado (`RELIABILITY.md` §1): o relatório diz que o conteúdo não foi lido por inteiro, e nenhum estado de custódia é atualizado a partir dele.
+**Honest quick mode.** `check --quick` reads only magic bytes, the end of the file (the BGZF EOF block; in plain text, whether the last byte is a newline) and a sample of the start. For plain gzip there is nothing to check at the end without decompressing everything: CRC and ISIZE only match against the content. It takes seconds. The result is `quick`, never `verified`, and the exit code is 5 when nothing is found (`RELIABILITY.md` §1): the report says the content was not read in full, and no custody state is updated from it.
 
 ---
 
-## 13. Manifesto e atestação
+## 13. Manifest and attestation
 
-`colligo manifest export --out m.json` produz JSON com:
+`colligo manifest export --out m.json` produces JSON with:
 
 - `schema_version`, `study_id`, `classification`, `redacted`, `created_at`
-- `tool`: versão, git SHA
-- `files[]`: `id`, `name` ou `opaque_id`, `size`, `format`, `group_size`, `blake3_root`, `outboard` (referência ao arquivo outboard que acompanha o manifesto), `md5`, `sha256`, `reads`, `bases`, `custody_state`, `last_verified_at`
+- `tool`: version, git SHA
+- `files[]`: `id`, `name` or `opaque_id`, `size`, `format`, `group_size`, `blake3_root`, `outboard` (reference to the outboard file that accompanies the manifest), `md5`, `sha256`, `reads`, `bases`, `custody_state`, `last_verified_at`
 - `derived[]`: `id`, `builder`, `builder_version`, `params_hash`, `parents[]`
 - `references[]`: `assembly`, `release`, `release_confidence`, `chromosome_naming`, `seqcol_digest`, `coord_digest`, `asset_kind`
 
-Nunca contém: salt, credencial, URL de estudo restrito, nome real de estudo restrito.
+It never contains: salt, credential, URL of a restricted study, real name of a restricted study.
 
-`colligo attest --manifest m.json --root dir` compara o acervo local contra o manifesto e relata, por arquivo: ausente, tamanho divergente, grupos divergentes com índices, ou conforme. A verificação é de fatia contra raiz: quem atesta não precisa confiar em quem produziu o manifesto além da raiz. Saída legível e `--json`. Código de saída 0 se tudo conforme, 3 se não.
+`colligo attest --manifest m.json --root dir` compares the local collection against the manifest and reports, per file: missing, size divergent, diverging groups with indexes, or conforming. The verification is slice against root: whoever attests does not need to trust whoever produced the manifest beyond the root. Readable output and `--json`. Exit code 0 if everything conforms, 3 if not.
 
-Atestação funciona com manifesto redigido, porque hashes não são sensíveis.
+Attestation works with a redacted manifest, because hashes are not sensitive.
 
-### Certificado
+### Certificate
 
-`colligo check --certificate` grava `<arquivo>.colligo-cert.json` com: versão do esquema, versão da ferramenta, tamanho, `blake3_root`, `group_size`, MD5, SHA-256, fatos por `kind` com `extractor_version`, e cada afirmação avaliada com declarado, observado e resultado.
+`colligo check --certificate` writes `<file>.colligo-cert.json` with: schema version, tool version, size, `blake3_root`, `group_size`, MD5, SHA-256, facts by `kind` with `extractor_version`, and each assertion evaluated with declared, observed and result.
 
-O repositório mantém um verificador de referência em `tools/verify_cert.py`: Python com biblioteca padrão mais o pacote `blake3`, sem importar nada do Colligo. Ele recalcula tamanho, hashes e os fatos de `records` para FASTQ, confere contra o certificado e confere também as afirmações: `checksum_mismatch`, `size_mismatch`, `count_mismatch` e `structure_invalid` precisam concordar com o que ele recalcula, inclusive o `passed`. A raiz BLAKE3 de arquivo com mais de um grupo é conferida inteira; o outboard não é conferido porque o certificado não o carrega. Divergência entre verificador e certificado é bug de uma das duas implementações e falha a suíte. Códigos de saída do verificador: 0 concorda, 1 discorda, 2 não consegue julgar (uso, entrada ilegível, `schema_version` desconhecido, campo obrigatório ausente ou campo desconhecido) — "não sei" nunca vira "discordo" nem "concordo". Ao concordar, o verificador imprime em seguida uma linha `UNCHECKED fact <tipo> (<versão do extrator>)` ou `UNCHECKED assertion <id>` para cada fato e afirmação que não recalculou, para que `AGREE` não seja lido como mais do que é. Adicionar campo ao certificado exige subir `schema_version`: o verificador sai 2 diante de campo desconhecido, então um campo novo sem nova versão faria todo verificador existente recusar o certificado.
+The repository keeps a reference verifier in `tools/verify_cert.py`: Python with the standard library plus the `blake3` package, importing nothing from Colligo. It recomputes size, hashes and the `records` facts for FASTQ, checks them against the certificate and also checks the assertions: `checksum_mismatch`, `size_mismatch`, `count_mismatch` and `structure_invalid` must agree with what it recomputes, including `passed`. The BLAKE3 root of a file with more than one group is checked in full; the outboard is not checked because the certificate does not carry it. A divergence between verifier and certificate is a bug in one of the two implementations and fails the suite. Exit codes of the verifier: 0 agrees, 1 disagrees, 2 cannot judge (usage, unreadable input, unknown `schema_version`, missing required field or unknown field) — "I don't know" never becomes "I disagree" nor "I agree". On agreeing, the verifier then prints a line `UNCHECKED fact <kind> (<extractor version>)` or `UNCHECKED assertion <id>` for each fact and assertion it did not recompute, so that `AGREE` is not read as more than it is. Adding a field to the certificate requires bumping `schema_version`: the verifier exits 2 on an unknown field, so a new field without a new version would make every existing verifier refuse the certificate.
 
-Certificado de estudo restrito segue a tabela de `CONFIDENTIALITY.md` §5.7: nome opaco, sem URL.
+The certificate of a restricted study follows the table of `CONFIDENTIALITY.md` §5.7: opaque name, no URL.
 
 ### Lockfile
 
-`colligo lock` gera `colligo.lock`: o manifesto reduzido ao que uma análise precisa fixar, em texto, ordenado e estável, feito para ser versionado no repositório da análise — o `go.sum` dos dados.
+`colligo lock` generates `colligo.lock`: the manifest reduced to what an analysis needs to pin, in text, sorted and stable, made to be versioned in the analysis repository — the `go.sum` of data.
 
-Uma linha lógica por entrada: nome relativo, `blake3_root`, tamanho, formato, e as identidades confirmadas (`release`, `seqcol_digest`, `coord_digest`, `reads`, `bases`). Sem timestamps, para que o diff entre dois commits mostre só o que mudou de fato.
+One logical line per entry: relative name, `blake3_root`, size, format, and the confirmed identities (`release`, `seqcol_digest`, `coord_digest`, `reads`, `bases`). No timestamps, so that the diff between two commits shows only what actually changed.
 
-`colligo check --lock colligo.lock` no início do pipeline confere o acervo local contra o lock e falha fechado. Não exige banco: é porta leve. O diff do lock entre duas versões da análise mostra exatamente qual entrada mudou — um release de 44 para 45, um arquivo substituído.
+`colligo check --lock colligo.lock` at the start of the pipeline checks the local collection against the lock and fails closed. It does not require a database: it is the light door. The diff of the lock between two versions of the analysis shows exactly which entry changed — a release from 44 to 45, a replaced file.
 
 ---
 
-## 14. Configuração
+## 14. Configuration
 
-Precedência: defaults < TOML < env < flags.
+Precedence: defaults < TOML < env < flags.
 
 ```toml
 [study]
-name = "meu_estudo"
+name = "my_study"
 db   = "study.db"
 mode = "strict"
 
@@ -742,7 +742,7 @@ rate_limit     = 2
 classification  = "public"
 rate_limit      = 3
 credential_env  = "COLLIGO_NCBI_API_KEY"
-email           = "pesquisador@instituicao.br"
+email           = "researcher@institution.org"
 
 [sources.dbgap]
 classification     = "restricted"
@@ -780,146 +780,146 @@ type   = "rnaseq"
 source = "geo"
 ```
 
-`[results]` é opcional: declara a tabela do Scribo e os campos esperados por amostra, que estendem a completude até "processado" (`CONTRACT.md` §7).
+`[results]` is optional: it declares Scribo's table and the fields expected per sample, which extend completeness up to "processed" (`CONTRACT.md` §7).
 
-`classification` é obrigatório por fonte. Ausência → erro nomeando a fonte.
+`classification` is mandatory per source. Absence → error naming the source.
 
-Credencial em TOML → erro nomeando a chave e a linha. Ver `CONFIDENTIALITY.md` §5.4.
+A credential in TOML → error naming the key and the line. See `CONFIDENTIALITY.md` §5.4.
 
-Env: `COLLIGO_DB_PATH`, `COLLIGO_LOG_LEVEL`, `COLLIGO_SYNC_DIRS`, e as variáveis de credencial declaradas por fonte.
+Env: `COLLIGO_DB_PATH`, `COLLIGO_LOG_LEVEL`, `COLLIGO_SYNC_DIRS`, and the credential variables declared per source.
 
-Como lib, segredos via options; a lib não opina na origem do segredo.
-
----
-
-## 14.1 Integração com o Scribo
-
-Conforme `CONTRACT.md`. O Colligo é dono de `samples`, `files` e `facts`, que o Scribo lê. O Colligo lê, e nunca escreve, `result_inputs` e `input_signals`.
-
-**Sinais na custódia.** Na avaliação de afirmações de um arquivo, os sinais de `input_signals` com a mesma raiz entram como afirmações a mais:
-
-| Sinal | Afirmação | Severidade |
-| ----- | --------- | ---------- |
-| `suspect` | `post_pipeline_consistency` reprovada, com `source` e `detail` | `advisory` |
-| `identity_confirmed` | `identity` aprovada | — |
-| `identity_mismatch` | `identity` reprovada | `blocking` |
-
-O estado de custódia original nunca é sobrescrito. `status` lista arquivos suspeitos com a fonte do sinal; o certificado inclui a afirmação `identity` quando existe.
-
-**Funil de completude.** `colligo status` mostra declarado → baixado → verificado → processado. "Processado" exige `[results]` no TOML e, para cada amostra, os campos declarados preenchidos na tabela do Scribo e não obsoletos pelo grafo de `CONTRACT.md` §6. `--require-complete` considera o funil inteiro quando `[results]` existe.
-
-**`gc` com proveniência.** Quando implementado (`BACKLOG.md`), classifica cada arquivo por `result_inputs`: sem uso; usado e regenerável a partir de entradas sob custódia; usado e insubstituível.
+As a lib, secrets via options; the lib has no opinion on the origin of the secret.
 
 ---
 
-## 15. URIs de fonte
+## 14.1 Integration with Scribo
 
-Além de `https` e `ftp`, o campo de URL aceita `drs://` (GA4GH Data Repository Service), resolvido por um resolvedor configurado. Um DRS resolvido produz URL de acesso normal e herda todo o caminho de integridade. Custo baixo, e coloca o Colligo num vocabulário que ferramentas de consórcio reconhecem.
+Per `CONTRACT.md`. Colligo owns `samples`, `files` and `facts`, which Scribo reads. Colligo reads, and never writes, `result_inputs` and `input_signals`.
+
+**Signals in custody.** When evaluating the assertions of a file, the `input_signals` signals with the same root enter as additional assertions:
+
+| Signal | Assertion | Severity |
+| ------ | --------- | -------- |
+| `suspect` | `post_pipeline_consistency` failed, with `source` and `detail` | `advisory` |
+| `identity_confirmed` | `identity` passed | — |
+| `identity_mismatch` | `identity` failed | `blocking` |
+
+The original custody state is never overwritten. `status` lists suspect files with the source of the signal; the certificate includes the `identity` assertion when it exists.
+
+**Completeness funnel.** `colligo status` shows declared → downloaded → verified → processed. "Processed" requires `[results]` in the TOML and, for each sample, the declared fields filled in Scribo's table and not stale per the graph of `CONTRACT.md` §6. `--require-complete` considers the whole funnel when `[results]` exists.
+
+**`gc` with provenance.** When implemented (`BACKLOG.md`), it classifies each file by `result_inputs`: unused; used and regenerable from inputs under custody; used and irreplaceable.
+
+---
+
+## 15. Source URIs
+
+Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository Service), resolved by a configured resolver. A resolved DRS produces a normal access URL and inherits the whole integrity path. Low cost, and it puts Colligo in a vocabulary that consortium tools recognise.
 
 ---
 
 ## 16. CLI
 
-Implementado hoje: `check`, `validate` e `version`, com as flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` e `--certificate`. A coluna "Fatia" diz quando cada comando ou flag do resto chega (`ROADMAP.md`); "—" é o que ainda não tem fatia.
+Implemented today: `check`, `validate` and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` and `--certificate`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
-`--recursive` desce em subdiretórios (sem ela, só o diretório dado; nomes que começam com `.` são ignorados, e link simbólico para diretório nunca é seguido). `--format` declara o formato (`fastq`, `fasta`, `gtf`, `gzip` ou `bgzf`). `--jobs` é o número de arquivos lidos ao mesmo tempo.
+`--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
-**Porta leve** — sem banco, sem TOML, sem estado. Não importa `store`.
+**Light door** — no database, no TOML, no state. It does not import `store`.
 
-| Comando    | Fatia | Função                                                                    |
+| Command    | Slice | Function                                                                  |
 | ---------- | ----- | ------------------------------------------------------------------------- |
-| `check`    | 1     | fatos + afirmações de arquivos soltos; `--json`                           |
-| `validate` | 1     | só estrutura de formato                                                   |
-| `check .`  | 1     | descobre formatos pelo conteúdo e pares pelo nome; zero configuração      |
-| `check --quick` | 1 | só bytes mágicos, fim do arquivo e amostra do início; nunca `verified`; sai 5 |
-| `check --certificate` | 1 | emite certificado verificável por terceiros (§13)             |
-| `check --source` | 2 | compara contra a fonte                                                |
-| `check --samplesheet` | 2 | confere uma samplesheet de pipeline nf-core pelo conteúdo: arquivos existem, R1 e R2 casam, contagens batem, amostras não se repetem |
-| `identify` | 2     | identidade por conteúdo: seqcol, cabeçalho de GTF, hash contra checksums oficiais |
-| `get`      | 3     | accession → download com verificação sobreposta → `samplesheet.csv` + `colligo.lock`; sem banco |
-| `lock`     | 4     | gera `colligo.lock` a partir de arquivos soltos ou de um estudo           |
-| `check --lock` | 4 | confere o acervo contra um `colligo.lock`                                 |
-| `compat`   | 6     | compara sistemas de coordenadas entre FASTA, `.fai`, BAM, VCF, GTF, BED   |
-| `verify`   | —     | standalone com `--expected` ou arquivo de checksums; hoje `check --expected` e `check --cross-check` cobrem o uso |
-| `check --cross-extract` | — | roda extrator Go e externo sobre o mesmo arquivo e compara os fatos; só com extrator externo presente |
+| `check`    | 1     | facts + assertions of loose files; `--json`                               |
+| `validate` | 1     | format structure only                                                     |
+| `check .`  | 1     | discovers formats by content and pairs by name; zero configuration        |
+| `check --quick` | 1 | only magic bytes, end of file and sample of the start; never `verified`; exits 5 |
+| `check --certificate` | 1 | emits a certificate verifiable by third parties (§13)         |
+| `check --source` | 2 | compares against the source                                             |
+| `check --samplesheet` | 2 | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated |
+| `identify` | 2     | identity by content: seqcol, GTF header, hash against official checksums  |
+| `get`      | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database |
+| `lock`     | 4     | generates `colligo.lock` from loose files or from a study                 |
+| `check --lock` | 4 | checks the collection against a `colligo.lock`                            |
+| `compat`   | 6     | compares coordinate systems between FASTA, `.fai`, BAM, VCF, GTF, BED     |
+| `verify`   | —     | standalone with `--expected` or a checksums file; today `check --expected` and `check --cross-check` cover the use |
+| `check --cross-extract` | — | runs the Go and an external extractor on the same file and compares the facts; only with an external extractor present |
 
-A saída de `--json` do `check` e do `validate` é um objeto com `schema_version` (hoje 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` e `exit_code`. Cada afirmação carrega `id` (do catálogo `diagnoses/`), `mode`, `severity`, `passed`, `skipped`, `declared` e `observed`, e, quando falhou, `observation`, `probable_cause` e `suggested_action`. Campo novo exige subir `schema_version`.
+The `--json` output of `check` and `validate` is an object with `schema_version` (today 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` and `exit_code`. Each assertion carries `id` (from the `diagnoses/` catalogue), `mode`, `severity`, `passed`, `skipped`, `declared` and `observed`, and, when it failed, `observation`, `probable_cause` and `suggested_action`. A new field requires bumping `schema_version`.
 
-**Porta pesada** — estudo com banco.
+**Heavy door** — study with a database.
 
-| Comando         | Fatia | Função                                                        |
+| Command         | Slice | Function                                                      |
 | --------------- | ----- | ------------------------------------------------------------- |
-| `fetch`         | 3     | fluxo principal: metadados, download, verificação             |
-| `verify`        | 3     | com banco: funil da §7 e scrub (scrub na Fatia 4)             |
-| `status`        | 3     | estado do estudo; `--require-complete` (Fatia 5) sai 3 se incompleto |
-| `adopt`         | 4     | registra arquivo pré-existente sob custódia                   |
-| `manifest`      | 4     | exporta manifesto portátil                                    |
-| `attest`        | 4     | compara acervo contra manifesto                               |
-| `recheck`       | 5     | `--upstream`: reconsulta a fonte e compara com o guardado     |
-| `doctor`        | 7     | diagnóstico de ambiente                                       |
-| `redact-report` | 7     | relatório de bug seguro para publicar                         |
-| `export`        | 7     | TSV/JSON/CSV com custódia                                     |
-| `gc`            | —     | limpeza de `.part` órfão e `raw_responses` expirado; `--dry-run` obrigatório antes de `--force` |
+| `fetch`         | 3     | main flow: metadata, download, verification                   |
+| `verify`        | 3     | with a database: funnel of §7 and scrub (scrub in Slice 4)    |
+| `status`        | 3     | state of the study; `--require-complete` (Slice 5) exits 3 if incomplete |
+| `adopt`         | 4     | registers a pre-existing file under custody                   |
+| `manifest`      | 4     | exports a portable manifest                                   |
+| `attest`        | 4     | compares the collection against a manifest                    |
+| `recheck`       | 5     | `--upstream`: re-queries the source and compares with the stored one |
+| `doctor`        | 7     | environment diagnosis                                         |
+| `redact-report` | 7     | bug report safe to publish                                    |
+| `export`        | 7     | TSV/JSON/CSV with custody                                     |
+| `gc`            | —     | cleanup of orphan `.part` and expired `raw_responses`; `--dry-run` mandatory before `--force` |
 
-**O CLI não contém lógica.** Lê flags, resolve config, chama a biblioteca, traduz erro em código de saída. Comportamento que existe só no CLI é bug.
-
----
-
-## 17. Requisitos transversais
-
-- Paths armazenados relativos à raiz do estudo, nunca absolutos.
-- Sanitizar nome vindo da fonte: rejeitar travessia, NUL, separadores, nome > 255 bytes, e normalizar unicode antes de comparar.
-- `.part` e final no mesmo filesystem (rename atômico), verificado por `doctor`.
-- Pré-checar espaço com margem de 5%; reverificar a cada 1 GiB.
-- Validação Fase 1 (local, zero I/O) antes de qualquer chamada de rede.
-- Todo timestamp em UTC, formato RFC 3339.
-- `context.Context` é o primeiro parâmetro de toda operação de I/O.
-- `-race` em todo teste de concorrência.
-- Nenhum acesso de rede a host não configurado. Ver `CONFIDENTIALITY.md` §5.11.
-- Cada arquivo é lido uma vez por operação; toda derivação de conteúdo passa pela leitura única da §7.
-- Plataforma de desenvolvimento e teste: Linux ou WSL. Windows nativo suporta só a porta leve até existir CI Windows.
+**The CLI contains no logic.** It reads flags, resolves config, calls the library, translates an error into an exit code. Behaviour that exists only in the CLI is a bug.
 
 ---
 
-## 18. Decisões antes abertas, agora resolvidas
+## 17. Cross-cutting requirements
 
-| Questão                                   | Decisão                                                                 |
+- Paths stored relative to the study root, never absolute.
+- Sanitise a name coming from the source: reject traversal, NUL, separators, name > 255 bytes, and normalise unicode before comparing.
+- `.part` and final on the same filesystem (atomic rename), verified by `doctor`.
+- Pre-check space with a 5% margin; re-check every 1 GiB.
+- Phase 1 validation (local, zero I/O) before any network call.
+- Every timestamp in UTC, RFC 3339 format.
+- `context.Context` is the first parameter of every I/O operation.
+- `-race` on every concurrency test.
+- No network access to a non-configured host. See `CONFIDENTIALITY.md` §5.11.
+- Each file is read once per operation; every derivation from content goes through the single read of §7.
+- Development and test platform: Linux or WSL. Native Windows supports only the light door until a Windows CI exists.
+
+---
+
+## 18. Decisions formerly open, now resolved
+
+| Question                                  | Decision                                                                |
 | ----------------------------------------- | ----------------------------------------------------------------------- |
-| Retenção de `raw_responses`               | zstd, TTL 90d, `--keep-raw` desliga o TTL; restrito grava só hash        |
-| `.part` quando tentativas esgotam         | nunca apagado automaticamente; `gc --dry-run` antes de `--force`         |
-| `experiments` ↔ referência                | tabela `experiment_references`, não FK; um experimento admite dois builds |
-| Geração de `files.id`                     | `fetched`: `hex(BLAKE3(sample_id \|\| url \|\| supersedes))[:32]`. `adopted`: `hex(BLAKE3(sample_id \|\| path))[:32]`. Re-fetch e re-adoção idempotentes por construção |
-| Estrutura de integridade                  | árvore BLAKE3 com outboard Bao; CVs no nível de 8 MiB em `file_groups`; grade de hashes independentes descartada |
-| CVs e outboard após verificação final     | todos, para sempre; habilitam reverificação e atestação por fatia        |
-| Tamanho de grupo                          | 8 MiB fixo, potência de 2 de chunks de 1 KiB; não configurável na v1     |
-| Revalidação estrutural                    | só quando a versão do extrator muda; hash igual implica estrutura igual  |
-| Gate de `stat`                            | decide o que ler; nunca produz `verified`                                |
-| Batch do writer                           | 100 eventos ou 50ms; `fatal` sem batch                                   |
-| Prefetch especulativo                     | fora da v1                                                               |
+| Retention of `raw_responses`              | zstd, TTL 90d, `--keep-raw` turns off the TTL; restricted stores only the hash |
+| `.part` when attempts are exhausted       | never deleted automatically; `gc --dry-run` before `--force`            |
+| `experiments` ↔ reference                 | `experiment_references` table, not an FK; an experiment admits two builds |
+| Generation of `files.id`                  | `fetched`: `hex(BLAKE3(sample_id \|\| url \|\| supersedes))[:32]`. `adopted`: `hex(BLAKE3(sample_id \|\| path))[:32]`. Re-fetch and re-adoption idempotent by construction |
+| Integrity structure                       | BLAKE3 tree with Bao outboard; CVs at the 8 MiB level in `file_groups`; grid of independent hashes discarded |
+| CVs and outboard after final verification | all of them, forever; they enable reverification and attestation by slice |
+| Group size                                | fixed 8 MiB, power of 2 of 1 KiB chunks; not configurable in v1        |
+| Structural revalidation                   | only when the extractor version changes; same hash implies same structure |
+| `stat` gate                               | decides what to read; never produces `verified`                         |
+| Writer batch                              | 100 events or 50ms; `fatal` without batch                               |
+| Speculative prefetch                      | out of v1                                                               |
 
-### Questões abertas
+### Open questions
 
-| Questão | Como resolver |
-| ------- | ------------- |
-| Fonte de checksums oficiais do Ensembl para `identify` | Levantar formato do arquivo de checksum por release na Fatia 2 antes de implementar. |
+| Question | How to resolve |
+| -------- | -------------- |
+| Source of Ensembl's official checksums for `identify` | Survey the format of the checksum file per release in Slice 2 before implementing. |
 
-### Resolvida na Fatia 1
+### Resolved in Slice 1
 
-`lukechampine.com/blake3` expõe o que a árvore por grupo precisa: o subpacote `lukechampine.com/blake3/guts` oferece `CompressBuffer`, `ParentNode` e `ChainingValue`, o suficiente para calcular o CV de cada grupo de 8 MiB durante o streaming e combiná-los até a raiz. O outboard montado por `facts` bate byte a byte com o do pacote `bao` (`TestOutboardMatchesBao`), então a alternativa de BLAKE3 por grupo como hash independente não foi necessária.
+`lukechampine.com/blake3` exposes what the per-group tree needs: the `lukechampine.com/blake3/guts` subpackage offers `CompressBuffer`, `ParentNode` and `ChainingValue`, enough to compute the CV of each 8 MiB group during streaming and combine them up to the root. The outboard assembled by `facts` matches that of the `bao` package byte for byte (`TestOutboardMatchesBao`), so the alternative of per-group BLAKE3 as an independent hash was not needed.
 
 ---
 
-## 19. Testes
+## 19. Tests
 
-Ver `TESTING.md`. Resumo dos requisitos que a SPEC impõe:
+See `TESTING.md`. Summary of the requirements that the SPEC imposes:
 
-- Servidor HTTP fake por fonte, fixtures versionadas, offline e determinístico.
-- Injeção de falha: Range ignorado, Content-Length errado, corpo truncado, reset, 429 com Retry-After, 412, ENOSPC, fsync falhando.
-- Teste de propriedade do resume: matar em offset aleatório N vezes, checksum final sempre confere.
-- Teste de propriedade da árvore: grupos pavimentam o arquivo sem lacuna nem sobreposição, e a raiz derivada dos CVs é igual ao BLAKE3 do arquivo inteiro.
-- Teste de leitura única: contador de bytes lidos igual ao tamanho do arquivo em `check` e em download sem interrupção.
-- Suíte de mutantes (`TESTING.md` §7): toda mutação de cada classe declarada como detectável é detectada.
-- Teste de propriedade da máquina de estados: só transições da §4 persistem.
-- Fuzzing dos parsers de cada fonte.
-- Suíte de conformidade `sourcetest` obrigatória para todo adapter.
-- Sentinela de vazamento em todo artefato produzido.
+- Fake HTTP server per source, versioned fixtures, offline and deterministic.
+- Fault injection: Range ignored, wrong Content-Length, truncated body, reset, 429 with Retry-After, 412, ENOSPC, failing fsync.
+- Resume property test: kill at a random offset N times, the final checksum always matches.
+- Tree property test: groups tile the file with no gap or overlap, and the root derived from the CVs is equal to the BLAKE3 of the whole file.
+- Single-read test: bytes-read counter equal to the file size in `check` and in an uninterrupted download.
+- Mutant suite (`TESTING.md` §7): every mutation of every class declared detectable is detected.
+- State machine property test: only transitions of §4 persist.
+- Fuzzing of each source's parsers.
+- `sourcetest` conformance suite mandatory for every adapter.
+- Leak sentinel in every artifact produced.

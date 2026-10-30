@@ -1,129 +1,129 @@
-# Colligo — Convenções
+# Colligo — Conventions
 
-Estilo da casa. Inviolável durante implementação. Curto de propósito.
-
----
-
-## Código
-
-**Sem comentários. Nenhum.** Nem em Go, nem em SQL, nem em TOML de exemplo. Nomes comunicam intenção. Se um trecho precisa de comentário para ser entendido, ele precisa ser reescrito, não comentado.
-
-**Erros são valores e são tratados.** Nada de `_` engolindo erro fora de casos genuinamente irrelevantes. Erros de domínio são tipados (SPEC §10) e inspecionáveis via `errors.As`. Todo erro carrega `Severity()`.
-
-**Caminho, URL e credencial nunca são `string`.** Use `secret.Name`, `secret.Endpoint`, `secret.Secret`. Isto não é preferência de estilo: é o mecanismo que impede vazamento. Código que passa `string` crua para campo de log não compila, e o analisador de `CONFIDENTIALITY.md` §3.1 reprova as portas laterais. Erros tipados seguem a mesma regra.
-
-**Concorrência via `errgroup` com `SetLimit`.** Nunca `go func` solto. Um erro cancela os irmãos via context; espera-se todos. Todo código concorrente é testado com `-race`.
-
-**`context.Context` é o primeiro parâmetro** de toda operação que faz I/O ou pode ser cancelada. Cancelamento salva progresso parcial antes de encerrar.
-
-**Functional options** para construção pública. Uso mínimo tem defaults sensatos; controle fino é opcional.
-
-**Sem `init()` com efeito colateral.** Fontes são registradas explicitamente via option. Sem estado global mutável, sem ordem de inicialização importando.
-
-**Conteúdo de arquivo nunca em memória.** Streaming para disco, sempre. `io.CopyBuffer` com buffer de 1MB.
-
-**Uma leitura por arquivo.** Tudo que se deriva do conteúdo — hashes, árvore, estrutura, contagens — sai da mesma leitura, distribuída em paralelo a uma goroutine por consumidor (SPEC §7). `io.MultiWriter` é proibido nesse caminho, porque serializa os consumidores. Extrator não abre arquivo nem faz seek. Ler duas vezes é bug.
-
-**Caminho quente não aloca.** Parser e extrator operam sobre o buffer recebido. Alocação por registro é bug de desempenho e tem teste com `testing.AllocsPerRun`.
-
-**Fato é função pura do conteúdo.** Extrator não lê nome, caminho, mtime nem config. Mudou o que ele calcula, sobe a versão.
-
-**A porta leve não importa `store`.** Todo recurso novo se pergunta primeiro se funciona sem banco. Se funciona, nasce no núcleo e a porta pesada só o persiste.
-
-**Adapters são puros.** Não recebem `Store`, não recebem caminho de disco, não abrem arquivo. Um adapter que precisa disso está resolvendo o problema errado.
-
-**Stdlib primeiro.** Dependência externa só onde a stdlib é genuinamente insuficiente. As conscientes da v1: `modernc.org/sqlite`, um pacote BLAKE3, `golang.org/x/sync/errgroup`, `golang.org/x/time/rate`, um pacote zstd, um cliente FTP isolado. Qualquer adição precisa de justificativa.
+House style. Inviolable during implementation. Short on purpose.
 
 ---
 
-## Banco
+## Code
 
-**Nunca escrever em tabela do Scribo.** `result_inputs` e `input_signals` são só leitura para o Colligo. `CONTRACT.md` é idêntico nos dois repositórios; o CI compara as cópias.
+**No comments. None.** Not in Go, not in SQL, not in example TOML. Names communicate intent. If a piece of code needs a comment to be understood, it needs to be rewritten, not commented.
 
-**Transições de estado nunca sobrescrevem. São linhas novas em `file_events`, sempre com `run_id`. O banco é o estado canônico; TSV e manifesto são exportação.
+**Errors are values and are handled.** No `_` swallowing an error outside genuinely irrelevant cases. Domain errors are typed (SPEC §10) and inspectable via `errors.As`. Every error carries `Severity()`.
 
-**Arquivo `done` nunca é sobrescrito.** Conteúdo diferente na mesma URL cria linha nova com `supersedes`. Não existe caminho de código que faça UPDATE destrutivo em `done`.
+**Path, URL and credential are never `string`.** Use `secret.Name`, `secret.Endpoint`, `secret.Secret`. This is not a style preference: it is the mechanism that prevents leakage. Code that passes a raw `string` to a log field does not compile, and the analyzer of `CONFIDENTIALITY.md` §3.1 rejects the side doors. Typed errors follow the same rule.
 
-**Todas as escritas passam pelo writer goroutine.** Workers não escrevem direto no SQLite.
+**Concurrency via `errgroup` with `SetLimit`.** Never a loose `go func`. An error cancels the siblings via context; all of them are waited for. All concurrent code is tested with `-race`.
 
-**PRAGMAs sempre, no DSN, e lidos de volta.** Nenhuma conexão abre sem `foreign_keys=ON`, journal mode resolvido pelo filesystem (`WAL` local, `DELETE` em rede), `synchronous=NORMAL`, `busy_timeout=5000` e `_txlock=immediate` — e sem confirmar que surtiram efeito. Abertura idêntica à do Scribo, conforme `CONTRACT.md` §2. Nunca `db.Exec("PRAGMA …")` num `*sql.DB`: é pool, e só uma conexão recebe.
+**`context.Context` is the first parameter** of every operation that does I/O or can be cancelled. Cancellation saves partial progress before shutting down.
 
-**Migration roda em transação**, junto com o registro em `schema_migrations`. Metade de migration aplicada é estado que ninguém sabe reconstruir.
+**Functional options** for public construction. Minimal use has sensible defaults; fine control is optional.
 
-**Tabelas `STRICT`, timestamps em UTC RFC 3339.**
+**No `init()` with side effects.** Sources are registered explicitly via an option. No mutable global state, no initialization order mattering.
 
-**A camada `store` decide sobre dado restrito, não o chamador.** `SaveRawResponse` consulta a classificação e grava corpo ou hash. Não há parâmetro para desligar.
+**File content is never in memory.** Streaming to disk, always. `io.CopyBuffer` with a 1MB buffer.
 
----
+**One read per file.** Everything derived from the content — hashes, tree, structure, counts — comes out of the same read, distributed in parallel to one goroutine per consumer (SPEC §7). `io.MultiWriter` is forbidden on this path, because it serialises the consumers. An extractor does not open a file or seek. Reading twice is a bug.
 
-## Testes
+**The hot path does not allocate.** Parsers and extractors operate on the buffer they receive. An allocation per record is a performance bug and has a test with `testing.AllocsPerRun`.
 
-**Offline e determinístico.** Servidor HTTP fake com fixtures versionadas. Nenhum teste de PR toca a rede.
+**A fact is a pure function of the content.** An extractor does not read name, path, mtime or config. If what it computes changes, bump the version.
 
-**Injeção de falha explícita.** Range ignorado, corpo truncado, reset, 429, 412, `ENOSPC`, `fsync` falhando — cada um tem teste próprio. É onde a robustez se prova.
+**The light door does not import `store`.** Every new feature first asks whether it works without a database. If it does, it is born in the core and the heavy door only persists it.
 
-**Todo adapter passa em `sourcetest`.** Sem exceção, incluindo adapters privados.
+**Adapters are pure.** They do not receive a `Store`, do not receive a disk path, do not open files. An adapter that needs that is solving the wrong problem.
 
-**Fixture é gravada, nunca escrita à mão.** Duas categorias: `testdata/synthetic/` versionada, `testdata/real/` nunca. Detalhes em `TESTING.md`.
-
-**Teste que depende de fixture real falha quando ela falta.** Nunca pula em silêncio.
-
-**Teste escrito junto com o código**, não depois. Exemplos executáveis onde fizerem sentido como documentação viva.
-
-**A tabela de transições é uma variável, e o teste lê dela.** O teste é a spec, não uma cópia.
+**Stdlib first.** An external dependency only where the stdlib is genuinely insufficient. The conscious ones of v1: `modernc.org/sqlite`, a BLAKE3 package, `golang.org/x/sync/errgroup`, `golang.org/x/time/rate`, a zstd package, an isolated FTP client. Any addition needs a justification.
 
 ---
 
-## Documentação
+## Database
 
-**GoDoc só onde acrescenta algo.** Em identificador exportado, e apenas quando diz o que o nome e a assinatura não dizem: um invariante, uma restrição de uso, um porquê não óbvio. GoDoc que repete o nome é ruído e sai. É a única forma de texto explicativo permitida no código; identificador não exportado não leva comentário.
+**Never write to a Scribo table.** `result_inputs` and `input_signals` are read-only for Colligo. `CONTRACT.md` is identical in both repositories; CI compares the copies.
 
-**Idioma.** `docs/` em português. Código, GoDoc, nomes e mensagens de teste, mensagens de erro, diagnósticos e saída do CLI em inglês, como o README público.
+**State transitions never overwrite. They are new rows in `file_events`, always with `run_id`. The database is the canonical state; TSV and manifest are exports.
 
-**Decisão muda código e doc no mesmo commit.** SPEC e implementação não desincronizam.
+**A `done` file is never overwritten.** Different content at the same URL creates a new row with `supersedes`. There is no code path that does a destructive UPDATE on `done`.
 
-**Onde cada coisa mora:** por quê em `DESIGN.md`, o quê em `SPEC.md`, defesa contra erro silencioso em `RELIABILITY.md`, proteção de dado restrito em `CONFIDENTIALITY.md`, como testar em `TESTING.md`, como contribuir em `CONTRIBUTING.md`, o que foi adiado em `BACKLOG.md`, o que já existe fora daqui em `RELATED.md`.
+**All writes go through the writer goroutine.** Workers do not write directly to SQLite.
+
+**PRAGMAs always, in the DSN, and read back.** No connection opens without `foreign_keys=ON`, journal mode resolved by the filesystem (`WAL` local, `DELETE` on a network), `synchronous=NORMAL`, `busy_timeout=5000` and `_txlock=immediate` — and without confirming that they took effect. Opening identical to Scribo's, per `CONTRACT.md` §2. Never `db.Exec("PRAGMA …")` on a `*sql.DB`: it is a pool, and only one connection receives it.
+
+**A migration runs in a transaction**, together with the record in `schema_migrations`. Half an applied migration is a state that nobody knows how to reconstruct.
+
+**`STRICT` tables, timestamps in UTC RFC 3339.**
+
+**The `store` layer decides about restricted data, not the caller.** `SaveRawResponse` consults the classification and writes the body or the hash. There is no parameter to turn it off.
+
+---
+
+## Tests
+
+**Offline and deterministic.** A fake HTTP server with versioned fixtures. No PR test touches the network.
+
+**Explicit fault injection.** Range ignored, truncated body, reset, 429, 412, `ENOSPC`, failing `fsync` — each one has its own test. This is where robustness is proven.
+
+**Every adapter passes `sourcetest`.** Without exception, including private adapters.
+
+**A fixture is recorded, never written by hand.** Two categories: `testdata/synthetic/` versioned, `testdata/real/` never. Details in `TESTING.md`.
+
+**A test that depends on a real fixture fails when it is missing.** It never skips silently.
+
+**A test written together with the code**, not after. Executable examples where they make sense as living documentation.
+
+**The transition table is a variable, and the test reads from it.** The test is the spec, not a copy of it.
+
+---
+
+## Documentation
+
+**GoDoc only where it adds something.** On an exported identifier, and only when it says what the name and the signature do not: an invariant, a usage restriction, a non-obvious why. GoDoc that repeats the name is noise and goes. It is the only form of explanatory text allowed in the code; an unexported identifier takes no comment.
+
+**Language.** Docs, code, GoDoc, test names and messages, error messages, diagnostics and CLI output are in English, like the public README. The private `CLAUDE.md` may stay in Portuguese.
+
+**A decision changes code and doc in the same commit.** SPEC and implementation do not drift apart.
+
+**Where each thing lives:** the why in `DESIGN.md`, the what in `SPEC.md`, defence against silent error in `RELIABILITY.md`, protection of restricted data in `CONFIDENTIALITY.md`, how to test in `TESTING.md`, how to contribute in `CONTRIBUTING.md`, what was postponed in `BACKLOG.md`, what already exists outside here in `RELATED.md`.
 
 ---
 
 ## Git
 
-**`CLAUDE.md` é privado** (`.gitignore`). Não vai para o repositório.
+**`CLAUDE.md` is private** (`.gitignore`). It does not go into the repository.
 
-**`.gitignore` obrigatório:** `testdata/real/`, `*.local.toml`, `*.db`, `*.db-wal`, `*.db-shm`, `.colligo/`.
+**Mandatory `.gitignore`:** `testdata/real/`, `*.local.toml`, `*.db`, `*.db-wal`, `*.db-shm`, `.colligo/`.
 
-**`gitleaks` em pre-commit.** Credencial vazada não se desvaza.
+**`gitleaks` in pre-commit.** A leaked credential cannot be un-leaked.
 
-**Nada entra em `main` sem pull request.** Todo trabalho acontece num branch, o CI roda em cada PR (e em `main` depois de cada merge, não no push de branch sem PR), e o merge só acontece depois de revisão.
+**Nothing enters `main` without a pull request.** All work happens on a branch, CI runs on every PR (and on `main` after each merge, not on the push of a branch without a PR), and the merge only happens after review.
 
-**Nome de branch:** `<tipo>/<descrição>`, com o tipo da lista abaixo e a descrição em inglês, minúscula, palavras separadas por hífen, só `a-z`, `0-9` e `-`, até 50 caracteres no total. Número de issue, quando houver, abre a descrição: `fix/12-bgzf-bsize`. O branch diz o que muda; a sessão de trabalho fica registrada no PR.
+**Branch name:** `<type>/<description>`, with the type from the list below and the description in English, lowercase, words separated by hyphens, only `a-z`, `0-9` and `-`, up to 50 characters in total. An issue number, when there is one, opens the description: `fix/12-bgzf-bsize`. The branch says what changes; the work session is recorded in the PR.
 
-**Mensagem de commit** (Conventional Commits):
+**Commit message** (Conventional Commits):
 
 ```
-<tipo>(<escopo>): <resumo>
+<type>(<scope>): <summary>
 
-<corpo: por quê, não o quê>
+<body: why, not what>
 
 <trailers>
 ```
 
-- Tipos: `feat`, `fix`, `test`, `docs`, `refactor`, `perf`, `ci`, `build`, `chore`, `style`, `revert`. Não existe `wip`.
-- Escopo opcional: pacote ou área (`format`, `facts`, `verifier`, `cli`, `corpus`, `verify-cert`).
-- Resumo em inglês, no imperativo, sem ponto final, até 72 caracteres; minúsculo, exceto sigla ou nome próprio.
-- Corpo obrigatório em `feat` e `fix`: explica o porquê. O "o quê" está no diff.
-- Mudança incompatível: `!` depois do tipo e uma linha `BREAKING CHANGE:` no corpo.
-- Trailers: `Co-Authored-By:` quando um agente escreveu o commit; `Refs: #N` para ligar issue ou PR.
-- O título do PR segue o mesmo formato. O commit de merge gerado pelo GitHub é a única exceção.
+- Types: `feat`, `fix`, `test`, `docs`, `refactor`, `perf`, `ci`, `build`, `chore`, `style`, `revert`. There is no `wip`.
+- Optional scope: package or area (`format`, `facts`, `verifier`, `cli`, `corpus`, `verify-cert`).
+- Summary in English, imperative, no trailing period, up to 72 characters; lowercase, except an acronym or proper name.
+- Body mandatory in `feat` and `fix`: it explains the why. The "what" is in the diff.
+- Incompatible change: `!` after the type and a `BREAKING CHANGE:` line in the body.
+- Trailers: `Co-Authored-By:` when an agent wrote the commit; `Refs: #N` to link an issue or PR.
+- The PR title follows the same format. The merge commit generated by GitHub is the only exception.
 
-Commits pequenos, por fatia ou sub-fatia. `.github/check-names.sh` confere nome do branch, título do PR e cada commit do PR no CI do PR; branch ou mensagem fora do padrão deixa o PR vermelho. A regra vale do PR que a introduziu em diante; o histórico anterior não é reescrito por ela.
+Small commits, by slice or sub-slice. `.github/check-names.sh` checks the branch name, PR title and each commit of the PR in the PR's CI; a branch or message outside the pattern turns the PR red. The rule applies from the PR that introduced it onwards; the earlier history is not rewritten by it.
 
-**`main` é protegido no GitHub** pela regra versionada em `.github/rulesets/main.json`: sem push direto, sem `push --force`, sem apagar o branch, e merge só por PR com o check `test` (o job do CI, publicado pelo GitHub Actions) verde e atualizado com `main`. Só merge commit, para preservar os commits pequenos. Ninguém tem bypass, nem o dono da org. O plano gratuito só aplica a regra em repositório público; ela entra no dia em que o repositório fica público:
+**`main` is protected on GitHub** by the rule versioned in `.github/rulesets/main.json`: no direct push, no `push --force`, no deleting the branch, and merge only by PR with the `test` check (the CI job, published by GitHub Actions) green and up to date with `main`. Merge commits only, to preserve the small commits. Nobody has a bypass, not even the org owner. The free plan only applies the rule to a public repository; it enters on the day the repository becomes public:
 
 ```
 gh api -X POST repos/colligo-go/colligo/rulesets --input .github/rulesets/main.json
 ```
 
-Depois de ativa, o histórico de `main` nunca mais é reescrito. Qualquer limpeza de histórico acontece antes. O GitHub não oferece no plano gratuito regra de nome de branch ou de mensagem de commit; essas continuam conferidas pelo CI.
+Once active, the history of `main` is never rewritten again. Any history cleanup happens before. GitHub does not offer, on the free plan, a rule for branch name or commit message; those continue to be checked by CI.
 
-**Repositório público desde a Fatia 0.**
+**Public repository since Slice 0.**
