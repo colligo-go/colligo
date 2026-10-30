@@ -1,392 +1,392 @@
-# Colligo — Design e Decisões
+# Colligo — Design and Decisions
 
-O propósito deste documento é registrar **por que** o Colligo é como é. Como implementar está em `SPEC.md`. Defesas contra erro silencioso, em `RELIABILITY.md`. Proteção de dado restrito, em `CONFIDENTIALITY.md`. O que vem depois, em `ROADMAP.md` e `BACKLOG.md`. O que já existe e onde o Colligo se encaixa, em `RELATED.md`.
+The purpose of this document is to record **why** Colligo is the way it is. How to implement is in `SPEC.md`. Defences against silent error are in `RELIABILITY.md`. Protection of restricted data is in `CONFIDENTIALITY.md`. What comes next is in `ROADMAP.md` and `BACKLOG.md`. What already exists and where Colligo fits is in `RELATED.md`.
 
 ---
 
-## 1. Visão
+## 1. Vision
 
-Colligo é uma biblioteca Go e um CLI que respondem uma pergunta sobre dados genômicos:
+Colligo is a Go library and a CLI that answer one question about genomic data:
 
-> Eu tenho os dados que acho que tenho?
+> Do I have the data I think I have?
 
-O nome vem do latim _colligere_ — "eu coleto, eu reúno, eu agrego".
+The name comes from the Latin _colligere_ — "I collect, I gather, I bring together".
 
-A distinção importa e define o projeto. Baixar dado público é problema resolvido: iSeq, fetchngs, ffq, pysradb, fastq-dl e outros fazem isso bem, com MD5 e resume. Garantir que os **bytes** continuam os mesmos ao longo dos anos também é resolvido, fora da bioinformática: git-annex (`fsck --incremental-schedule`), DataLad e DVC fazem isso. Ver `RELATED.md`.
+The distinction matters and defines the project. Downloading public data is a solved problem: iSeq, fetchngs, ffq, pysradb, fastq-dl and others do it well, with MD5 and resume. Guaranteeing that the **bytes** stay the same over the years is also solved, outside bioinformatics: git-annex (`fsck --incremental-schedule`), DataLad and DVC do it. See `RELATED.md`.
 
-O que nenhuma dessas ferramentas sabe é o que o arquivo **significa**. Que o `.fastq.gz` terminou onde deveria. Que tem o número de reads e de bases que a fonte publicou. Que R1 e R2 são um par. Que o GTF é GENCODE 44 com `chr1`, e não Ensembl 111 com `1`. Que 47 de 50 não é completo. Que a fonte suprimiu o run como incorreto depois que você o baixou.
+What none of those tools knows is what the file **means**. That the `.fastq.gz` ended where it should. That it has the number of reads and bases that the source published. That R1 and R2 are a pair. That the GTF is GENCODE 44 with `chr1`, and not Ensembl 111 with `1`. That 47 of 50 is not complete. That the source suppressed the run as incorrect after you downloaded it.
 
-Colligo faz três coisas, sempre sobre dado com semântica de bioinformática:
+Colligo does three things, always on data with bioinformatics semantics:
 
-- **Identificar:** que arquivo é este de fato — release, assembly, coleção de sequências — deduzido do conteúdo, não do nome.
-- **Verificar:** está inteiro e é o que a fonte e você declararam.
-- **Vigiar:** continua valendo, no disco e na fonte.
+- **Identify:** which file this actually is — release, assembly, sequence collection — deduced from the content, not from the name.
+- **Verify:** it is whole and it is what the source and you declared.
+- **Watch:** it remains valid, on disk and at the source.
 
-Em uma frase: Colligo não prova que você baixou os bytes certos — isso todo mundo faz. Prova que você tem os dados que acha que tem, e avisa quando isso deixa de ser verdade.
+In one sentence: Colligo does not prove that you downloaded the right bytes — everybody does that. It proves that you have the data you think you have, and warns you when that stops being true.
 
-**Faz:** extrai fatos do conteúdo numa única leitura, compara o declarado contra o observado, busca metadados em fontes públicas e privadas, organiza o metadado em estrutura experimental tipada, baixa com integridade e resume, **adota** arquivo que chegou por fora, persiste tudo em SQLite com histórico auditável, exporta manifesto portátil, atesta acervo contra manifesto de terceiro e reconsulta a fonte para detectar mudança.
+**It does:** extracts facts from the content in a single read, compares the declared against the observed, fetches metadata from public and private sources, organises the metadata into a typed experimental structure, downloads with integrity and resume, **adopts** a file that arrived from outside, persists everything in SQLite with an auditable history, exports a portable manifest, attests a collection against a third party's manifest and re-queries the source to detect change.
 
-**Não faz:** análise, gerenciamento de pipeline, visualização, criptografia em repouso, anonimização de conteúdo.
+**It does not:** analysis, pipeline management, visualisation, encryption at rest, anonymisation of content.
 
-### Duas portas, mesma biblioteca
+### Two doors, same library
 
-**Porta leve — `colligo check`.** Um comando, sem banco, sem TOML, sem estado salvo. Lê cada arquivo uma vez, extrai os fatos e, com `--source`, compara contra o que a fonte declarou. Código de saída diferente de zero se algo não bate; `--json` para máquina. Distribuída via bioconda e como módulo nf-core. É a porta que gera usuários: não exige ler documentação nenhuma.
+**Light door — `colligo check`.** One command, no database, no TOML, no saved state. It reads each file once, extracts the facts and, with `--source`, compares against what the source declared. A non-zero exit code if something does not match; `--json` for machines. Distributed via bioconda and as an nf-core module. It is the door that generates users: it does not require reading any documentation.
 
 ```
 colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz --source ena
 ```
 
-**Porta pesada — `fetch`, `adopt`, `status`, `manifest`, `attest`, `recheck`.** Banco SQLite, execuções registradas, vigilância no tempo, manifesto, confidencialidade. Para quem precisa de custódia: core facilities, reanálise em escala, consórcios, dado controlado.
+**Heavy door — `fetch`, `adopt`, `status`, `manifest`, `attest`, `recheck`.** SQLite database, recorded runs, watching over time, manifest, confidentiality. For those who need custody: core facilities, reanalysis at scale, consortia, controlled data.
 
-**Regra:** a porta leve não depende de nada da pesada. Extratores de fatos, validadores de formato e a parte de metadados dos adapters vivem no núcleo e servem às duas. A pesada só acrescenta persistência e tempo.
+**Rule:** the light door depends on nothing from the heavy one. Fact extractors, format validators and the metadata part of the adapters live in the core and serve both. The heavy one only adds persistence and time.
 
-### Quem usa
+### Who uses it
 
-Quem reanalisa dado público em escala (meta-análise, atlas, treino de modelo), quem desenvolve e compara métodos, grupos clínicos com dado controlado, core facilities, consórcios que trocam acervos, e quem precisa reproduzir a própria tese anos depois. O aluno que baixa seis amostras uma vez usa a porta leve e não precisa saber que a pesada existe.
-
----
-
-## 2. Princípios
-
-**Declarado contra observado, em todas as camadas.** Toda checagem do Colligo compara o que alguém afirmou com o que o conteúdo mostra. A fonte declara MD5, `read_count`, `base_count` e o conjunto de arquivos; você declara tipo, release e assembly; o nome do arquivo declara o par. O arquivo é a testemunha. Nenhuma ferramenta cruza as três partes — fonte, declaração e conteúdo — e acompanha isso no tempo. Esse é o diferencial.
-
-**O usuário é a fonte de verdade sobre intenção.** Ele declara o tipo de dado antes de começar. A API confirma, não descobre. O conteúdo confirma ou desmente.
-
-**Falhar fechado.** "Nunca silencioso" implementado como aviso produz avisos que ninguém lê. Discrepância que compromete o resultado **para** o pipeline. Modo estrito é default; `--permissive` muda se para, nunca se a informação existe.
-
-**Dado parcial tem valor.** 50GB baixados até 80% são horas de transferência. Nunca se apaga progresso parcial. Isto inclui o caminho de `ENOSPC`: grava-se o offset seguro antes de propagar o erro.
-
-**Auditabilidade total.** Toda transição de estado e toda chamada de API ficam registradas com timestamp e vinculadas à execução que as causou.
-
-**Proteção por tipo, não por disciplina.** Dado restrito não vaza porque o caminho errado não compila, não porque alguém lembrou de redigir.
-
-**Extensibilidade por design, com adapters impotentes.** O core é agnóstico ao tipo de experimento. Adapters são código puro sem acesso a disco ou banco — o pior bug possível num adapter é devolver metadado errado.
+Those who reanalyse public data at scale (meta-analysis, atlas, model training), those who develop and compare methods, clinical groups with controlled data, core facilities, consortia that exchange collections, and those who need to reproduce their own thesis years later. The student who downloads six samples once uses the light door and does not need to know the heavy one exists.
 
 ---
 
-## 3. Decisões cravadas e seus porquês
+## 2. Principles
 
-### Adapters são puros
+**Declared against observed, at every layer.** Every Colligo check compares what someone claimed with what the content shows. The source declares MD5, `read_count`, `base_count` and the set of files; you declare type, release and assembly; the file name declares the pair. The file is the witness. No tool crosses the three parties — source, declaration and content — and follows this over time. That is the differentiator.
 
-A interface original dava `Download` ao adapter, o que significa que o código do colaborador escreve no disco e no banco. Um bug oculto dele pode gravar path absoluto, pular transição de estado, ou escrever fora do diretório do estudo. Nenhum teste de contrato conserta isso, porque o adapter tem acesso direto às primitivas.
+**The user is the source of truth about intent.** They declare the data type before starting. The API confirms, it does not discover. The content confirms or contradicts.
 
-Invertido: adapter recebe accession, devolve dados. O core é o único que baixa, hasheia, transiciona e escreve. **O pior bug possível passa a ser "retornou metadado errado"**, que o validador pega e `discrepancies` registra. Isolamento por construção, não por disciplina.
+**Fail closed.** "Never silent" implemented as a warning produces warnings that nobody reads. A discrepancy that compromises the result **stops** the pipeline. Strict mode is the default; `--permissive` changes whether it stops, never whether the information exists.
 
-Custo: protocolo exótico precisa de uma segunda interface, `Transport`, de superfície mínima, revisada com rigor de core.
+**Partial data has value.** 50GB downloaded up to 80% is hours of transfer. Partial progress is never deleted. This includes the `ENOSPC` path: the safe offset is written before the error is propagated.
 
-Consequência para governança: `source/*` pode ser mergeado por qualquer mantenedor, precisamente porque a suíte de conformidade é o gate.
+**Total auditability.** Every state transition and every API call is recorded with a timestamp and linked to the run that caused it.
 
-### `adopt` é tão importante quanto `fetch`
+**Protection by type, not by discipline.** Restricted data does not leak because the wrong path does not compile, not because someone remembered to redact.
 
-Dado controlado — dbGaP, institucional — não chega por HTTP com `Range`. Chega por `prefetch`, Globus, ou disco físico. Toda a máquina de faixa/retry/resume não se aplica.
-
-Isso parecia limitação e é o contrário: revela que o produto não é `download`, é **custódia**. `adopt` registra um arquivo que chegou por qualquer meio, constrói a árvore e extrai os fatos, e dali em diante ele tem reverificação eterna igual aos baixados. Adoção é registro, não transferência — o arquivo não é copiado nem movido.
-
-Consequência honesta: arquivo adotado sem checksum publicado tem integridade garantida **a partir do momento da adoção**. Colligo não pode afirmar que ele chegou correto. A distinção é registrada no estado `adopted` em vez de dissolvida em `done`.
-
-### Fatos e afirmações
-
-A decisão estrutural central. Tudo que o Colligo sabe sobre um arquivo se divide em duas classes.
-
-**Fatos** são extraídos do conteúdo numa única leitura em streaming: raiz BLAKE3, MD5 e SHA-256, validade estrutural, contagem de registros e de bases, primeiro e último ID de read, nomes de sequência amostrados, digest de Sequence Collection. Um fato é função pura do conteúdo e da versão do extrator. Por isso é indexado por `(raiz, tipo, versão do extrator)` e nunca recalculado enquanto a raiz não mudar. Dois arquivos com o mesmo conteúdo compartilham fatos de graça.
-
-**Afirmações** são comparações baratas entre fatos, declarações e o que a fonte publicou: o MD5 bate, a contagem de bases bate, R1 e R2 casam, o release confere, o conjunto está completo. O estado de custódia é função das afirmações, não uma coluna que alguém atualiza.
-
-Consequências:
-
-- **Hash igual implica estrutura igual.** Se a raiz confere, a validação estrutural não pode ter mudado de resultado. Revalidação só roda quando a versão do validador muda. Isso importa porque, para gzip simples e FASTQ, verificar o término exige descomprimir tudo.
-- **A leitura cara paga por tudo.** Se o FASTQ precisa ser descomprimido para validar estrutura, a mesma passada conta reads e bases, registra os IDs das pontas e alimenta as invariantes de par e de fonte. Ler o arquivo duas vezes é bug de desenho.
-- **A porta leve é a extração de fatos sem persistência.** A pesada é a mesma extração com banco.
-
-### A árvore BLAKE3 unifica resume, verificação e atestação
-
-BLAKE3 já é uma árvore de Merkle. Em vez de uma grade própria de hashes independentes — que seria uma segunda estrutura podendo discordar do hash global —, o Colligo guarda a codificação **outboard do Bao**: os nós internos da árvore, com grupo de 8 MiB, num arquivo à parte. A raiz dessa árvore **é** o BLAKE3 do arquivo. Uma estrutura, uma raiz, consistência por construção.
-
-Resume, localização de dano, scrub e atestação viram a mesma operação: verificar uma fatia contra a raiz. O manifesto carrega raiz e outboard; quem recebe verifica fatias sem confiar em ninguém.
-
-Limitação aceita: corrupção que desloca bytes faz todas as fatias seguintes falharem, então o reparo rebaixa do ponto do erro até o fim. Continua correto, só perde a economia nesse caso raro.
-
-Limitação honesta: localizar dano no nível do bloco só economiza algo quando existe reparo. Enquanto reparo granular estiver no backlog, a granularidade serve ao resume e ao diagnóstico, não à economia. A árvore não é o diferencial do projeto; é infraestrutura barata que o BLAKE3 já dá.
-
-### Integridade interna é BLAKE3; MD5/SHA da fonte é juiz único
-
-BLAKE3 paraleliza um arquivo em vários núcleos e passa de vários GB/s. MD5 fica em ~600 MB/s num núcleo. Integridade contínua usa a árvore BLAKE3; o MD5/SHA da fonte é cross-check do arquivo inteiro, calculado de graça na mesma leitura.
-
-### Comparar `stat` não é verificar
-
-Tamanho e mtime iguais ao baseline dizem que ninguém mexeu no arquivo pelas vias normais. Não dizem nada sobre corrupção silenciosa do disco, que não altera nenhum dos dois. O gate de `stat` existe para decidir o que precisa ser lido, nunca para declarar um arquivo verificado. Só leitura de conteúdo atualiza `last_verified_at`.
-
-### Integridade de bytes não basta
-
-Checksum correto não significa arquivo correto. Um GTF do Ensembl 110 e do 111 são ambos íntegros e produzem resultados diferentes. Um `.gz` truncado descomprime parcialmente e muita ferramenta downstream aceita sem reclamar.
-
-Por isso há quatro camadas além do hash: **identidade** (assembly, release, ETag, digest de coleção de sequências), **estrutura** (bytes mágicos e verificação de término por formato), **invariante de par** (contagem e IDs de R1/R2) e **invariante de fonte** (contagem de reads e bases contra o que a fonte publicou). O catálogo completo está em `RELIABILITY.md`, que é o documento que responde ao medo que originou o projeto.
-
-### Identidade deduzida do conteúdo
-
-Declarar `release = "GENCODE 44"` no TOML é necessário, mas é declaração. O Colligo confirma pelo conteúdo quando pode:
-
-- **FASTA:** digest de Sequence Collection (refget, GA4GH). Independe de compressão, largura de linha e texto de cabeçalho. Identifica a coleção pelo que ela contém.
-- **GTF do GENCODE:** a versão está na linha `##description` do cabeçalho.
-- **GTF do Ensembl:** o cabeçalho traz `#!genome-build` e datas, sem número de release. Aqui a identificação é por hash contra os arquivos de checksum oficiais de cada release.
-
-Confirmado pelo conteúdo, `release_confidence` vira `confirmed`. Resolve também o arquivo órfão no servidor que ninguém sabe de qual release é: `colligo identify arquivo.gtf.gz`.
-
-### Compatibilidade é relação entre conjuntos
-
-`chr1` contra `1` é o caso visível de um problema geral: arquivos que precisam compartilhar um sistema de coordenadas. O padrão Sequence Collections define `sorted_name_length_pairs`, digest do sistema de coordenadas que ignora ordem, e uma função de comparação que devolve o que só existe em A, o que só existe em B, o que é comum, e se a ordem coincide.
-
-`.fai`, `@SQ` do BAM e `##contig` do VCF viram pares nome-comprimento e são comparados por igualdade de digest. GTF e BED só têm nomes, então viram teste de inclusão. Compatibilidade deixa de ser heurística e vira relação bem definida. Implementado em `compat/`, sobre os fatos já extraídos.
-
-### A fonte também muda
-
-Um run do ENA suprimido some da busca, mas continua recuperável por accession. Supressão permanente é para dado considerado incorreto sem perspectiva de correção. Um pipeline pode continuar usando, sem aviso, um dado que a própria fonte condenou.
-
-`colligo recheck --upstream` reexecuta só a parte de metadados dos adapters — barata, sem baixar nada, pura — e compara com o que foi guardado: status do registro, conjunto de arquivos, checksums publicados. Divergência vira `discrepancy`. É a vigilância do lado da fonte, complemento do scrub do lado do disco.
-
-### Validação estrutural antes do rename
-
-O `.part` só vira nome final depois de checksum **e** validação estrutural. Isso significa que a existência do arquivo com nome final é ela mesma uma afirmação: "este arquivo passou tudo". Nenhum pipeline downstream consegue pegar um arquivo meio-validado por acidente, porque ele não existe com aquele nome.
-
-### Falhar fechado, com códigos de saída distintos
-
-`3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa — e a diferença entre incompleto e interrompido é justamente a que decide se você reroda ou investiga.
-
-### Classificação obrigatória e imutável
-
-Fonte sem `classification` declarada causa erro de carregamento. Não há default: um default `public` vazaria dado restrito por omissão, e um default `restricted` treinaria o usuário a desligar a proteção.
-
-Estudo restrito é restrito por inteiro, não por linha, porque correlação é informação: saber que dois pacientes estão no mesmo estudo já diz algo. E a classificação é imutável — promover estudo público a restrito seria gambiarra, porque os dados já foram gravados em claro. O erro instrui a criar estudo novo.
-
-### Desconfiar da própria ferramenta
-
-Se o cálculo de hash tem bug, tudo "verifica" e tudo está errado. Nenhuma defesa interna alcança isso, porque a defesa usa o código defeituoso.
-
-Daí três coisas que parecem paranoia e não são: vetores conhecidos de hash rodados em toda abertura, um arquivo canário verificado pelo mesmo caminho de código dos arquivos reais, e saída compatível com `b3sum`/`sha256sum` para conferência por ferramenta externa. Duas implementações independentes da checagem crítica é a única defesa real contra bug na checagem.
-
-O canário tem um segundo efeito: quando ele falha, a mensagem diz que o problema é ambiente ou ferramenta, para você não sair caçando corrupção onde não há.
-
-### Linguagem: Go, com uma porta estreita para Rust
-
-Go não é a linguagem mais rápida para o gargalo do projeto. Descompressão e parsing em Rust ou C, com libdeflate, zlib-ng e SIMD, vão mais longe; o ecossistema de bioinformática em Rust (noodles, needletail) também é mais completo, principalmente para CRAM.
-
-Go foi escolhido pelo resto do sistema: rede, retry, rate limit e fan-out de metadados são naturais; binário estático com cross-compile trivial; inicialização instantânea, que importa ao rodar `check` em milhares de arquivos ou como passo curto de pipeline; empacotamento como biocontainer e módulo nf-core quase sem esforço. E velocidade de desenvolvimento, que num projeto de uma pessoa pesa mais que um fator constante de throughput.
-
-A diferença real é menor do que parece. Em download a rede domina. Em arquivo local o piso é a descompressão, e o `zcat` é C; Go com `klauspost/compress` fica cerca de 20% atrás dele na medição da Fatia 1. É fator constante, não ordem de grandeza.
-
-Linguagem não é diferencial. O usuário escolhe ferramenta pelo que ela pega e pelo atrito de usar; Go reduz o atrito, mas não é o motivo de alguém usar. E linguagem não protege ideia: a checagem de `read_count` cabe num script Python dentro de qualquer workflow. O que não se copia rápido é a arquitetura de fatos e o benchmark como prova.
-
-**A porta para Rust.** Se o benchmark de `TESTING.md` §7.1 mostrar a descompressão em Go longe demais do piso, a saída não é reescrever o projeto. A fronteira já existe: o extrator de fatos é função pura de bytes para fatos, sem banco, rede ou config. Um acelerador Rust opcional entra ali, como **processo separado** — não cgo, não WASM:
-
-- O produto é o Go, completo sozinho. O acelerador é usado se estiver no PATH; se não, o extrator Go roda.
-- As duas implementações produzem fatos idênticos byte a byte, garantido por teste diferencial e fuzz entre elas.
-- Uma fronteira só (o extrator), um sentido só (Go chama Rust), um contrato só (o esquema de fatos, com `extractor_version` compartilhada).
-
-cgo com biblioteca Rust seria mais rápido na fronteira, mas exige toolchain Rust e C no build, complica o cross-compile e mata o binário puro-Go. WASM via wazero evita cgo, mas perde a velocidade nativa, que era o único motivo. Processo separado custa milissegundos por arquivo para subir, irrelevante perto de descomprimir gigabytes.
-
-O efeito colateral é o melhor argumento: duas implementações independentes do extrator são exatamente a defesa de M9 contra bug na própria ferramenta. O acelerador Rust é velocidade e segunda opinião na mesma peça.
-
-Decisão adiada com gatilho em `BACKLOG.md`. Até lá, a regra que vale agora é a de fronteira: nada fora do extrator pode depender de detalhe de implementação do extrator.
-
-### Driver SQLite: `modernc.org/sqlite` (Go puro, sem CGO)
-
-Multiplataforma com binário simples é incompatível com CGO na prática. O `modernc` é mais lento, mas o gargalo é sempre rede e disco dos arquivos, nunca o banco de metadados. Pagamos moeda que sobra para comprar moeda que falta.
-
-Consequência: a documentação **não** afirma "tudo stdlib". É "stdlib + um driver SQLite puro-Go".
-
-### PRAGMAs lidos de volta
-
-`foreign_keys=ON` porque o SQLite não enforça FK por padrão — sem isso a integridade referencial é decorativa. `journal_mode` resolvido pelo filesystem — `WAL` em disco local, `DELETE` em filesystem de rede, onde WAL é corrupção silenciosa (`CONTRACT.md` §2) —, `synchronous=NORMAL` (seguro sob WAL, muito mais rápido que FULL), `busy_timeout=5000`, transações de escrita com `BEGIN IMMEDIATE`.
-
-Versão anterior forçava WAL sempre. Com o Scribo detectando filesystem de rede e o Colligo não, um banco compartilhado em NFS seria protegido por uma ferramenta e corrompido pela outra. A regra agora é única e vive no contrato.
-
-Novidade: os valores são **lidos de volta** após o SET. Um PRAGMA que não surtiu efeito é exatamente o tipo de falha silenciosa que este projeto persegue.
-
-Armadilha real, já cometida uma vez neste código: `*sql.DB` é um pool. `foreign_keys` e `busy_timeout` valem por conexão, então um `db.Exec("PRAGMA …")` configura só a conexão que o pool entregou naquele momento. Os PRAGMAs vão no DSN (`_pragma=` do `modernc.org/sqlite`), que os aplica a toda conexão nova, e a leitura de volta roda em cada conexão aberta.
-
-### Confidencialidade entra pelos tipos, não pelo regime inteiro
-
-O regime de `CONFIDENTIALITY.md` é o documento mais pesado do projeto, e a primeira fonte restrita só aparece na Fatia 6. Construir o regime inteiro antes de o Colligo baixar um arquivo seria a Fatia 0 sem entregar nada utilizável.
-
-O que não dá para encaixar depois entra primeiro: os tipos `secret.Secret`, `secret.Name` e `secret.Endpoint`, e o `logf` tipado. Se o código nasce passando `string`, retrofitar é reescrever. Todo o resto — permissões, pasta sincronizada, sentinela global, dialer instrumentado, `doctor`, `redact-report` — se adiciona depois sem dor e entra junto com a primeira fonte restrita.
-
-### Writer goroutine único, com erro e flush
-
-Um goroutine serializa todas as escritas, eliminando contenção. Não é fire-and-forget: cada evento carrega canal de resposta e o worker espera o ack — senão disco cheio passa despercebido. Transições `fatal` são commitadas sem batch. No shutdown: cancela, drena, commita, fsync, grava o desfecho da execução, sai.
-
-### Toda execução é registrada
-
-`tool_runs` grava versão, git SHA, hash de config e código de saída. Todo evento de arquivo aponta para a execução que o causou.
-
-Sem isso a auditoria diz "o que aconteceu" mas não "com qual código" — e "com qual código" é metade da reprodutibilidade. Também é o que permite detectar execução interrompida e esquecida, e configuração que mudou no meio de um acervo.
-
-### `reference` em vez de `genome`
-
-O tipo `genome` original pretendia gerenciar assets de referência, incluindo índices de aligner. Isso compete de frente com o refgenie, que faz melhor.
-
-Reduzido a `reference`: baixa FASTA, GTF/GFF3, transcritos e blacklist, e registra **qual release exatamente**, com a convenção de cromossomo detectada. Nada de construir índices. É 10% do refgenie e é justamente a parte que decide reprodutibilidade.
-
-### Convenção de cromossomo nunca é convertida em silêncio
-
-`chr1` do GENCODE contra `1` do Ensembl. Se genoma e anotação divergem, a quantificação falha sem erro nenhum — só números errados.
-
-`chromosome_naming` é metadado de primeira classe, detectado por amostragem. Derivado cujos pais divergem é `fatal`. Colligo avisa e para; converter automaticamente seria criar o erro silencioso que se tenta evitar.
-
-### Adoção pelo canal que o usuário já usa
-
-A ferramenta que a comunidade adota funciona com um comando e aparece onde o usuário já olha. Por isso três decisões de distribuição são de primeira classe, não polimento:
-
-- **`check --samplesheet`** confere a samplesheet de um pipeline nf-core pelo conteúdo — arquivos, par, contagens, repetição. O nf-schema valida as colunas da planilha, não o que os arquivos contêm.
-- **Módulo MultiQC** mostra o resultado do `check` no relatório que todo mundo já abre. Ninguém precisa mudar de hábito para ver.
-- **`colligo.lock`**, o `go.sum` dos dados: pequeno, textual, versionado junto da análise, conferido no início do pipeline. A ideia de lockfile não é nova — o DVC tem seus arquivos `.dvc` —; o conteúdo é: identidades confirmadas e contagens, não só hashes.
-
-### Declarado contra observado, além do arquivo isolado
-
-O mesmo princípio vale para metadado de estudo:
-
-- **Química de single-cell:** comprimento do R1 e barcodes contra whitelists denunciam a química; divergência da declarada para antes do alinhamento.
-- **Matriz suplementar do GEO:** colunas contra a lista de GSMs, namespace de ID de gene contra o genoma declarado.
-- **Duplicata entre accessions:** conteúdo idêntico aparece de graça porque fatos são indexados pela raiz.
-
-### Adorável, visivelmente rápido, demonstravelmente confiável
-
-Correto não basta. Uma ferramenta que é só mais correta que as outras é respeitada e pouco usada. Três eixos, cada um com decisões concretas.
-
-**Adorável — resolver algo chato em um comando e explicar o que achou.**
-
-- **`colligo get GSE116256`**: da accession à samplesheet validada. Busca metadados, baixa, verifica na mesma leitura, organiza as amostras por papel e réplica, e entrega `samplesheet.csv` pronta para nf-core mais `colligo.lock`. É porta leve: sem banco; o estado de resume vive ao lado dos arquivos (`.part` e outboard). O fetchngs cobre parte disso, mas exige Nextflow; aqui é um binário.
-- **Mensagem de erro é diagnóstico.** Toda afirmação que falha aponta uma entrada de um catálogo de diagnósticos: o que foi observado, a causa provável, o que fazer. "R2 tem 1,2 milhão de reads a menos que o ENA declara. Padrão típico de extração truncada. Refaça com `fasterq-dump` ou baixe o FASTQ do ENA." Código de saída continua existindo para máquina; a pessoa lê a frase.
-- **Zero configuração.** `colligo check .` descobre formatos pelo conteúdo e pares pelo nome (`_R1`/`_R2`, `_1`/`_2`), e roda. TOML só quando o usuário quer controle.
-
-**Visivelmente rápido — paralelismo que outros não têm.**
-
-- **Verificação sobreposta ao download.** As outras ferramentas baixam e depois releem o arquivo para conferir o MD5. No Colligo os fatos são calculados enquanto os bytes chegam; quando o download termina, a verificação terminou. Meta mensurável: `get` com verificação completa custa no máximo 5% acima do download puro.
-- **Concorrência adaptativa por servidor.** Número fixo de conexões ou subutiliza o servidor ou leva bloqueio. O Colligo ajusta sozinho, como o controle de congestionamento do TCP: aumento aditivo enquanto a vazão cresce, redução multiplicativa ao primeiro 429, 503, timeout ou queda de vazão. O limite configurado por domínio vira teto, não valor. O usuário não precisa adivinhar `--workers`.
-
-**Demonstravelmente confiável — provar que a própria ferramenta não mente.**
-
-- **Crash em qualquer ponto.** A suíte mata o processo em cada escrita, `fsync` e `rename` do resume e do banco, e verifica a invariante depois de cada retomada: nenhum arquivo com nome final sem ter passado em tudo, nenhum progresso perdido além do último grupo. Ferramentas sérias de sistema de arquivos fazem isso; de bioinformática, quase nunca.
-- **Modelo formal do resume e da máquina de estados**, em TLA+, verificado por model checking: nenhuma sequência de falhas, reinícios e respostas do servidor leva a `done` sem conteúdo conferido. O modelo é escrito antes do código da Fatia 3 e fica no repositório.
-- **Certificado verificável por terceiros.** `check --certificate` emite um JSON com raiz, tamanho, fatos, versões e afirmações. Um verificador de referência de ~200 linhas em Python, independente do código Go, confere o certificado contra o arquivo sem instalar o Colligo. Confiabilidade passa a ser algo que outra pessoa checa, não algo em que ela precisa acreditar — e o verificador é, de brinde, mais uma implementação independente para M9.
-
-### Velocidade tem piso físico, e a meta é encostar nele
-
-Validar gzip simples e FASTQ exige descomprimir tudo. O piso é a descompressão em Go puro; a meta é ficar a 10% dela, e na primeira medição o `check` inteiro ficou a 0,5%. O `zcat`, em C, é ~20% mais rápido que o inflate em Go: essa distância é reportada, não perseguida, porque fechá-la pede cgo ou descompressão especulativa. Três decisões seguem daí: a leitura única distribui o buffer em paralelo, uma goroutine por consumidor, porque `io.MultiWriter` somaria os custos; o parser opera sobre o buffer sem alocar; e o jeito mais rápido de verificar é não verificar de novo — fatos por raiz transformam a reexecução num `stat`. Modo rápido existe (`check --quick`), mas nunca declara nada verificado.
-
-### Artefato derivado tem proveniência, mínima
-
-Um GTF fundido de GENCODE com Dfam não foi baixado, foi construído. Sem saber qual versão de cada pai entrou, o resultado não é reproduzível, e a ausência é invisível.
-
-`derived_files` e `derived_parents` registram pais, construtor, versão e hash de parâmetros. Derivado herda a classificação mais estrita dos pais — um derivado de pai restrito é restrito.
-
-Escopo deliberadamente mínimo. Dentro de um workflow, proveniência de derivado é trabalho do orquestrador: o data lineage do Nextflow, experimental desde a 25.04, já registra caminho, tamanho e checksum dos outputs. O Colligo cobre o derivado construído fora de orquestrador e, quando fizer sentido, lê o registro do Nextflow em vez de competir com ele.
-
-### Manifesto portátil
-
-O banco é o estado canônico, mas um terceiro que recebe seu acervo não pode verificar nada sem ele. O manifesto exporta raiz e outboard, identidades e estado de custódia num JSON que circula.
-
-Em estudo restrito o manifesto sai com nomes opacos e continua **completamente funcional** para atestação, porque hashes não são sensíveis. É o mecanismo que separa "reprodutibilidade interna" de "reprodutibilidade verificável".
-
-### FTP isolado, HTTPS prioritário, Aspera fora da v1
-
-Preferimos HTTPS e herdamos `Range`, retry e checksum do caminho principal. FTP fica isolado, com resume próprio, só onde não há alternativa. Aspera é binário externo com licença e configuração de rede fora do nosso controle: fora da v1.
-
-### Concorrência idiomática e educada
-
-`errgroup` com `SetLimit`: um erro cancela os irmãos e espera-se todos. Limites por domínio existem para não queimar o IP da instituição; aumentá-los é responsabilidade do usuário e fica registrado no hash de config.
-
-### Infraestrutura
-
-Go estável mais recente (habilita `iter.Seq`, que resolve iteração sobre estudos grandes sem carregar tudo em memória). Licença MIT. Módulo `github.com/<org>/colligo`.
-
-Plataforma: o alvo de uso é Linux (HPC, servidores, WSL). O desenvolvimento acontece também em Windows, e isso tem consequência: permissões `0600`/`0700`, `verified_inode` e detecção de pasta sincronizada assumem POSIX. Decisão: desenvolver e testar no WSL; o binário nativo de Windows compila, mas só a porta leve é suportada nele até existir CI Windows. OneDrive é a pasta sincronizada padrão do Windows — exatamente o caso que `CONFIDENTIALITY.md` §5.3 quer pegar —, então estudo restrito em Windows nativo é recusado.
+**Extensibility by design, with powerless adapters.** The core is agnostic to the experiment type. Adapters are pure code with no access to disk or database — the worst possible bug in an adapter is returning wrong metadata.
 
 ---
 
-### Decisões da Fatia 1, com confiabilidade primeiro
+## 3. Settled decisions and their whys
 
-- **Linha em branco no fim do FASTQ é `advisory`, não `blocking`.** É inofensiva e comum; bloqueá-la gera alarme falso, e alarme falso empurra o usuário para `--permissive`, que é onde problema real passa. Ela é contada no fato e relatada. Linha em branco *no meio* continua `blocking`.
-- **Linha `;` no FASTA é rejeitada.** Antes ela era contada como bases: contagem errada em silêncio. Ignorá-la poderia esconder lixo. Num formato arcaico, falhar fechado custa pouco.
-- **BSIZE falso em BGZF é rejeitado.** O subcampo `BC` promete BGZF, e htslib, samtools e tabix dependem do BSIZE para achar os blocos: com ele errado o gzip interno descomprime inteiro e o arquivo ainda assim falha, ou lê lixo, no acesso aleatório. Validar só o bloco EOF deixava passar um arquivo que o resto do ecossistema não lê. A cadeia de BSIZE precisa ser contígua do offset 0 até o fim exato do arquivo, e o verificador Python a confere de forma independente.
-- **BOM UTF-8 no início é rejeitado em FASTQ, FASTA e GTF.** No GTF ele contaminava o primeiro seqname: `\ufeffchr1` ≠ `chr1`, e a convenção de cromossomo caía para `unknown` em vez de `ucsc`. É o erro silencioso da M11, sem aviso e com números errados adiante. Remover o BOM em silêncio seria converter sem avisar; o sniffer o ignora só para que o erro seja específico (`structure_invalid`, offset 0) e não um genérico "formato desconhecido".
-- **O verificador independente distingue "discordo" (1) de "não sei julgar" (2).** Schema desconhecido é "não sei"; tratá-lo como discordância ou concordância seria afirmar algo que não foi verificado. O mesmo vale para campo obrigatório ausente e para campo desconhecido: o verificador só diz "concordo" sobre um certificado que entende por inteiro, e um campo que ele não conhece pode carregar uma afirmação que ele não confere. Por isso crescer o certificado é mudança de `schema_version`, não de campo opcional; e por isso o `AGREE` vem acompanhado da lista do que não foi recalculado, em vez de deixar o leitor supor que tudo foi.
-- **`fatal` de arquivo não interrompe os outros arquivos; `fatal` da ferramenta interrompe tudo.** Na porta leve não há estado a salvar, e parar no primeiro arquivo ruim esconderia o diagnóstico dos demais. O código de saída continua sendo 2.
-- **Saída em inglês.** Uma língua só na interface pública; os identificadores no `--json` são estáveis independentemente do texto.
-- **A meta de desempenho mede o que é nosso.** Ver "Velocidade tem piso físico". Trocar confiabilidade por velocidade — cgo, inflate especulativo — fica para depois e só com medição.
-- **Corpus sintético versionado, com verdade do gerador.** Bytes fixos tornam certificados reprodutíveis por terceiros; o esperado vem de quem escreveu o arquivo, não de outro parser, o que pega o erro que o Go e o verificador Python compartilhariam.
-- **Sufixo de mate do `fastq-dump --readids` só na forma completa.** O extrator FASTQ (`fastq-4`) tira `.1`/`.2` do fim do ID apenas quando o ID tem a forma `<acesso>.<spot>.<1|2>` com acesso `SRR`, `ERR` ou `DRR` (`SRR001666.1.1` e `SRR001666.1.2` viram `SRR001666.1`). Tirar qualquer `.1` ou `.2` final faria `SRR1.1` e `SRR1.2`, que são spots diferentes, virarem o mesmo ID, e esconderia um R2 que perdeu o primeiro read. Sem a normalização, o par do `fastq-dump` dava `pair_ids` bloqueante num par íntegro. `tools/verify_cert.py` implementa a mesma regra por expressão regular, escrita a partir da regra e não do Go.
-- **`check --quick` sem problema sai 5, não 0.** O código 0 é reservado para "completo e verificado", e `colligo check --quick x && pipeline` não pode seguir como se o arquivo tivesse sido verificado: um gzip truncado no meio passa no quick. Problema achado no quick continua saindo 2 ou 3. `validate` não muda, porque lê o arquivo inteiro.
-- **`--expected` malformado é erro de uso.** `verifier.ParseExpected` exige 32 hexadecimais para MD5 e 64 para SHA-256 e BLAKE3, sem diferenciar maiúscula, e a saída é 1 sem ler arquivo nenhum. Um valor esperado malformado é erro de quem digitou; declará-lo `checksum_mismatch` fatal acusaria de corrompido um arquivo que ninguém comparou.
-- **Memória do `Compute` limitada por teste.** Pico de heap ≤ 32 MiB acima da linha de base, medido por `runtime.ReadMemStats` sobre 2 GiB de zeros gzip (razão de ~1000:1) e sobre 20 milhões de reads; alocações ≤ 8 e ≤ 16 KiB por MiB lido. O teto vem do piso estrutural (anel de 8 MiB) com folga de ~3,5×, e não do pico observado, para não quebrar por ruído do coletor. Arquivo que muda durante a leitura é descrito pelos bytes lidos: o `Compute` não compara `stat` antes e depois, porque comparar `stat` não é verificar.
-- **Arquivo que muda durante a leitura é `blocking`, e o `stat` só invalida.** O `CheckFile` compara `fstat` antes e depois da leitura (tamanho, mtime e ctime em nanossegundos, inode). Se algo mudou, `changed_during_read` invalida o resultado; se nada mudou, o `stat` não prova nada, e o estado `verified` continua vindo só da leitura dos bytes. Isso respeita "comparar `stat` não é verificar": aqui o `stat` nunca aprova. É `blocking` e não `advisory` porque uma sobrescrita no lugar pode produzir um hash de bytes que nunca coexistiram no disco, e um `verified` com esse hash seria uma falsa garantia. Não é `fatal` porque o arquivo não está necessariamente corrompido: rodar de novo resolve. As demais afirmações ficam `skipped` e os hashes saem do relatório, porque derivar conclusões de bytes incoerentes só cria ruído. O `stat` também vai pelo caminho, não só pelo descritor, e compara inode e dispositivo com o arquivo aberto: o caminho é o que o usuário e o certificado nomeiam, e o descritor aberto continua apontando para o inode antigo depois de um `rename` por cima (como um download seguro termina). Sem isso o resultado sairia `verified` e o `--certificate` gravaria, ao lado do caminho, um certificado de bytes que já não são os dele. Caminho que mudou de inode é `replaced`, caminho que sumiu é `removed`; os dois dão `changed_during_read`.
-- **Mate ausente é `advisory`, não `blocking`.** `pair_missing` avisa que um arquivo com sufixo de mate não tem o outro mate na execução, porque o Colligo não consegue distinguir um par esquecido de dado single-end legítimo que carrega `_R1` no nome. Bloquear quebraria quem tem dado single-end; calar deixaria a defesa do M5 desligada sem ninguém saber (pareamento só por nome, mesma lógica de `_R1_001` contra `_R2_002`). Com um único arquivo na execução o aviso não dispara: não há contra o que comparar.
+### Adapters are pure
 
-## 4. Tipos de dado
+The original interface gave `Download` to the adapter, which means the contributor's code writes to disk and to the database. A hidden bug in it can write an absolute path, skip a state transition, or write outside the study directory. No contract test fixes that, because the adapter has direct access to the primitives.
 
-Perfis plugáveis sobre um core agnóstico, mais `generic` como fallback sem schema.
+Inverted: the adapter receives an accession and returns data. The core is the only one that downloads, hashes, transitions and writes. **The worst possible bug becomes "returned wrong metadata"**, which the validator catches and `discrepancies` records. Isolation by construction, not by discipline.
 
-| Tag          | Tipo                          | Fontes principais           | Controle          |
+Cost: an exotic protocol needs a second interface, `Transport`, with a minimal surface, reviewed with core rigour.
+
+Consequence for governance: `source/*` can be merged by any maintainer, precisely because the conformance suite is the gate.
+
+### `adopt` is as important as `fetch`
+
+Controlled data — dbGaP, institutional — does not arrive over HTTP with `Range`. It arrives through `prefetch`, Globus, or a physical disk. All the range/retry/resume machinery does not apply.
+
+This looked like a limitation and is the opposite: it reveals that the product is not `download`, it is **custody**. `adopt` registers a file that arrived by any means, builds the tree and extracts the facts, and from then on it has perpetual reverification equal to the downloaded ones. Adoption is registration, not transfer — the file is neither copied nor moved.
+
+Honest consequence: an adopted file without a published checksum has guaranteed integrity **from the moment of adoption**. Colligo cannot claim that it arrived correct. The distinction is recorded in the `adopted` state instead of being dissolved into `done`.
+
+### Facts and assertions
+
+The central structural decision. Everything Colligo knows about a file is split into two classes.
+
+**Facts** are extracted from the content in a single streaming read: BLAKE3 root, MD5 and SHA-256, structural validity, count of records and bases, first and last read ID, sampled sequence names, Sequence Collection digest. A fact is a pure function of the content and the extractor version. That is why it is indexed by `(root, kind, extractor version)` and never recomputed while the root does not change. Two files with the same content share facts for free.
+
+**Assertions** are cheap comparisons between facts, declarations and what the source published: the MD5 matches, the base count matches, R1 and R2 match, the release checks out, the set is complete. The custody state is a function of the assertions, not a column that someone updates.
+
+Consequences:
+
+- **The same hash implies the same structure.** If the root checks out, the structural validation cannot have changed its result. Revalidation only runs when the validator version changes. This matters because, for plain gzip and FASTQ, verifying the end requires decompressing everything.
+- **The expensive read pays for everything.** If the FASTQ must be decompressed to validate the structure, the same pass counts reads and bases, records the IDs of the ends and feeds the pair and source invariants. Reading the file twice is a design bug.
+- **The light door is fact extraction without persistence.** The heavy one is the same extraction with a database.
+
+### The BLAKE3 tree unifies resume, verification and attestation
+
+BLAKE3 is already a Merkle tree. Instead of an own grid of independent hashes — which would be a second structure that could disagree with the global hash —, Colligo stores the **Bao outboard** encoding: the internal nodes of the tree, with an 8 MiB group, in a separate file. The root of that tree **is** the file's BLAKE3. One structure, one root, consistency by construction.
+
+Resume, damage localisation, scrub and attestation become the same operation: verifying a slice against the root. The manifest carries root and outboard; whoever receives it verifies slices without trusting anyone.
+
+Accepted limitation: corruption that shifts bytes makes all the following slices fail, so repair re-downloads from the point of the error to the end. It remains correct, it only loses the saving in this rare case.
+
+Honest limitation: locating damage at block level only saves something when there is repair. While granular repair is in the backlog, the granularity serves resume and diagnosis, not saving. The tree is not the project's differentiator; it is cheap infrastructure that BLAKE3 already gives.
+
+### Internal integrity is BLAKE3; the source's MD5/SHA is the sole judge
+
+BLAKE3 parallelises one file across several cores and exceeds several GB/s. MD5 stays at ~600 MB/s on one core. Continuous integrity uses the BLAKE3 tree; the source's MD5/SHA is a cross-check of the whole file, computed for free in the same read.
+
+### Comparing `stat` is not verifying
+
+Size and mtime equal to the baseline say that nobody touched the file through the normal channels. They say nothing about silent disk corruption, which changes neither. The `stat` gate exists to decide what needs to be read, never to declare a file verified. Only reading the content updates `last_verified_at`.
+
+### Byte integrity is not enough
+
+A correct checksum does not mean a correct file. A GTF from Ensembl 110 and one from 111 are both intact and produce different results. A truncated `.gz` decompresses partially and many downstream tools accept it without complaint.
+
+That is why there are four layers beyond the hash: **identity** (assembly, release, ETag, sequence collection digest), **structure** (magic bytes and end-of-file verification per format), **pair invariant** (count and IDs of R1/R2) and **source invariant** (read and base count against what the source published). The complete catalogue is in `RELIABILITY.md`, which is the document that answers the fear that originated the project.
+
+### Identity deduced from the content
+
+Declaring `release = "GENCODE 44"` in the TOML is necessary, but it is a declaration. Colligo confirms it from the content when it can:
+
+- **FASTA:** Sequence Collection digest (refget, GA4GH). It is independent of compression, line width and header text. It identifies the collection by what it contains.
+- **GENCODE GTF:** the version is in the `##description` line of the header.
+- **Ensembl GTF:** the header carries `#!genome-build` and dates, with no release number. Here the identification is by hash against the official checksum files of each release.
+
+Confirmed by the content, `release_confidence` becomes `confirmed`. It also solves the orphan file on the server that nobody knows the release of: `colligo identify file.gtf.gz`.
+
+### Compatibility is a relation between sets
+
+`chr1` against `1` is the visible case of a general problem: files that must share a coordinate system. The Sequence Collections standard defines `sorted_name_length_pairs`, a digest of the coordinate system that ignores order, and a comparison function that returns what exists only in A, what exists only in B, what is common, and whether the order coincides.
+
+`.fai`, the BAM `@SQ` and the VCF `##contig` become name-length pairs and are compared by digest equality. GTF and BED have only names, so they become an inclusion test. Compatibility stops being a heuristic and becomes a well-defined relation. Implemented in `compat/`, on top of the facts already extracted.
+
+### The source also changes
+
+A suppressed ENA run disappears from the search, but remains retrievable by accession. Permanent suppression is for data considered incorrect with no prospect of correction. A pipeline can keep using, without warning, data that the source itself has condemned.
+
+`colligo recheck --upstream` re-runs only the metadata part of the adapters — cheap, with no download, pure — and compares with what was stored: record status, set of files, published checksums. A divergence becomes a `discrepancy`. It is watching on the source side, a complement to the scrub on the disk side.
+
+### Structural validation before the rename
+
+The `.part` only becomes the final name after checksum **and** structural validation. This means that the existence of the file under the final name is itself an assertion: "this file passed everything". No downstream pipeline can pick up a half-validated file by accident, because it does not exist under that name.
+
+### Failing closed, with distinct exit codes
+
+`3` means "finished and is wrong". `4` means "did not finish". A script that treats the two the same loses the difference that matters — and the difference between incomplete and interrupted is precisely the one that decides whether you rerun or investigate.
+
+### Mandatory and immutable classification
+
+A source without a declared `classification` causes a load error. There is no default: a `public` default would leak restricted data by omission, and a `restricted` default would train the user to turn the protection off.
+
+A restricted study is restricted as a whole, not per row, because correlation is information: knowing that two patients are in the same study already says something. And the classification is immutable — promoting a public study to restricted would be a hack, because the data has already been written in the clear. The error instructs the user to create a new study.
+
+### Distrusting the tool itself
+
+If the hash computation has a bug, everything "verifies" and everything is wrong. No internal defence reaches that, because the defence uses the faulty code.
+
+Hence three things that look like paranoia and are not: known hash vectors run on every opening, a canary file verified through the same code path as the real files, and output compatible with `b3sum`/`sha256sum` for checking by an external tool. Two independent implementations of the critical check is the only real defence against a bug in the check.
+
+The canary has a second effect: when it fails, the message says the problem is the environment or the tool, so that you do not go hunting for corruption where there is none.
+
+### Language: Go, with a narrow door to Rust
+
+Go is not the fastest language for the project's bottleneck. Decompression and parsing in Rust or C, with libdeflate, zlib-ng and SIMD, go further; the Rust bioinformatics ecosystem (noodles, needletail) is also more complete, especially for CRAM.
+
+Go was chosen for the rest of the system: network, retry, rate limit and metadata fan-out are natural; a static binary with trivial cross-compilation; instant start-up, which matters when running `check` on thousands of files or as a short pipeline step; packaging as a biocontainer and nf-core module with almost no effort. And development speed, which in a one-person project weighs more than a constant factor of throughput.
+
+The real difference is smaller than it looks. In download the network dominates. On a local file the floor is decompression, and `zcat` is C; Go with `klauspost/compress` is about 20% behind it in the Slice 1 measurement. It is a constant factor, not an order of magnitude.
+
+Language is not a differentiator. The user chooses a tool for what it catches and for the friction of using it; Go reduces the friction, but it is not why anyone uses it. And language does not protect an idea: the `read_count` check fits in a Python script inside any workflow. What cannot be copied quickly is the fact architecture and the benchmark as proof.
+
+**The door to Rust.** If the benchmark of `TESTING.md` §7.1 shows Go decompression too far from the floor, the way out is not to rewrite the project. The boundary already exists: the fact extractor is a pure function from bytes to facts, with no database, network or config. An optional Rust accelerator enters there, as a **separate process** — not cgo, not WASM:
+
+- The product is the Go, complete on its own. The accelerator is used if it is on the PATH; if not, the Go extractor runs.
+- The two implementations produce identical facts byte for byte, guaranteed by a differential test and fuzzing between them.
+- One boundary only (the extractor), one direction only (Go calls Rust), one contract only (the fact schema, with a shared `extractor_version`).
+
+cgo with a Rust library would be faster at the boundary, but requires a Rust and C toolchain in the build, complicates cross-compilation and kills the pure-Go binary. WASM via wazero avoids cgo, but loses native speed, which was the only reason. A separate process costs milliseconds per file to start, irrelevant next to decompressing gigabytes.
+
+The side effect is the best argument: two independent implementations of the extractor are exactly the M9 defence against a bug in the tool itself. The Rust accelerator is speed and a second opinion in the same piece.
+
+Decision postponed with a trigger in `BACKLOG.md`. Until then, the rule that applies now is the boundary one: nothing outside the extractor may depend on an implementation detail of the extractor.
+
+### SQLite driver: `modernc.org/sqlite` (pure Go, no CGO)
+
+Multi-platform with a simple binary is incompatible with CGO in practice. `modernc` is slower, but the bottleneck is always the network and the disk of the files, never the metadata database. We pay in a currency we have plenty of to buy a currency we lack.
+
+Consequence: the documentation does **not** claim "all stdlib". It is "stdlib + a pure-Go SQLite driver".
+
+### PRAGMAs read back
+
+`foreign_keys=ON` because SQLite does not enforce FKs by default — without it, referential integrity is decorative. `journal_mode` resolved by the filesystem — `WAL` on a local disk, `DELETE` on a network filesystem, where WAL is silent corruption (`CONTRACT.md` §2) —, `synchronous=NORMAL` (safe under WAL, much faster than FULL), `busy_timeout=5000`, write transactions with `BEGIN IMMEDIATE`.
+
+An earlier version forced WAL always. With Scribo detecting a network filesystem and Colligo not, a database shared on NFS would be protected by one tool and corrupted by the other. The rule is now single and lives in the contract.
+
+New: the values are **read back** after the SET. A PRAGMA that did not take effect is exactly the kind of silent failure this project hunts.
+
+A real trap, already fallen into once in this code: `*sql.DB` is a pool. `foreign_keys` and `busy_timeout` hold per connection, so a `db.Exec("PRAGMA …")` configures only the connection that the pool handed over at that moment. The PRAGMAs go in the DSN (`_pragma=` of `modernc.org/sqlite`), which applies them to every new connection, and the read-back runs on every connection opened.
+
+### Confidentiality enters through the types, not through the whole regime
+
+The regime of `CONFIDENTIALITY.md` is the heaviest document of the project, and the first restricted source only appears in Slice 6. Building the whole regime before Colligo downloaded a single file would be Slice 0 delivering nothing usable.
+
+What cannot be fitted in later enters first: the types `secret.Secret`, `secret.Name` and `secret.Endpoint`, and the typed `logf`. If the code is born passing `string`, retrofitting is rewriting. Everything else — permissions, synced folder, global sentinel, instrumented dialer, `doctor`, `redact-report` — is added later without pain and enters together with the first restricted source.
+
+### A single writer goroutine, with error and flush
+
+One goroutine serialises all writes, eliminating contention. It is not fire-and-forget: each event carries a reply channel and the worker waits for the ack — otherwise a full disk goes unnoticed. `fatal` transitions are committed without batching. On shutdown: cancel, drain, commit, fsync, write the outcome of the run, exit.
+
+### Every run is recorded
+
+`tool_runs` records version, git SHA, config hash and exit code. Every file event points to the run that caused it.
+
+Without this, the audit says "what happened" but not "with which code" — and "with which code" is half of reproducibility. It is also what allows detecting an interrupted-and-forgotten run, and a configuration that changed in the middle of a collection.
+
+### `reference` instead of `genome`
+
+The original `genome` type intended to manage reference assets, including aligner indexes. That competes head-on with refgenie, which does it better.
+
+Reduced to `reference`: it downloads FASTA, GTF/GFF3, transcripts and blacklist, and records **exactly which release**, with the detected chromosome convention. No building of indexes. It is 10% of refgenie and it is precisely the part that decides reproducibility.
+
+### The chromosome convention is never converted silently
+
+GENCODE's `chr1` against Ensembl's `1`. If genome and annotation diverge, quantification fails with no error at all — only wrong numbers.
+
+`chromosome_naming` is first-class metadata, detected by sampling. A derivative whose parents diverge is `fatal`. Colligo warns and stops; converting automatically would be creating the silent error it is trying to avoid.
+
+### Adoption through the channel the user already uses
+
+The tool the community adopts works with one command and shows up where the user already looks. That is why three distribution decisions are first-class, not polish:
+
+- **`check --samplesheet`** checks an nf-core pipeline's samplesheet against the content — files, pair, counts, repetition. nf-schema validates the columns of the sheet, not what the files contain.
+- **MultiQC module** shows the result of `check` in the report that everybody already opens. Nobody needs to change habits to see it.
+- **`colligo.lock`**, the `go.sum` of data: small, textual, versioned together with the analysis, checked at the start of the pipeline. The idea of a lockfile is not new — DVC has its `.dvc` files —; the content is: confirmed identities and counts, not just hashes.
+
+### Declared against observed, beyond the isolated file
+
+The same principle holds for study metadata:
+
+- **Single-cell chemistry:** R1 length and barcodes against whitelists reveal the chemistry; a divergence from the declared one stops before alignment.
+- **GEO supplementary matrix:** columns against the list of GSMs, gene ID namespace against the declared genome.
+- **Duplicate across accessions:** identical content shows up for free because facts are indexed by root.
+
+### Lovable, visibly fast, demonstrably reliable
+
+Correct is not enough. A tool that is only more correct than the others is respected and little used. Three axes, each with concrete decisions.
+
+**Lovable — solve something tedious in one command and explain what it found.**
+
+- **`colligo get GSE116256`**: from accession to validated samplesheet. It fetches metadata, downloads, verifies in the same read, organises the samples by role and replicate, and delivers a `samplesheet.csv` ready for nf-core plus `colligo.lock`. It is a light-door command: no database; the resume state lives next to the files (`.part` and outboard). fetchngs covers part of this, but requires Nextflow; here it is one binary.
+- **The error message is a diagnosis.** Every assertion that fails points to an entry of a diagnostics catalogue: what was observed, the probable cause, what to do. "R2 has 1.2 million fewer reads than ENA declares. Typical pattern of a truncated extraction. Redo it with `fasterq-dump` or download the FASTQ from ENA." The exit code still exists for machines; the person reads the sentence.
+- **Zero configuration.** `colligo check .` discovers formats by content and pairs by name (`_R1`/`_R2`, `_1`/`_2`), and runs. TOML only when the user wants control.
+
+**Visibly fast — parallelism that others do not have.**
+
+- **Verification overlapped with the download.** The other tools download and then re-read the file to check the MD5. In Colligo the facts are computed while the bytes arrive; when the download ends, the verification has ended. Measurable goal: `get` with full verification costs at most 5% above the plain download.
+- **Adaptive concurrency per server.** A fixed number of connections either underuses the server or gets blocked. Colligo adjusts by itself, like TCP congestion control: additive increase while throughput grows, multiplicative decrease at the first 429, 503, timeout or throughput drop. The limit configured per domain becomes a ceiling, not a value. The user does not need to guess `--workers`.
+
+**Demonstrably reliable — proving that the tool itself does not lie.**
+
+- **Crash at any point.** The suite kills the process at each write, `fsync` and `rename` of the resume and the database, and checks the invariant after each resumption: no file under its final name without having passed everything, no progress lost beyond the last group. Serious filesystem tools do this; bioinformatics ones almost never.
+- **Formal model of resume and the state machine**, in TLA+, verified by model checking: no sequence of failures, restarts and server responses leads to `done` without checked content. The model is written before the Slice 3 code and stays in the repository.
+- **Certificate verifiable by third parties.** `check --certificate` emits a JSON with root, size, facts, versions and assertions. A reference verifier of ~200 lines in Python, independent of the Go code, checks the certificate against the file without installing Colligo. Reliability becomes something another person checks, not something they need to believe — and the verifier is, as a bonus, one more independent implementation for M9.
+
+### Speed has a physical floor, and the goal is to touch it
+
+Validating plain gzip and FASTQ requires decompressing everything. The floor is decompression in pure Go; the goal is to stay within 10% of it, and in the first measurement the whole `check` came within 0.5%. `zcat`, in C, is ~20% faster than Go's inflate: that distance is reported, not chased, because closing it requires cgo or speculative decompression. Three decisions follow from that: the single read distributes the buffer in parallel, one goroutine per consumer, because `io.MultiWriter` would add up the costs; the parser operates on the buffer without allocating; and the fastest way to verify is not to verify again — facts by root turn the rerun into a `stat`. A quick mode exists (`check --quick`), but it never declares anything verified.
+
+### A derived artifact has provenance, minimal
+
+A GTF merged from GENCODE with Dfam was not downloaded, it was built. Without knowing which version of each parent went in, the result is not reproducible, and the absence is invisible.
+
+`derived_files` and `derived_parents` record parents, builder, version and parameter hash. A derivative inherits the strictest classification of its parents — a derivative of a restricted parent is restricted.
+
+Deliberately minimal scope. Inside a workflow, derivative provenance is the orchestrator's job: Nextflow's data lineage, experimental since 25.04, already records path, size and checksum of the outputs. Colligo covers the derivative built outside an orchestrator and, when it makes sense, reads the Nextflow record instead of competing with it.
+
+### Portable manifest
+
+The database is the canonical state, but a third party who receives your collection cannot verify anything without it. The manifest exports root and outboard, identities and custody state in a JSON that circulates.
+
+In a restricted study the manifest comes out with opaque names and remains **fully functional** for attestation, because hashes are not sensitive. It is the mechanism that separates "internal reproducibility" from "verifiable reproducibility".
+
+### Isolated FTP, HTTPS first, Aspera out of v1
+
+We prefer HTTPS and inherit `Range`, retry and checksum from the main path. FTP stays isolated, with its own resume, only where there is no alternative. Aspera is an external binary with a licence and network configuration outside our control: out of v1.
+
+### Idiomatic and polite concurrency
+
+`errgroup` with `SetLimit`: an error cancels the siblings and all of them are waited for. Per-domain limits exist so as not to burn the institution's IP; raising them is the user's responsibility and is recorded in the config hash.
+
+### Infrastructure
+
+Latest stable Go (enables `iter.Seq`, which solves iteration over large studies without loading everything into memory). MIT licence. Module `github.com/<org>/colligo`.
+
+Platform: the usage target is Linux (HPC, servers, WSL). Development also happens on Windows, and that has a consequence: `0600`/`0700` permissions, `verified_inode` and sync-folder detection assume POSIX. Decision: develop and test on WSL; the native Windows binary compiles, but only the light door is supported on it until a Windows CI exists. OneDrive is Windows's default synced folder — exactly the case `CONFIDENTIALITY.md` §5.3 wants to catch —, so a restricted study on native Windows is refused.
+
+---
+
+### Slice 1 decisions, reliability first
+
+- **A blank line at the end of a FASTQ is `advisory`, not `blocking`.** It is harmless and common; blocking it generates a false alarm, and a false alarm pushes the user to `--permissive`, which is where a real problem gets through. It is counted in the fact and reported. A blank line *in the middle* remains `blocking`.
+- **A `;` line in a FASTA is rejected.** It used to be counted as bases: a silently wrong count. Ignoring it could hide garbage. In an archaic format, failing closed costs little.
+- **A false BSIZE in BGZF is rejected.** The `BC` subfield promises BGZF, and htslib, samtools and tabix depend on BSIZE to find the blocks: with it wrong, the inner gzip decompresses whole and the file still fails, or reads garbage, on random access. Validating only the EOF block let through a file that the rest of the ecosystem cannot read. The BSIZE chain must be contiguous from offset 0 to the exact end of the file, and the Python verifier checks it independently.
+- **A UTF-8 BOM at the start is rejected in FASTQ, FASTA and GTF.** In the GTF it contaminated the first seqname: `﻿chr1` ≠ `chr1`, and the chromosome convention fell to `unknown` instead of `ucsc`. It is the silent error of M11, with no warning and wrong numbers further on. Removing the BOM silently would be converting without warning; the sniffer ignores it only so that the error is specific (`structure_invalid`, offset 0) and not a generic "unknown format".
+- **The independent verifier distinguishes "I disagree" (1) from "I cannot judge" (2).** An unknown schema is "I don't know"; treating it as disagreement or agreement would be claiming something that was not verified. The same holds for a missing required field and for an unknown field: the verifier only says "I agree" about a certificate that it understands entirely, and a field it does not know may carry an assertion that it does not check. That is why growing the certificate is a `schema_version` change, not an optional field; and why the `AGREE` comes accompanied by the list of what was not recomputed, instead of letting the reader suppose that everything was.
+- **A file-level `fatal` does not interrupt the other files; a tool-level `fatal` interrupts everything.** On the light door there is no state to save, and stopping at the first bad file would hide the diagnosis of the others. The exit code remains 2.
+- **Output in English.** One language only on the public interface; the identifiers in `--json` are stable regardless of the text.
+- **The performance goal measures what is ours.** See "Speed has a physical floor". Trading reliability for speed — cgo, speculative inflate — is left for later and only with measurement.
+- **Versioned synthetic corpus, with the generator's truth.** Fixed bytes make certificates reproducible by third parties; the expected comes from whoever wrote the file, not from another parser, which catches the error that Go and the Python verifier would share.
+- **The mate suffix of `fastq-dump --readids` only in the full form.** The FASTQ extractor (`fastq-4`) strips `.1`/`.2` from the end of the ID only when the ID has the form `<accession>.<spot>.<1|2>` with accession `SRR`, `ERR` or `DRR` (`SRR001666.1.1` and `SRR001666.1.2` become `SRR001666.1`). Stripping any trailing `.1` or `.2` would make `SRR1.1` and `SRR1.2`, which are different spots, become the same ID, and would hide an R2 that lost its first read. Without the normalisation, the `fastq-dump` pair gave a blocking `pair_ids` on an intact pair. `tools/verify_cert.py` implements the same rule by regular expression, written from the rule and not from the Go.
+- **`check --quick` with no problem exits 5, not 0.** Code 0 is reserved for "complete and verified", and `colligo check --quick x && pipeline` must not proceed as if the file had been verified: a gzip truncated in the middle passes the quick check. A problem found by the quick check still exits 2 or 3. `validate` does not change, because it reads the whole file.
+- **A malformed `--expected` is a usage error.** `verifier.ParseExpected` requires 32 hexadecimal characters for MD5 and 64 for SHA-256 and BLAKE3, case-insensitive, and the exit is 1 without reading any file. A malformed expected value is the typist's error; declaring it a fatal `checksum_mismatch` would accuse of corruption a file that nobody compared.
+- **`Compute` memory bounded by test.** Heap peak ≤ 32 MiB above the baseline, measured by `runtime.ReadMemStats` over 2 GiB of gzip zeros (a ratio of ~1000:1) and over 20 million reads; allocations ≤ 8 and ≤ 16 KiB per MiB read. The ceiling comes from the structural floor (an 8 MiB ring) with ~3.5× headroom, and not from the observed peak, so as not to break on collector noise. A file that changes during the read is described by the bytes read: `Compute` does not compare `stat` before and after, because comparing `stat` is not verifying.
+- **A file that changes during the read is `blocking`, and `stat` only invalidates.** `CheckFile` compares `fstat` before and after the read (size, mtime and ctime in nanoseconds, inode). If anything changed, `changed_during_read` invalidates the result; if nothing changed, `stat` proves nothing, and the `verified` state still comes only from reading the bytes. This respects "comparing `stat` is not verifying": here `stat` never approves. It is `blocking` and not `advisory` because an in-place overwrite can produce a hash of bytes that never coexisted on the disk, and a `verified` with that hash would be a false guarantee. It is not `fatal` because the file is not necessarily corrupted: running again fixes it. The remaining assertions are `skipped` and the hashes leave the report, because deriving conclusions from incoherent bytes only creates noise. `stat` also goes by the path, not only by the descriptor, and compares inode and device with the open file: the path is what the user and the certificate name, and the open descriptor keeps pointing to the old inode after a `rename` on top (as a safe download ends). Without this, the result would come out `verified` and `--certificate` would write, next to the path, a certificate of bytes that are no longer its own. A path that changed inode is `replaced`, a path that disappeared is `removed`; both give `changed_during_read`.
+- **A missing mate is `advisory`, not `blocking`.** `pair_missing` warns that a file with a mate suffix does not have the other mate in the run, because Colligo cannot tell a forgotten pair apart from legitimate single-end data that carries `_R1` in the name. Blocking would break whoever has single-end data; staying silent would leave the M5 defence switched off without anybody knowing (pairing by name only, the same logic as `_R1_001` against `_R2_002`). With a single file in the run the warning does not fire: there is nothing to compare against.
+
+## 4. Data types
+
+Pluggable profiles over an agnostic core, plus `generic` as a fallback without a schema.
+
+| Tag          | Type                          | Main sources                | Control           |
 | ------------ | ----------------------------- | --------------------------- | ----------------- |
-| `rnaseq`     | RNA-seq bulk                  | GEO, ENA, dbGaP             | Não               |
-| `singlecell` | scRNA-seq (aquisição)         | GEO, ENA                    | Não               |
-| `tabular`    | MAF, VCF, dose-resposta, clínico, matriz de assinatura | cBioPortal, portais, adoção | Não |
-| `reference`  | FASTA, GTF/GFF3, transcritos  | GENCODE, Ensembl, Dfam      | N/A               |
-| `structure`  | PDB, mmCIF, FASTA de proteína | RCSB PDB, adoção            | N/A               |
-| `chipseq`    | ChIP-seq                      | ENCODE, ENA, GEO            | Sim — Input/IgG   |
-| `generic`    | Desconhecido                  | Qualquer                    | Não               |
+| `rnaseq`     | Bulk RNA-seq                  | GEO, ENA, dbGaP             | No                |
+| `singlecell` | scRNA-seq (acquisition)       | GEO, ENA                    | No                |
+| `tabular`    | MAF, VCF, dose-response, clinical, signature matrix | cBioPortal, portals, adoption | No |
+| `reference`  | FASTA, GTF/GFF3, transcripts  | GENCODE, Ensembl, Dfam      | N/A               |
+| `structure`  | PDB, mmCIF, protein FASTA     | RCSB PDB, adoption          | N/A               |
+| `chipseq`    | ChIP-seq                      | ENCODE, ENA, GEO            | Yes — Input/IgG   |
+| `generic`    | Unknown                       | Any                         | No                |
 
-`atacseq`, `methylation` e `wgs` saíram da v1 para o `BACKLOG.md`. Não porque sejam difíceis — o padrão é o mesmo — mas porque nenhum projeto ativo os usa, e tipo construído especulativamente é tipo não testado contra realidade.
+`atacseq`, `methylation` and `wgs` left v1 for `BACKLOG.md`. Not because they are hard — the pattern is the same — but because no active project uses them, and a type built speculatively is a type not tested against reality.
 
-`singlecell` é **aquisição apenas**: valida metadados de biblioteca (10x Chromium, Drop-seq, Smart-seq2, química, layout). Validação de estrutura de output de single-cell fica fora do escopo — é do pipeline downstream. Robustez vem de fazer menos bem feito.
+`singlecell` is **acquisition only**: it validates library metadata (10x Chromium, Drop-seq, Smart-seq2, chemistry, layout). Validating the structure of single-cell output is out of scope — that belongs to the downstream pipeline. Robustness comes from doing less, well.
 
-`tabular` é o tipo mais leve e o de proveniência mais crítica. Arquivos de KB a MB não precisam de outboard nem worker pool — canhão para mosca. Mas você precisa saber qual versão da matriz de assinatura usou e de que data é o export do portal. Caminho de arquivo pequeno: hash único, sem outboard, fatos e auditoria completos. É um modo, não um subsistema.
+`tabular` is the lightest type and the one of most critical provenance. Files of KB to MB do not need an outboard or a worker pool — a cannon for a fly. But you need to know which version of the signature matrix you used and what date the portal export is from. Small-file path: a single hash, no outboard, full facts and audit. It is a mode, not a subsystem.
 
-`role` (signal | control | reference) é mais fundamental que sample_type — toda estrutura experimental tem "o que meço" contra "meu controle".
+`role` (signal | control | reference) is more fundamental than sample_type — every experimental structure has "what I measure" against "my control".
 
-Organizar o metadado é o segundo valor do projeto, depois da confiabilidade. Transformar um GSE numa planilha de amostras tipada e validada, com controle ligado ao sinal correto, é trabalho que muita gente faz à mão e erra. O fetchngs gera samplesheet para o nf-core; o que o Colligo acrescenta é validar que o controle declarado é de fato controle e que a estrutura experimental fecha.
-
----
-
-## 5. Sistema de metadados em camadas
-
-**Camada 1 — Core universal:** accession, source, role, layout, replicate, status, confidence, timestamps, classificação.
-
-**Camada 2 — Perfis:** roles válidos, lógica de linking, campos obrigatórios, validações. Perfil customizado é registrável.
-
-**Camada 3 — Declaração:** o TOML. O perfil expande a declaração mínima num contrato completo.
-
-**Camada 4 — Confiança:** cada metadado carrega origem — `declared` (explícito da API), `inferred` (heurística, gera issue), `confirmed` (usuário validou). Exportado como `QC_Status`.
-
-Validação em duas fases: local síncrona (campos, tipos, formato de accession — barata, para antes da rede) e remota assíncrona em fan-out (tipo declarado bate? accessions existem? conjunto de arquivos é o mesmo de antes?).
+Organising the metadata is the second value of the project, after reliability. Turning a GSE into a typed, validated sample sheet, with the control linked to the correct signal, is work that many people do by hand and get wrong. fetchngs generates a samplesheet for nf-core; what Colligo adds is validating that the declared control really is a control and that the experimental structure closes.
 
 ---
 
-## 6. Relação com o Scribo
+## 5. Layered metadata system
 
-O Colligo garante as entradas antes do pipeline; o Scribo observa os resultados depois; cada lado corrige o outro. A integração é por contrato (`CONTRACT.md`, cópia idêntica nos dois repositórios): abertura do banco, `tool_runs`, e quem é dono de qual tabela.
+**Layer 1 — Universal core:** accession, source, role, layout, replicate, status, confidence, timestamps, classification.
 
-**O que o Colligo dá ao Scribo:** identidade de amostra (`samples`), raízes verificadas (`files`), fatos para invariantes entrada × resultado (`facts`), status de accession na fonte, classificação do estudo. Com isso o Scribo liga cada valor às entradas de que depende, recusa resultado que contradiz a entrada — mais reads mapeados do que o FASTQ tem —, e lista os resultados obsoletos quando uma entrada é invalidada.
+**Layer 2 — Profiles:** valid roles, linking logic, required fields, validations. A custom profile can be registered.
 
-**O que o Scribo dá ao Colligo:**
+**Layer 3 — Declaration:** the TOML. The profile expands the minimal declaration into a complete contract.
 
-- **Evidência depois do pipeline.** O Colligo não alinha reads, por decisão. Uma amostra com taxa de alinhamento muito fora das outras sugere organismo trocado ou arquivo errado; o Scribo detecta o desvio (z-score robusto) e grava sinal `suspect`. O Colligo o consome como afirmação a mais, sem cruzar a fronteira da análise.
-- **Identidade confirmada por genótipo.** Saída do somalier ou do NGSCheckMate, comparada com o declarado, vira `identity_confirmed` ou `identity_mismatch` na custódia.
-- **Plano de reprocessamento.** Quando `recheck --upstream` invalida uma entrada, o Scribo sabe quais resultados e etapas dependiam dela e gera a samplesheet só com as amostras afetadas.
-- **Completude de ponta a ponta.** O `status` passa a mostrar o funil até "processado".
-- **Prioridade de scrub e `gc` com proveniência**, a partir de `result_inputs`.
-- **Corpus de falhas reais**, a partir dos sinais e violações registrados.
+**Layer 4 — Confidence:** each piece of metadata carries an origin — `declared` (explicit from the API), `inferred` (heuristic, raises an issue), `confirmed` (the user validated). Exported as `QC_Status`.
 
-**Forma:** proposta de um módulo com dois binários e um núcleo comum (`facts`, `runs`, `store/open`), decidida na Fatia 0 do Scribo. Até lá, o contrato garante a conversa sem compartilhar código.
+Validation in two phases: local synchronous (fields, types, accession format — cheap, stops before the network) and remote asynchronous in fan-out (does the declared type match? do the accessions exist? is the set of files the same as before?).
 
 ---
 
-## 7. Limites declarados
+## 6. Relationship with Scribo
 
-Ditos com clareza para não gerar falsa confiança:
+Colligo guarantees the inputs before the pipeline; Scribo observes the results after; each side corrects the other. The integration is by contract (`CONTRACT.md`, an identical copy in both repositories): opening the database, `tool_runs`, and who owns which table.
 
-- Não criptografa nada em repouso. Use criptografia de disco do sistema.
-- Não anonimiza conteúdo de arquivo. Um FASTQ é identificável por natureza.
-- Não substitui aprovação de acesso. Colligo não sabe se você tem direito ao dado.
-- Não protege contra o pipeline downstream. Se a próxima ferramenta escreve caminhos em log, o problema volta.
-- Não faz análise, e a fronteira é deliberada: validamos que o arquivo é estruturalmente o que diz ser, nunca que o conteúdo faz sentido biológico. Regra prática: nenhuma checagem que exija alinhar reads. Strandedness, sexo, troca de amostra por genótipo e contaminação fina são do pipeline.
-- **Não orquestra nem supervisiona execução.** Isso é do Nextflow ou do Snakemake, que já rodam cada tarefa em diretório próprio publicando saída só em caso de sucesso, registram comando, versões e checksums, medem recurso e fazem retry. Invólucro de comando, triagem de falha e vigia de job foram considerados e descartados por esse motivo. Um pipeline que usa Colligo mais um orquestrador é o caso previsto, não uma concessão.
+**What Colligo gives Scribo:** sample identity (`samples`), verified roots (`files`), facts for input × result invariants (`facts`), accession status at the source, study classification. With that, Scribo links each value to the inputs it depends on, refuses a result that contradicts the input — more mapped reads than the FASTQ has —, and lists the stale results when an input is invalidated.
+
+**What Scribo gives Colligo:**
+
+- **Evidence after the pipeline.** Colligo does not align reads, by decision. A sample with an alignment rate far from the others suggests a swapped organism or a wrong file; Scribo detects the deviation (robust z-score) and records a `suspect` signal. Colligo consumes it as one more assertion, without crossing the boundary of the analysis.
+- **Identity confirmed by genotype.** Output of somalier or NGSCheckMate, compared with the declared, becomes `identity_confirmed` or `identity_mismatch` in custody.
+- **Reprocessing plan.** When `recheck --upstream` invalidates an input, Scribo knows which results and stages depended on it and generates the samplesheet with only the affected samples.
+- **End-to-end completeness.** `status` comes to show the funnel up to "processed".
+- **Scrub priority and `gc` with provenance**, from `result_inputs`.
+- **Corpus of real failures**, from the signals and violations recorded.
+
+**Shape:** proposal of one module with two binaries and a common core (`facts`, `runs`, `store/open`), decided in Scribo's Slice 0. Until then, the contract guarantees the conversation without sharing code.
+
+---
+
+## 7. Declared limits
+
+Stated clearly so as not to create false confidence:
+
+- It does not encrypt anything at rest. Use the system's disk encryption.
+- It does not anonymise file content. A FASTQ is identifiable by nature.
+- It does not replace access approval. Colligo does not know whether you have the right to the data.
+- It does not protect against the downstream pipeline. If the next tool writes paths to a log, the problem comes back.
+- It does not do analysis, and the boundary is deliberate: we validate that the file is structurally what it says it is, never that the content makes biological sense. Rule of thumb: no check that requires aligning reads. Strandedness, sex, sample swap by genotype and fine contamination belong to the pipeline.
+- **It does not orchestrate or supervise execution.** That belongs to Nextflow or Snakemake, which already run each task in its own directory publishing output only on success, record command, versions and checksums, measure resources and retry. A command wrapper, failure triage and a job watchdog were considered and discarded for that reason. A pipeline that uses Colligo plus an orchestrator is the intended case, not a concession.

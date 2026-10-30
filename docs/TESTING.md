@@ -1,14 +1,14 @@
-# Colligo — Testes
+# Colligo — Testing
 
-Documento normativo. O que garante que um bug oculto de colaborador não chega ao usuário.
+Normative document. What guarantees that a contributor's hidden bug does not reach the user.
 
-Premissa: revisão humana não escala e não é confiável para lógica de parsing de API que ninguém além do autor conhece. O que escala é uma suíte que o código do colaborador precisa **passar**, não uma que ele precisa escrever.
+Premise: human review does not scale and is not reliable for API parsing logic that nobody but the author knows. What scales is a suite that the contributor's code must **pass**, not one that they must write.
 
 ---
 
-## 1. Conformidade de adapters
+## 1. Adapter conformance
 
-O core publica `sourcetest`. O colaborador não escreve os testes de invariante.
+The core publishes `sourcetest`. The contributor does not write the invariant tests.
 
 ```go
 func TestGENCODE(t *testing.T) {
@@ -20,337 +20,337 @@ func TestGENCODE(t *testing.T) {
 }
 ```
 
-O que `sourcetest.Run` assere, sem o colaborador poder desligar:
+What `sourcetest.Run` asserts, without the contributor being able to turn it off:
 
-| Invariante                       | Verificação                                                        |
+| Invariant                        | Verification                                                       |
 | -------------------------------- | ------------------------------------------------------------------ |
-| Cancelamento respeitado          | ctx cancelado antes da chamada → `ctx.Err()`, zero efeitos          |
-| Determinismo                     | mesmo fixture 2× → saída byte-idêntica após serialização           |
-| Sem cliente HTTP global          | `RoundTripper` injetado; dial real → `t.Fatal`                      |
-| Rate limit honrado               | clock falso; N chamadas com limite 1/s levam ≥ N−1s                 |
-| Roles válidos                    | todo `Sample.Role` ∈ `Profile.ValidRoles()`                         |
-| Nome seguro                      | fixtures hostis (ver §2) → rejeitado ou saneado sob a raiz          |
-| Erros tipados corretos           | 404/401/429/503/412 → `errors.As` bate; 429 honra `Retry-After`     |
-| Raw persistido antes do parse    | parse que falha ainda deixa auditoria                               |
-| Sem vazamento de goroutine       | `goleak` ao fim de cada subteste                                    |
-| Sem escrita em disco             | FS instrumentado; qualquer `open` para escrita → `t.Fatal`           |
-| Sem acesso a `Store`             | garantido pela assinatura; adapter não recebe `Store`               |
-| Sentinela não vaza               | valor sentinela nos fixtures; grep em todo output do adapter        |
-| Formato declarado é conhecido    | `Artifact.Format` ∈ registro de `format/`                            |
-| Contagens declaradas coerentes   | `ReadCount`, `BaseCount` ≥ 0; `BaseCount` ≥ `ReadCount` quando ambos presentes |
-| Metadado sem download            | `Fetch` e `Resolve` nunca pedem corpo de arquivo de dado             |
+| Cancellation respected           | ctx cancelled before the call → `ctx.Err()`, zero effects          |
+| Determinism                      | same fixture 2× → byte-identical output after serialisation        |
+| No global HTTP client            | injected `RoundTripper`; real dial → `t.Fatal`                     |
+| Rate limit honoured              | fake clock; N calls with a 1/s limit take ≥ N−1s                   |
+| Valid roles                      | every `Sample.Role` ∈ `Profile.ValidRoles()`                       |
+| Safe name                        | hostile fixtures (see §2) → rejected or sanitised under the root   |
+| Correct typed errors             | 404/401/429/503/412 → `errors.As` matches; 429 honours `Retry-After` |
+| Raw persisted before the parse   | a parse that fails still leaves an audit trail                     |
+| No goroutine leak                | `goleak` at the end of each subtest                                |
+| No disk write                    | instrumented FS; any `open` for writing → `t.Fatal`                |
+| No access to `Store`             | guaranteed by the signature; the adapter does not receive a `Store` |
+| Sentinel does not leak           | sentinel value in the fixtures; grep over the whole adapter output |
+| Declared format is known         | `Artifact.Format` ∈ the `format/` registry                         |
+| Declared counts coherent         | `ReadCount`, `BaseCount` ≥ 0; `BaseCount` ≥ `ReadCount` when both present |
+| Metadata without download       | `Fetch` and `Resolve` never request the body of a data file        |
 
-`storetest` e `profiletest` seguem o mesmo padrão. `storetest` é pré-requisito de qualquer implementação alternativa de `Store`.
+`storetest` and `profiletest` follow the same pattern. `storetest` is a prerequisite for any alternative implementation of `Store`.
 
-**`sourcetest` é API pública.** Adicionar asserção quebra adapters existentes, portanto é evento de semver, decidido conscientemente.
+**`sourcetest` is public API.** Adding an assertion breaks existing adapters, therefore it is a semver event, decided consciously.
 
-### Fixtures hostis, sempre incluídos
+### Hostile fixtures, always included
 
-Todo adapter é testado contra respostas contendo:
+Every adapter is tested against responses containing:
 
 ```
 ../../etc/passwd
 ..\..\windows\system32
-nome\x00nulo
-nome/com/separador
+name\x00null
+name/with/separator
 <255+ bytes>
-аrquivo.fastq.gz          (а cirílico, homóglifo)
-CON, NUL, PRN             (nomes reservados Windows)
-arquivo .fastq.gz         (espaço à esquerda e à direita)
--rf                       (parece flag)
+аrquivo.fastq.gz          (Cyrillic а, homoglyph)
+CON, NUL, PRN             (Windows reserved names)
+file .fastq.gz            (leading and trailing space)
+-rf                       (looks like a flag)
 ```
 
-Nenhum desses pode produzir escrita fora da raiz do estudo, e nenhum pode fazer o adapter entrar em pânico.
+None of these may produce a write outside the study root, and none may make the adapter panic.
 
 ---
 
 ## 2. Fixtures
 
-Duas categorias, nunca misturadas.
+Two categories, never mixed.
 
-### `testdata/synthetic/` — versionada
+### `testdata/synthetic/` — versioned
 
-Mesma **forma** da resposta real, valores inventados. É o que roda no CI e para qualquer colaborador. Contém as sentinelas de vazamento.
+The same **shape** as the real response, invented values. It is what runs in CI and for any contributor. It contains the leak sentinels.
 
-Para os validadores de formato, o corpus sintético é produzido por um gerador versionado, `internal/corpus`: `go test ./internal/corpus -record` grava os arquivos e um `.meta.json` irmão com gerador, tamanho, SHA-256, data de gravação e o que o gerador sabe que escreveu — contagem de registros e bases, e quais afirmações devem falhar. Sem a flag, o teste falha se um arquivo divergir do gerador ou se aparecer arquivo que o gerador não produz. O esperado nunca vem de um parser: `check` sobre o diretório e o verificador Python são conferidos contra ele. O gerador comprime com `klauspost/compress`, fixado no `go.sum`: a saída do `compress/gzip` da stdlib muda entre versões do Go, e o corpus precisa dos mesmos bytes em qualquer toolchain.
+For the format validators, the synthetic corpus is produced by a versioned generator, `internal/corpus`: `go test ./internal/corpus -record` writes the files and a sibling `.meta.json` with generator, size, SHA-256, recording date and what the generator knows it wrote — count of records and bases, and which assertions must fail. Without the flag, the test fails if a file diverges from the generator or if a file the generator does not produce shows up. The expected never comes from a parser: `check` over the directory and the Python verifier are checked against it. The generator compresses with `klauspost/compress`, pinned in `go.sum`: the output of the stdlib's `compress/gzip` changes between Go versions, and the corpus needs the same bytes under any toolchain.
 
-Para regravar o corpus depois de mudar o gerador ou a versão de um extrator:
+To re-record the corpus after changing the generator or the version of an extractor:
 
 ```
 go test ./internal/corpus -record
 git diff --stat testdata/synthetic
 ```
 
-Revise o diff antes de comitar: arquivo que mudou sem o gerador ter mudado é sinal de bug.
+Review the diff before committing: a file that changed without the generator having changed is a sign of a bug.
 
-### `testdata/real/` — nunca versionada
+### `testdata/real/` — never versioned
 
-Capturas reais. Fica na máquina de quem tem acesso. Bloqueada por `.gitignore` e por check de CI que falha se algum arquivo sob esse caminho estiver rastreado.
+Real captures. It stays on the machine of whoever has access. Blocked by `.gitignore` and by a CI check that fails if any file under that path is tracked.
 
-### Regras de gravação
+### Recording rules
 
-- Fixture é **gravada, nunca escrita à mão**: `go test -record` bate na API real, escreve o arquivo e remove credenciais.
-- Cada fixture tem `.meta.json` irmão: URL, data de captura, versão da ferramenta, hash. Sem isso, em dois anos ninguém sabe se o fixture reflete a realidade.
-- Fixture nunca é editada depois de gravada. Mutação para teste acontece **no código do teste**, para o diff ficar visível na revisão.
+- A fixture is **recorded, never written by hand**: `go test -record` hits the real API, writes the file and removes credentials.
+- Each fixture has a sibling `.meta.json`: URL, capture date, tool version, hash. Without that, in two years nobody knows whether the fixture reflects reality.
+- A fixture is never edited after being recorded. Mutation for testing happens **in the test code**, so that the diff is visible in review.
 
-### Testes que dependem de fixture real
+### Tests that depend on a real fixture
 
-Atrás da build tag `restricted`. Sem a tag, não compilam.
+Behind the `restricted` build tag. Without the tag, they do not compile.
 
-Com a tag e sem a fixture presente: **`t.Fatal`, não `t.Skip`.** Pular em silêncio é exatamente o erro silencioso que este projeto existe para evitar — um CI mal configurado passaria verde sem rodar nada.
+With the tag and without the fixture present: **`t.Fatal`, not `t.Skip`.** Skipping silently is exactly the silent error this project exists to avoid — a badly configured CI would pass green without running anything.
 
-Falha envolvendo fixture real imprime hash e offset. Nunca conteúdo.
+A failure involving a real fixture prints hash and offset. Never content.
 
 ---
 
 ## 3. Drift
 
-O CI de PR é 100% offline e determinístico. Isso é incompatível com detectar mudança de API — a menos que os jobs sejam separados.
+The PR CI is 100% offline and deterministic. That is incompatible with detecting API change — unless the jobs are separated.
 
-**Job semanal, separado:** regrava todos os fixtures contra as APIs reais, compara com o versionado, e abre issue na divergência com o diff estrutural (campos que apareceram, desapareceram ou mudaram de tipo), nunca com valores.
+**Separate weekly job:** re-records all fixtures against the real APIs, compares with the versioned ones, and opens an issue on divergence with the structural diff (fields that appeared, disappeared or changed type), never with values.
 
-Para fontes restritas, o job roda na infra da instituição e nunca publica diff.
+For restricted sources, the job runs on the institution's infrastructure and never publishes the diff.
 
 ---
 
 ## 4. Fuzzing
 
-Teste de contrato pega o que você previu. Fuzzing pega o resto. Um alvo por parser de fonte, mais um por validador de formato.
+A contract test catches what you foresaw. Fuzzing catches the rest. One target per source parser, plus one per format validator.
 
 ```go
 func FuzzParseGEO(f *testing.F) { ... }
 func FuzzValidateGzip(f *testing.F) { ... }
 ```
 
-Seed com os fixtures sintéticos. Invariantes:
+Seed with the synthetic fixtures. Invariants:
 
-- Nunca entra em pânico
-- Nunca devolve role fora de `ValidRoles()`
-- Nunca produz caminho que escapa a raiz do estudo
-- Alocação não cresce desproporcionalmente ao input
-- Nunca devolve formato fora do registro
+- Never panics
+- Never returns a role outside `ValidRoles()`
+- Never produces a path that escapes the study root
+- Allocation does not grow disproportionately to the input
+- Never returns a format outside the registry
 
-CI de PR: 60s por alvo. Job semanal: 4h por alvo. Corpus interessante versionado.
+PR CI: 60s per target. Weekly job: 4h per target. Interesting corpus versioned.
 
-Este é o item de maior valor por linha escrita contra bug que ninguém imaginou.
-
----
-
-## 5. Testes de propriedade
-
-**Resume.** Matar o download em offset aleatório N vezes; o checksum final sempre confere. É o teste central do projeto.
-
-**Árvore BLAKE3.** Para tamanho de arquivo aleatório: grupos de 8 MiB com soma dos tamanhos igual ao total, offsets contíguos, sem lacuna nem sobreposição, e raiz derivada dos CVs igual ao BLAKE3 do arquivo inteiro, conferido contra `b3sum`. O último grupo, e o arquivo de um grupo só, são onde o off-by-one vive.
-
-**Leitura única.** Leitor instrumentado conta bytes lidos. Em `check` e em download sem interrupção, bytes lidos = tamanho do arquivo. Qualquer releitura falha o teste.
-
-**Fatos são funções puras.** Mesmo conteúdo com nomes, caminhos e mtimes diferentes → mesmos fatos, byte a byte. Mudar a versão de um extrator invalida só os fatos daquele `kind`.
-
-**Máquina de estados.** Sequências aleatórias de eventos; só transições da tabela da SPEC §4 persistem. O teste lê o mapa de transições — o teste *é* a spec, não uma cópia dela.
-
-**Extratores equivalentes.** Quando houver extrator externo, para todo arquivo do corpus sintético e de fuzz, fatos do extrator Go e do externo de mesma `extractor_version` são idênticos byte a byte. Divergência reduz automaticamente o arquivo ao menor prefixo que ainda diverge, para o relatório apontar o registro culpado.
-
-**Redação.** Para todo tipo exportado do domínio, formatar com `%v`, `%s`, `%+v`, `%#v` e `json.Marshal`, e afirmar que a sentinela não aparece. Por reflexão sobre o pacote, para que um tipo novo entre no teste automaticamente.
-
-**Idempotência de `files.id`.** Fetch duas vezes o mesmo fixture → mesmo id, sem linha duplicada.
-
-**Manifesto e atestação.** Manifesto exportado e reatestado contra o próprio acervo sempre confere. Corromper um grupo conhecido → atestação aponta exatamente aquele índice.
+This is the item of highest value per line written against a bug that nobody imagined.
 
 ---
 
-## 6. Filesystem e ambiente hostis
+## 5. Property tests
 
-Wrapper de FS injetando:
+**Resume.** Kill the download at a random offset N times; the final checksum always matches. It is the central test of the project.
 
-- `ENOSPC` na escrita
-- `EIO` na leitura
+**BLAKE3 tree.** For a random file size: 8 MiB groups with the sum of sizes equal to the total, contiguous offsets, no gap or overlap, and the root derived from the CVs equal to the BLAKE3 of the whole file, checked against `b3sum`. The last group, and the one-group file, are where the off-by-one lives.
+
+**Single read.** An instrumented reader counts bytes read. In `check` and in an uninterrupted download, bytes read = file size. Any re-read fails the test.
+
+**Facts are pure functions.** The same content with different names, paths and mtimes → the same facts, byte for byte. Changing an extractor's version invalidates only the facts of that `kind`.
+
+**State machine.** Random sequences of events; only transitions of the table in SPEC §4 persist. The test reads the transition map — the test *is* the spec, not a copy of it.
+
+**Equivalent extractors.** When an external extractor exists, for every file of the synthetic and fuzz corpus, the facts of the Go extractor and of the external one with the same `extractor_version` are identical byte for byte. A divergence automatically reduces the file to the smallest prefix that still diverges, so that the report points at the culprit record.
+
+**Redaction.** For every exported domain type, format with `%v`, `%s`, `%+v`, `%#v` and `json.Marshal`, and assert that the sentinel does not appear. By reflection over the package, so that a new type enters the test automatically.
+
+**Idempotence of `files.id`.** Fetch the same fixture twice → the same id, no duplicate row.
+
+**Manifest and attestation.** A manifest exported and re-attested against its own collection always matches. Corrupt a known group → the attestation points at exactly that index.
+
+---
+
+## 6. Hostile filesystem and environment
+
+FS wrapper injecting:
+
+- `ENOSPC` on write
+- `EIO` on read
 - short write
-- `fsync` que retorna erro
-- `rename` que falha
-- mtime que anda para trás
-- inode que muda entre stats
+- `fsync` that returns an error
+- `rename` that fails
+- mtime that goes backwards
+- inode that changes between stats
 
-É onde "dado parcial tem valor" se prova ou se revela slogan. O caso crítico: `ENOSPC` precisa gravar o offset seguro antes de propagar.
+This is where "partial data has value" is proven or revealed to be a slogan. The critical case: `ENOSPC` must write the safe offset before propagating.
 
-Ambiente: relógio para trás, permissão frouxa no banco, PRAGMA que não surte efeito, `.part` e final em filesystems diferentes.
-
----
-
-## 6.1 Crash em qualquer ponto
-
-O wrapper de FS numera cada operação de escrita, `fsync`, `rename` e commit de banco de uma execução de referência de `get` e de `fetch`. Para cada número N, a suíte roda de novo, mata o processo com `SIGKILL` exatamente na operação N, descarta o que não recebeu `fsync` (simulando perda de cache do sistema operacional), retoma, e confere:
-
-- Nenhum arquivo com nome final sem todas as afirmações aprovadas.
-- Nenhum grupo `verified` cujo conteúdo em disco não bate com o CV.
-- Nenhum evento no banco apontando para estado que o disco não sustenta.
-- O arquivo final, ao terminar, é idêntico ao da execução sem falha.
-
-Custo alto: roda no job semanal completo e numa amostra aleatória de pontos em todo PR.
-
-## 6.2 Modelo formal
-
-`spec/resume.tla` especifica o protocolo de resume, rename e máquina de estados. O model checker TLC roda no CI com parâmetros pequenos (3 grupos, 2 falhas, 2 reinícios) em todo PR que toca `downloader/`, `store/` ou `verifier/`. As invariantes do modelo são as mesmas de §6.1: o modelo prova para o protocolo, o crash-testing confere que o código segue o protocolo.
-
-## 6.3 Certificado e verificador independente
-
-Para todo arquivo do corpus sintético e dos mutantes, `check --certificate` e `tools/verify_cert.py` são executados; o verificador precisa concordar com cada hash e contagem do certificado, e reprovar todo certificado adulterado, inclusive o `passed` das afirmações de um arquivo inválido.
-
-## 6.4 Concorrência adaptativa
-
-Servidor fake com capacidade configurável, latência e 429 acima de um limite de conexões. A concorrência adaptativa precisa convergir para perto da capacidade, nunca exceder o teto configurado, honrar `Retry-After` e terminar sem erro permanente. Clock falso, determinístico.
+Environment: clock going backwards, loose permission on the database, a PRAGMA that does not take effect, `.part` and final on different filesystems.
 
 ---
 
-## 7. Mutantes: benchmark de falhas silenciosas
+## 6.1 Crash at any point
 
-Versionado no repositório, reprodutível por qualquer um. Não é otimização — é a evidência de que "robusto" é medida, não adjetivo. É também o ativo publicável do projeto: nenhum benchmark mede quais falhas silenciosas cada ferramenta de bioinformática deixa passar.
+The FS wrapper numbers each write, `fsync`, `rename` and database commit of a reference run of `get` and of `fetch`. For each number N, the suite runs again, kills the process with `SIGKILL` exactly at operation N, discards what did not receive `fsync` (simulating loss of the operating system's cache), resumes, and checks:
 
-**Estado.** O pacote `mutants/` é planejado e entra com o benchmark de falhas silenciosas completo da Fatia 7 (`ROADMAP.md`). Hoje a cobertura de modos de falha vem do corpus sintético versionado (§2) e dos testes de cada defesa, que corrompem o arquivo no próprio teste: truncamento em vários offsets, página HTML com extensão de dado, par desalinhado, BSIZE falso, BOM. Não existe ainda a matriz classe × ferramenta, nem a matriz de transporte.
+- No file with a final name without all assertions passed.
+- No `verified` group whose content on disk does not match the CV.
+- No event in the database pointing to a state that the disk does not support.
+- The final file, when finished, is identical to that of the run without failure.
 
-O pacote `mutants/` gera, a partir de arquivos sintéticos válidos, versões corrompidas de propósito. Cada classe de mutante declara qual modo de falha de `RELIABILITY.md` representa.
+High cost: runs in the full weekly job and on a random sample of points in every PR.
 
-| Classe                         | Mutação                                                        | Modo |
+## 6.2 Formal model
+
+`spec/resume.tla` specifies the resume protocol, rename and state machine. The TLC model checker runs in CI with small parameters (3 groups, 2 failures, 2 restarts) on every PR that touches `downloader/`, `store/` or `verifier/`. The invariants of the model are the same as those of §6.1: the model proves it for the protocol, the crash-testing checks that the code follows the protocol.
+
+## 6.3 Certificate and independent verifier
+
+For every file of the synthetic corpus and of the mutants, `check --certificate` and `tools/verify_cert.py` are executed; the verifier must agree with each hash and count of the certificate, and reject every tampered certificate, including the `passed` of the assertions of an invalid file.
+
+## 6.4 Adaptive concurrency
+
+A fake server with configurable capacity, latency and 429 above a connection limit. Adaptive concurrency must converge to near the capacity, never exceed the configured ceiling, honour `Retry-After` and finish without a permanent error. Fake, deterministic clock.
+
+---
+
+## 7. Mutants: benchmark of silent failures
+
+Versioned in the repository, reproducible by anyone. It is not optimisation — it is the evidence that "robust" is a measurement, not an adjective. It is also the project's publishable asset: no benchmark measures which silent failures each bioinformatics tool lets through.
+
+**Status.** The `mutants/` package is planned and enters with the complete silent-failure benchmark of Slice 7 (`ROADMAP.md`). Today the coverage of failure modes comes from the versioned synthetic corpus (§2) and from the tests of each defence, which corrupt the file in the test itself: truncation at several offsets, an HTML page with a data extension, misaligned pair, false BSIZE, BOM. The class × tool matrix does not exist yet, nor does the transport matrix.
+
+The `mutants/` package generates, from valid synthetic files, versions corrupted on purpose. Each mutant class declares which failure mode of `RELIABILITY.md` it represents.
+
+| Class                          | Mutation                                                       | Mode |
 | ------------------------------ | -------------------------------------------------------------- | ---- |
-| `truncate`                     | corta em offset aleatório, inclusive no meio de membro gzip    | M4   |
-| `truncate-record`              | remove o último registro inteiro, arquivo continua bem formado | M6, M15 |
-| `html-body`                    | página HTML de erro com a extensão do formato                  | M3   |
-| `flip-byte`                    | um byte alterado em offset aleatório                           | disco |
-| `shift`                        | bytes inseridos ou removidos no meio                           | disco |
-| `short-mate`                   | R2 com reads encurtados, estrutura válida                      | M15  |
-| `pair-desync`                  | um read removido só de R2                                      | M5   |
-| `pair-swap`                    | R2 de outra amostra                                            | M5   |
-| `chrom-rename`                 | `chr1` → `1` na anotação                                       | M11  |
-| `release-swap`                 | GTF de outro release com o mesmo nome                          | M1   |
-| `superseded`                   | fonte publica checksum diferente na mesma URL                  | M2   |
-| `suppressed`                   | fonte marca o run como suprimido                               | M16  |
-| `chemistry-swap`               | R1 de 10x v2 com metadado declarando v3                        | M17  |
-| `matrix-colswap`               | duas colunas da matriz com nomes trocados; uma coluna removida | M18  |
-| `duplicate-run`                | mesmo conteúdo sob duas accessions                             | M19  |
+| `truncate`                     | cuts at a random offset, including in the middle of a gzip member | M4   |
+| `truncate-record`              | removes the whole last record, file remains well formed        | M6, M15 |
+| `html-body`                    | HTML error page with the format's extension                    | M3   |
+| `flip-byte`                    | one byte changed at a random offset                            | disk |
+| `shift`                        | bytes inserted or removed in the middle                        | disk |
+| `short-mate`                   | R2 with shortened reads, valid structure                       | M15  |
+| `pair-desync`                  | one read removed from R2 only                                  | M5   |
+| `pair-swap`                    | R2 of another sample                                           | M5   |
+| `chrom-rename`                 | `chr1` → `1` in the annotation                                 | M11  |
+| `release-swap`                 | GTF of another release with the same name                      | M1   |
+| `superseded`                   | source publishes a different checksum at the same URL          | M2   |
+| `suppressed`                   | source marks the run as suppressed                             | M16  |
+| `chemistry-swap`               | R1 of 10x v2 with metadata declaring v3                        | M17  |
+| `matrix-colswap`               | two matrix columns with swapped names; one column removed      | M18  |
+| `duplicate-run`                | same content under two accessions                              | M19  |
 
-Dois usos:
+Two uses:
 
-- **Suíte do projeto.** Toda mutação de toda classe que o Colligo declara detectável é detectada, com o código de saída certo. Uma classe nova de mutante entra junto com a defesa que a pega.
-- **Benchmark.** A mesma matriz roda contra outras ferramentas: `gzip -t`, `samtools quickcheck`, validadores de FASTQ, `md5sum -c` contra o MD5 da fonte, iSeq, `wget -c`, `curl -C -`, `prefetch`. Saída: tabela classe × ferramenta com detectou ou não, e tempo até detecção.
+- **Project suite.** Every mutation of every class that Colligo declares detectable is detected, with the right exit code. A new mutant class enters together with the defence that catches it.
+- **Benchmark.** The same matrix runs against other tools: `gzip -t`, `samtools quickcheck`, FASTQ validators, `md5sum -c` against the source's MD5, iSeq, `wget -c`, `curl -C -`, `prefetch`. Output: a class × tool table with detected or not, and time to detection.
 
-Matriz de transporte, mantida: `{Range ignorado, corpo truncado, reset no meio, 429, 412, ENOSPC}` × `{Colligo, wget -c, curl -C -, prefetch}`, com taxa de resume bem-sucedido, bytes retransmitidos e throughput.
+Transport matrix, maintained: `{Range ignored, truncated body, reset in the middle, 429, 412, ENOSPC}` × `{Colligo, wget -c, curl -C -, prefetch}`, with successful resume rate, bytes retransmitted and throughput.
 
-Roda contra servidor local, sem rede externa. Saída em tabela versionada, para que regressão apareça em diff.
-
----
-
-## 7.1 Desempenho
-
-Velocidade é requisito medido, não impressão. Benchmark versionado, rodando na máquina de referência declarada no próprio resultado (CPU, disco, sistema de arquivos).
-
-| Medida | Piso de comparação | Meta | Medido hoje? |
-| ------ | ------------------ | ---- | ------------ |
-| `check` completo de `.fastq.gz` | gunzip em Go puro (`klauspost/compress`), mesmo arquivo e máquina | ≤ 110% do piso; `zcat \| wc -l` medido e reportado | sim, `TestPerformanceFloor` com `COLLIGO_PERF=1` |
-| `check` completo de BAM | `samtools view -c` | ≤ 110% do piso | não; BAM ainda não tem validador |
-| Hash de arquivo não comprimido | `b3sum` | ≤ 120% do piso | não |
-| Segunda execução, 10 mil arquivos inalterados | — | ≤ 5 s em SSD | não; depende do gate de `stat` (Fatia 4) |
-| Alocações por registro no parser de FASTQ | — | 0 | sim, `testing.AllocsPerRun` em `format` |
-| `get` com verificação completa | `curl` puro, mesmo arquivo e servidor local | ≤ 105% do piso | não; `get` é da Fatia 3 |
-
-Perfis de CPU e memória (`pprof`) de cada medida serão versionados junto com a tabela, para que regressão apareça em diff, e uma mudança que piora uma medida em mais de 5% falhará o job semanal com o perfil anexado. Nenhum dos dois existe ainda; a Sessão 8 implementa o que falta desta seção.
-
-A troca de `compress/gzip` por `klauspost/compress/gzip` só entra com o resultado deste benchmark mostrando ganho.
+Runs against a local server, with no external network. Output in a versioned table, so that a regression shows up in a diff.
 
 ---
 
-## 7.2 Recursos e limites
+## 7.1 Performance
 
-O `Compute` é medido contra entrada hostil ou grande, para que uma regressão de memória quebre a suíte em vez de aparecer num servidor.
+Speed is a measured requirement, not an impression. A versioned benchmark, running on the reference machine declared in the result itself (CPU, disk, filesystem).
 
-| Teste                                           | Entrada                                                                    | O que afirma                                                                             |
+| Measurement | Comparison floor | Goal | Measured today? |
+| ----------- | ---------------- | ---- | --------------- |
+| Full `check` of `.fastq.gz` | pure-Go gunzip (`klauspost/compress`), same file and machine | ≤ 110% of the floor; `zcat \| wc -l` measured and reported | yes, `TestPerformanceFloor` with `COLLIGO_PERF=1` |
+| Full `check` of BAM | `samtools view -c` | ≤ 110% of the floor | no; BAM does not have a validator yet |
+| Hash of an uncompressed file | `b3sum` | ≤ 120% of the floor | no |
+| Second run, 10 thousand unchanged files | — | ≤ 5 s on SSD | no; depends on the `stat` gate (Slice 4) |
+| Allocations per record in the FASTQ parser | — | 0 | yes, `testing.AllocsPerRun` in `format` |
+| `get` with full verification | plain `curl`, same file and local server | ≤ 105% of the floor | no; `get` is Slice 3 |
+
+CPU and memory profiles (`pprof`) of each measurement will be versioned together with the table, so that a regression shows up in a diff, and a change that worsens a measurement by more than 5% will fail the weekly job with the profile attached. Neither exists yet; Session 8 implements what is missing from this section.
+
+The switch from `compress/gzip` to `klauspost/compress/gzip` only enters with the result of this benchmark showing a gain.
+
+---
+
+## 7.2 Resources and limits
+
+`Compute` is measured against hostile or large input, so that a memory regression breaks the suite instead of showing up on a server.
+
+| Test                                            | Input                                                                      | What it asserts                                                                          |
 | ----------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| gzip de razão enorme                            | 2 GiB de zeros, ~2 MiB comprimidos, gerados em streaming                   | termina, `uncompressed_bytes` exato, pico de heap ≤ 32 MiB acima da linha de base        |
-| 20 milhões de reads curtos (`COLLIGO_SLOW=1`)   | ~1,1 GiB gerados em streaming, comprimentos 20 a 24                        | histograma, `read_ends`, MD5 e contagens exatos; pico ≤ 32 MiB; último quarto não cresce |
-| arquivo que encolhe ou cresce durante a leitura | truncado ou acrescido quando metade foi lida                               | `Compute`: tamanho e hashes são dos bytes efetivamente lidos e ele não acusa a mudança; quem acusa é o `CheckFile` (`changed_during_read`, `RELIABILITY.md` M2) |
-| alocações por MiB lido                          | FASTQ puro e FASTQ gzip, inclinação entre uma entrada pequena e uma grande | ≤ 8 alocações e ≤ 16 KiB alocados por MiB adicional                                      |
-| leitura única                                   | `CheckFile` e `CheckAll`, medidos por `rchar` de `/proc/self/io` (Linux)   | cada byte lido exatamente uma vez; `Discover` lê no máximo 64 KiB por arquivo            |
+| gzip with a huge ratio                          | 2 GiB of zeros, ~2 MiB compressed, generated in streaming                  | terminates, exact `uncompressed_bytes`, heap peak ≤ 32 MiB above the baseline            |
+| 20 million short reads (`COLLIGO_SLOW=1`)       | ~1.1 GiB generated in streaming, lengths 20 to 24                          | exact histogram, `read_ends`, MD5 and counts; peak ≤ 32 MiB; last quarter does not grow  |
+| file that shrinks or grows during the read      | truncated or appended when half was read                                   | `Compute`: size and hashes are of the bytes actually read and it does not flag the change; what flags it is `CheckFile` (`changed_during_read`, `RELIABILITY.md` M2) |
+| allocations per MiB read                        | plain FASTQ and gzip FASTQ, slope between a small and a large input        | ≤ 8 allocations and ≤ 16 KiB allocated per additional MiB                                |
+| single read                                     | `CheckFile` and `CheckAll`, measured by `rchar` of `/proc/self/io` (Linux) | each byte read exactly once; `Discover` reads at most 64 KiB per file                    |
 
-Os limites partem do piso estrutural, não do que a máquina de hoje faz: o anel de leitura tem 8 buffers de 1 MiB e o descompressor mais o extrator ficam abaixo de 1 MiB, então o pico medido fica entre 8 e 13 MiB e o teto de 32 MiB deixa folga para o coletor de lixo. Reter mais de 1,5% da saída descomprimida (32 MiB de 2 GiB) já passa do teto. A inclinação de alocações medida é zero dentro do ruído (no máximo uma alocação e algumas centenas de bytes por MiB); os limites pegam uma alocação por registro (milhares por MiB) ou um buffer novo por pedaço (1 MiB por MiB).
+The limits start from the structural floor, not from what today's machine does: the read ring has 8 buffers of 1 MiB and the decompressor plus the extractor stay below 1 MiB, so the measured peak is between 8 and 13 MiB and the 32 MiB ceiling leaves headroom for the garbage collector. Retaining more than 1.5% of the decompressed output (32 MiB of 2 GiB) already exceeds the ceiling. The measured allocation slope is zero within noise (at most one allocation and a few hundred bytes per MiB); the limits catch one allocation per record (thousands per MiB) or a new buffer per chunk (1 MiB per MiB).
 
-`COLLIGO_SLOW=1` liga os testes que levam minutos (20 milhões de reads: cerca de 9 s sem `-race` e 50 s com). Sem a variável eles pulam e a mensagem diz como ligar. O CI não a define.
+`COLLIGO_SLOW=1` turns on the tests that take minutes (20 million reads: about 9 s without `-race` and 50 s with). Without the variable they skip and the message says how to turn them on. CI does not set it.
 
 ---
 
-## 8. Regras mecânicas
+## 8. Mechanical rules
 
-Nenhuma delas depende de alguém lembrar.
+None of them depends on someone remembering.
 
-| Regra                              | Ferramenta                                          |
+| Rule                               | Tool                                                |
 | ---------------------------------- | --------------------------------------------------- |
-| Core não importa `source/*`        | teste com `x/tools/go/packages`, ou `depguard`       |
-| Porta leve não importa `store`     | mesmo teste de grafo de import                       |
-| `string` crua onde cabe `secret.*` | analisador `go/analysis` próprio                     |
-| Sem `init()` com efeito colateral  | lint customizado                                    |
-| Superfície pública estável         | `apidiff` contra a última tag                        |
-| Corrida                            | `go test -race -count=2 ./...`                       |
-| Vazamento de goroutine             | `goleak` em todo teste de concorrência               |
-| Segredo no diff                    | `gitleaks` em pre-commit e no CI                     |
-| Fixture real rastreada             | `git ls-files` casado contra padrões proibidos        |
-| Cobertura de asserção real         | `gremlins` (mutation), trimestral, só no core        |
-| Sem host não configurado           | dialer instrumentado, em toda a suíte                |
+| Core does not import `source/*`    | test with `x/tools/go/packages`, or `depguard`      |
+| Light door does not import `store` | same import-graph test                              |
+| Raw `string` where `secret.*` fits | own `go/analysis` analyzer                          |
+| No `init()` with side effects      | custom lint                                         |
+| Stable public surface              | `apidiff` against the last tag                      |
+| Race                               | `go test -race -count=2 ./...`                      |
+| Goroutine leak                     | `goleak` in every concurrency test                  |
+| Secret in the diff                 | `gitleaks` in pre-commit and in CI                  |
+| Tracked real fixture               | `git ls-files` matched against forbidden patterns   |
+| Real assertion coverage            | `gremlins` (mutation), quarterly, core only         |
+| No non-configured host             | instrumented dialer, across the whole suite         |
 
-`-count=2` pega estado vazando entre execuções. Mutation score é a única métrica que responde "minha suíte pegaria um bug oculto?" — cobertura só diz quanto código rodou.
+`-count=2` catches state leaking between runs. Mutation score is the only metric that answers "would my suite catch a hidden bug?" — coverage only says how much code ran.
 
 ---
 
-### Ferramentas externas
+### External tools
 
-Alguns testes comparam o Colligo com programas que não são nossos: o verificador `tools/verify_cert.py` (Python com o pacote `blake3`) e `b3sum`. Teste que depende deles nunca passa em silêncio sem ter rodado:
+Some tests compare Colligo with programs that are not ours: the verifier `tools/verify_cert.py` (Python with the `blake3` package) and `b3sum`. A test that depends on them never passes silently without having run:
 
-| Situação | Resultado |
-| -------- | --------- |
-| `COLLIGO_PYTHON` definida e o interpretador não importa `blake3` | falha |
-| `COLLIGO_REQUIRE_PYTHON=1` e nenhum Python com `blake3` | falha |
-| nada definido e sem Python com `blake3` | pula, e a mensagem diz como transformar o pulo em falha |
-| `COLLIGO_REQUIRE_B3SUM=1` e sem `b3sum` | falha |
-| sem `b3sum` e sem a variável | a comparação não roda e o teste registra isso em log |
+| Situation | Result |
+| --------- | ------ |
+| `COLLIGO_PYTHON` set and the interpreter does not import `blake3` | fails |
+| `COLLIGO_REQUIRE_PYTHON=1` and no Python with `blake3` | fails |
+| nothing set and no Python with `blake3` | skips, and the message says how to turn the skip into a failure |
+| `COLLIGO_REQUIRE_B3SUM=1` and no `b3sum` | fails |
+| no `b3sum` and no variable | the comparison does not run and the test logs that |
 
-O CI define `COLLIGO_REQUIRE_PYTHON=1` e `COLLIGO_REQUIRE_B3SUM=1`. O benchmark de desempenho é opt-in por `COLLIGO_PERF=1`, porque mede velocidade e não correção. Os testes de recurso que levam minutos são opt-in por `COLLIGO_SLOW=1`, porque custam tempo e não correção a mais no dia a dia.
+CI sets `COLLIGO_REQUIRE_PYTHON=1` and `COLLIGO_REQUIRE_B3SUM=1`. The performance benchmark is opt-in via `COLLIGO_PERF=1`, because it measures speed and not correctness. The resource tests that take minutes are opt-in via `COLLIGO_SLOW=1`, because they cost time and no extra correctness in day-to-day work.
 
-### Variáveis `COLLIGO_*`
+### `COLLIGO_*` variables
 
-| Variável | Efeito |
+| Variable | Effect |
 | -------- | ------ |
-| `COLLIGO_PYTHON` | caminho do interpretador Python com `blake3` usado pelos testes de `tools/verify_cert.py`; se definida e o interpretador não importa `blake3`, falha |
-| `COLLIGO_REQUIRE_PYTHON` | `1` transforma a ausência de Python com `blake3` em falha, em vez de pulo |
-| `COLLIGO_REQUIRE_B3SUM` | `1` transforma a ausência de `b3sum` em falha, em vez de registro em log |
-| `COLLIGO_PERF` | qualquer valor não vazio liga `TestPerformanceFloor`; sem ela o teste pula |
-| `COLLIGO_PERF_DIR` | diretório onde o benchmark guarda e reaproveita os `.fastq.gz` gerados; sem ela usa um diretório temporário do teste e gera de novo a cada execução |
-| `COLLIGO_SLOW` | qualquer valor não vazio liga os testes de recurso que levam minutos (§7.2) |
+| `COLLIGO_PYTHON` | path of the Python interpreter with `blake3` used by the `tools/verify_cert.py` tests; if set and the interpreter does not import `blake3`, it fails |
+| `COLLIGO_REQUIRE_PYTHON` | `1` turns the absence of Python with `blake3` into a failure, instead of a skip |
+| `COLLIGO_REQUIRE_B3SUM` | `1` turns the absence of `b3sum` into a failure, instead of a log record |
+| `COLLIGO_PERF` | any non-empty value turns on `TestPerformanceFloor`; without it the test skips |
+| `COLLIGO_PERF_DIR` | directory where the benchmark stores and reuses the generated `.fastq.gz`; without it, it uses a temporary directory of the test and generates again on each run |
+| `COLLIGO_SLOW` | any non-empty value turns on the resource tests that take minutes (§7.2) |
 
-### Benchmark de desempenho
+### Performance benchmark
 
 ```
-COLLIGO_PERF=1 COLLIGO_PERF_DIR=/caminho/com/espaco go test ./facts -run TestPerformanceFloor -v
+COLLIGO_PERF=1 COLLIGO_PERF_DIR=/path/with/space go test ./facts -run TestPerformanceFloor -v
 ```
 
-O teste gera um `.fastq.gz` com 1 GiB de FASTQ descomprimido (reads de 100 bases, semente fixa), mede três vezes (melhor tempo) o gunzip em Go puro, `zcat | wc -l` e `Compute` com hashes, e imprime os três tempos e as razões. Falha se o `Compute` passar de 110% do piso em Go puro; a razão contra `zcat | wc -l` só é reportada. Exige `zcat` no `PATH`. `go test ./facts -bench ComputeFastqGz` mede o mesmo `Compute` sobre um arquivo gerado com 256 MiB descomprimidos como benchmark comum do Go, sem meta.
+The test generates a `.fastq.gz` with 1 GiB of decompressed FASTQ (100-base reads, fixed seed), measures three times (best time) the pure-Go gunzip, `zcat | wc -l` and `Compute` with hashes, and prints the three times and the ratios. It fails if `Compute` exceeds 110% of the pure-Go floor; the ratio against `zcat | wc -l` is only reported. It requires `zcat` on the `PATH`. `go test ./facts -bench ComputeFastqGz` measures the same `Compute` over a generated file with 256 MiB decompressed as a plain Go benchmark, with no goal.
 
 ---
 
-## 9. O que o CI roda
+## 9. What CI runs
 
-| Verificação | Quando | Roda hoje / planejado |
-| ----------- | ------ | --------------------- |
-| nome do branch, título do PR e mensagem de cada commit (`.github/check-names.sh`, que também se autotesta) | PR | roda hoje |
-| `gitleaks` no histórico | PR e `main` | roda hoje |
-| fixture real rastreada (`git ls-files testdata/real`) | PR e `main` | roda hoje |
-| `gofmt`, `go build`, `go vet` | PR e `main` | roda hoje |
-| analisador de tipos `secret` (`noleak`) | PR e `main` | roda hoje |
-| `go test -race -count=2 ./...`, que inclui os testes de grafo de import e da regra das duas portas, o verificador Python e a comparação com `b3sum` | PR e `main` | roda hoje |
-| alvos `Fuzz*` rodando só a semente do corpus (dentro do `go test`) | PR e `main` | roda hoje |
-| lint além de `vet` | PR | planejado |
-| `sourcetest` de todas as fontes públicas | PR | planejado, Fatia 2 em diante |
-| suíte de mutantes do Colligo | PR | planejado, Fatia 7 |
-| fuzz 60 s por alvo | PR | planejado |
-| `apidiff` contra a última tag | PR | planejado, depois da primeira tag |
-| drift de fixtures, fuzz 4 h por alvo, benchmark de mutantes contra ferramentas externas, benchmark de desempenho | semanal | planejado |
-| mutation testing | trimestral | planejado |
+| Check | When | Runs today / planned |
+| ----- | ---- | -------------------- |
+| branch name, PR title and message of each commit (`.github/check-names.sh`, which also self-tests) | PR | runs today |
+| `gitleaks` over the history | PR and `main` | runs today |
+| tracked real fixture (`git ls-files testdata/real`) | PR and `main` | runs today |
+| `gofmt`, `go build`, `go vet` | PR and `main` | runs today |
+| `secret` type analyzer (`noleak`) | PR and `main` | runs today |
+| `go test -race -count=2 ./...`, which includes the import-graph and two-doors rule tests, the Python verifier and the comparison with `b3sum` | PR and `main` | runs today |
+| `Fuzz*` targets running only the corpus seed (inside `go test`) | PR and `main` | runs today |
+| lint beyond `vet` | PR | planned |
+| `sourcetest` of all public sources | PR | planned, Slice 2 onwards |
+| Colligo's mutant suite | PR | planned, Slice 7 |
+| fuzz 60 s per target | PR | planned |
+| `apidiff` against the last tag | PR | planned, after the first tag |
+| fixture drift, fuzz 4 h per target, mutant benchmark against external tools, performance benchmark | weekly | planned |
+| mutation testing | quarterly | planned |
 
-O CI roda em `pull_request` e em `push` para `main`, nunca no push de um branch sem PR.
+CI runs on `pull_request` and on `push` to `main`, never on the push of a branch without a PR.
 
-**Nunca no CI:** qualquer teste com build tag `restricted`.
+**Never in CI:** any test with the `restricted` build tag.
