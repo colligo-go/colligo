@@ -118,4 +118,12 @@ Estilo da casa. Inviolável durante implementação. Curto de propósito.
 
 Commits pequenos, por fatia ou sub-fatia. `.github/check-names.sh` confere nome do branch, título do PR e cada commit do PR no CI; branch ou mensagem fora do padrão deixa o PR vermelho. A regra vale do PR que a introduziu em diante; o histórico anterior não é reescrito por ela.
 
+**`main` é protegido no GitHub** pela regra versionada em `.github/rulesets/main.json`: sem push direto, sem `push --force`, sem apagar o branch, e merge só por PR com o check `test` (o job do CI, publicado pelo GitHub Actions) verde e atualizado com `main`. Só merge commit, para preservar os commits pequenos. Ninguém tem bypass, nem o dono da org. O plano gratuito só aplica a regra em repositório público; ela entra no dia em que o repositório fica público:
+
+```
+gh api -X POST repos/colligo-go/colligo/rulesets --input .github/rulesets/main.json
+```
+
+Depois de ativa, o histórico de `main` nunca mais é reescrito. Qualquer limpeza de histórico acontece antes. O GitHub não oferece no plano gratuito regra de nome de branch ou de mensagem de commit; essas continuam conferidas pelo CI.
+
 **Repositório público desde a Fatia 0.**
