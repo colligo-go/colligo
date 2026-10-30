@@ -153,7 +153,7 @@ func TestValidateOnlyChecksStructure(t *testing.T) {
 func TestQuickIsNeverReportedAsVerified(t *testing.T) {
 	p := put(t, t.TempDir(), "s.fastq", fastq("S", 20))
 	code, out, _ := invoke("check", "--quick", p)
-	if code != 0 || strings.Contains(out, "\n  verified:") || !strings.Contains(out, "quick: fastq") || !strings.Contains(out, "content was not read in full") {
+	if code != verifier.ExitQuick || strings.Contains(out, "\n  verified:") || !strings.Contains(out, "quick: fastq") || !strings.Contains(out, "content was not read in full") {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 }

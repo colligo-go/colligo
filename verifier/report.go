@@ -23,6 +23,7 @@ const (
 	ExitFatal       = 2
 	ExitIncomplete  = 3
 	ExitInterrupted = 4
+	ExitQuick       = 5
 )
 
 const SchemaVersion = 1
@@ -71,6 +72,7 @@ type Report struct {
 	Files        []*FileReport `json:"files"`
 	Skipped      []string      `json:"skipped,omitempty"`
 	SkippedLinks []string      `json:"skipped_directory_links,omitempty"`
+	Quick        bool          `json:"-"`
 }
 
 func (r Report) ExitCode(permissive bool) int {
@@ -84,10 +86,12 @@ func (r Report) ExitCode(permissive bool) int {
 	case model.Fatal:
 		return ExitFatal
 	case model.Blocking:
-		if permissive {
-			return ExitOK
+		if !permissive {
+			return ExitIncomplete
 		}
-		return ExitIncomplete
+	}
+	if r.Quick {
+		return ExitQuick
 	}
 	return ExitOK
 }
