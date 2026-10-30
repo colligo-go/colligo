@@ -12,6 +12,7 @@ import (
 
 const (
 	ReadFailed         = "read_failed"
+	ChangedDuringRead  = "changed_during_read"
 	HTMLBody           = "html_body"
 	MagicMismatch      = "magic_mismatch"
 	ChecksumMismatch   = "checksum_mismatch"
@@ -60,6 +61,12 @@ var catalogue = []Entry{
 		Observation: "The file could not be read: {detail}.",
 		Cause:       "The disk, the network filesystem or the permissions failed while reading.",
 		Action:      "Check the path, the permissions and the health of the storage, then run the check again.",
+	},
+	{
+		ID: ChangedDuringRead, Mode: "M2", Severity: model.Blocking,
+		Observation: "The file changed while it was being read; run the check again.",
+		Cause:       "Another process wrote to, truncated or replaced the file during the read ({observed}), so the hashes and facts may describe bytes that never existed together.",
+		Action:      "Wait until nothing is writing to the file, then run the check again.",
 	},
 	{
 		ID: HTMLBody, Mode: "M3", Severity: model.Fatal,
