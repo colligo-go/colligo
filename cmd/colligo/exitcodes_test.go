@@ -56,8 +56,8 @@ func TestExitCodeTable(t *testing.T) {
 func TestRepeatedExpectedKeyIsAUsageErrorBeforeAnyFileIsRead(t *testing.T) {
 	missing := t.TempDir() + "/never-read.fastq"
 	for _, args := range [][]string{
-		{"check", "--expected", "md5=aa", "--expected", "md5=bb", missing},
-		{"check", "--expected", "md5=aa", "--expected", "MD5=aa", missing},
+		{"check", "--expected", "md5=" + strings.Repeat("a", 32), "--expected", "md5=" + strings.Repeat("b", 32), missing},
+		{"check", "--expected", "md5=" + strings.Repeat("a", 32), "--expected", "MD5=" + strings.Repeat("a", 32), missing},
 		{"check", "--expected", "reads=5", "--expected", "reads=5", missing},
 	} {
 		code, out, errText := invoke(args...)
@@ -66,6 +66,24 @@ func TestRepeatedExpectedKeyIsAUsageErrorBeforeAnyFileIsRead(t *testing.T) {
 		}
 		if !strings.Contains(errText, "given more than once") || strings.Contains(errText, "never-read") {
 			t.Errorf("%v: stderr %q", args, errText)
+		}
+	}
+}
+
+func TestMalformedExpectedHashIsAUsageErrorBeforeAnyFileIsRead(t *testing.T) {
+	missing := t.TempDir() + "/never-read.fastq"
+	for _, value := range []string{
+		"md5=" + strings.Repeat("a", 31),
+		"md5=" + strings.Repeat("a", 31) + "g",
+		"sha256=" + strings.Repeat("a", 63),
+		"blake3=" + strings.Repeat("a", 63) + "z",
+	} {
+		code, out, errText := invoke("check", "--expected", value, missing)
+		if code != verifier.ExitUsage || out != "" {
+			t.Errorf("%s: exit %d out %q", value, code, out)
+		}
+		if !strings.Contains(errText, "hexadecimal") || strings.Contains(errText, "never-read") {
+			t.Errorf("%s: stderr %q", value, errText)
 		}
 	}
 }

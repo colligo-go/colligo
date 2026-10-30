@@ -314,6 +314,7 @@ Plataforma: o alvo de uso é Linux (HPC, servidores, WSL). O desenvolvimento aco
 - **Saída em inglês.** Uma língua só na interface pública; os identificadores no `--json` são estáveis independentemente do texto.
 - **A meta de desempenho mede o que é nosso.** Ver "Velocidade tem piso físico". Trocar confiabilidade por velocidade — cgo, inflate especulativo — fica para depois e só com medição.
 - **Corpus sintético versionado, com verdade do gerador.** Bytes fixos tornam certificados reprodutíveis por terceiros; o esperado vem de quem escreveu o arquivo, não de outro parser, o que pega o erro que o Go e o verificador Python compartilhariam.
+- **`--expected` malformado é erro de uso.** `verifier.ParseExpected` exige 32 hexadecimais para MD5 e 64 para SHA-256 e BLAKE3, sem diferenciar maiúscula, e a saída é 1 sem ler arquivo nenhum. Um valor esperado malformado é erro de quem digitou; declará-lo `checksum_mismatch` fatal acusaria de corrompido um arquivo que ninguém comparou.
 - **Mate ausente é `advisory`, não `blocking`.** `pair_missing` avisa que um arquivo com sufixo de mate não tem o outro mate na execução, porque o Colligo não consegue distinguir um par esquecido de dado single-end legítimo que carrega `_R1` no nome. Bloquear quebraria quem tem dado single-end; calar deixaria a defesa do M5 desligada sem ninguém saber (pareamento só por nome, mesma lógica de `_R1_001` contra `_R2_002`). Com um único arquivo na execução o aviso não dispara: não há contra o que comparar.
 
 ## 4. Tipos de dado
