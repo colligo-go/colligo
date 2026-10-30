@@ -1,6 +1,7 @@
 package verifier
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,6 +19,14 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 	scenarios := map[string]func() Report{
 		diagnoses.ReadFailed: func() Report {
 			return run(t, Options{}, secret.NewName(filepath.Join(dir, "missing.fastq")))
+		},
+		diagnoses.ChangedDuringRead: func() Report {
+			rep, _ := checkWhileChanging(t, reads(50_000), func(path string) {
+				if err := os.Truncate(path, 1000); err != nil {
+					t.Error(err)
+				}
+			})
+			return Report{Files: []*FileReport{rep}}
 		},
 		diagnoses.HTMLBody: func() Report {
 			return run(t, Options{}, write(t, dir, "page.gtf.gz", []byte("<!DOCTYPE html><html><body>Login</body></html>")))

@@ -73,6 +73,8 @@ Mesma URL, conteúdo diferente. GEO reenvia suplementares; FTP do Ensembl reorga
 
 Substituição silenciosa é impossível por construção: não existe caminho de código que faça UPDATE destrutivo em arquivo `done`.
 
+**Arquivo que muda durante a leitura.** Mesmo caminho, conteúdo diferente, só que debaixo da própria leitura: um download ainda em curso, uma etapa de pipeline reescrevendo o arquivo. O `CheckFile` faz `fstat` no descritor aberto antes e depois da leitura e compara tamanho, mtime e ctime (com nanossegundos) e inode. Qualquer diferença produz `changed_during_read`, `blocking`, modo M2: o hash pode descrever bytes que nunca existiram juntos, então o arquivo não sai `verified`, não recebe hashes no relatório nem certificado, e as demais afirmações ficam `skipped` por ela. Fora do Linux só tamanho e mtime são comparados. Sobrescrita que preserva tamanho, mtime e ctime (relógio parado, `utimensat` depois da escrita) não é vista.
+
 ### M3 — Página de erro salva como dado
 
 Servidor devolve `200` com HTML de erro. Você fica com um `.fastq.gz` de 4 KB que é uma página web.
@@ -291,7 +293,7 @@ Quando defesas discordam, esta é a ordem. Existe para não haver dúvida na imp
 2. Canário do estudo
 3. Sanidade do relógio
 4. Permissões e classificação
-5. Identidade do arquivo (assembly, release, ETag)
+5. Identidade do arquivo (assembly, release, ETag, arquivo estável durante a leitura)
 6. Checksum da fonte
 7. Árvore BLAKE3
 8. Validação estrutural de formato
