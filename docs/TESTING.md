@@ -205,6 +205,8 @@ Servidor fake com capacidade configurável, latência e 429 acima de um limite d
 
 Versionado no repositório, reprodutível por qualquer um. Não é otimização — é a evidência de que "robusto" é medida, não adjetivo. É também o ativo publicável do projeto: nenhum benchmark mede quais falhas silenciosas cada ferramenta de bioinformática deixa passar.
 
+**Estado.** O pacote `mutants/` é planejado e entra com o benchmark de falhas silenciosas completo da Fatia 7 (`ROADMAP.md`). Hoje a cobertura de modos de falha vem do corpus sintético versionado (§2) e dos testes de cada defesa, que corrompem o arquivo no próprio teste: truncamento em vários offsets, página HTML com extensão de dado, par desalinhado, BSIZE falso, BOM. Não existe ainda a matriz classe × ferramenta, nem a matriz de transporte.
+
 O pacote `mutants/` gera, a partir de arquivos sintéticos válidos, versões corrompidas de propósito. Cada classe de mutante declara qual modo de falha de `RELIABILITY.md` representa.
 
 | Classe                         | Mutação                                                        | Modo |
@@ -240,16 +242,16 @@ Roda contra servidor local, sem rede externa. Saída em tabela versionada, para 
 
 Velocidade é requisito medido, não impressão. Benchmark versionado, rodando na máquina de referência declarada no próprio resultado (CPU, disco, sistema de arquivos).
 
-| Medida | Piso de comparação | Meta |
-| ------ | ------------------ | ---- |
-| `check` completo de `.fastq.gz` | gunzip em Go puro (`klauspost/compress`), mesmo arquivo e máquina | ≤ 110% do piso; `zcat \| wc -l` medido e reportado |
-| `check` completo de BAM | `samtools view -c` | ≤ 110% do piso |
-| Hash de arquivo não comprimido | `b3sum` | ≤ 120% do piso |
-| Segunda execução, 10 mil arquivos inalterados | — | ≤ 5 s em SSD |
-| Alocações por registro no parser de FASTQ | — | 0 |
-| `get` com verificação completa | `curl` puro, mesmo arquivo e servidor local | ≤ 105% do piso |
+| Medida | Piso de comparação | Meta | Medido hoje? |
+| ------ | ------------------ | ---- | ------------ |
+| `check` completo de `.fastq.gz` | gunzip em Go puro (`klauspost/compress`), mesmo arquivo e máquina | ≤ 110% do piso; `zcat \| wc -l` medido e reportado | sim, `TestPerformanceFloor` com `COLLIGO_PERF=1` |
+| `check` completo de BAM | `samtools view -c` | ≤ 110% do piso | não; BAM ainda não tem validador |
+| Hash de arquivo não comprimido | `b3sum` | ≤ 120% do piso | não |
+| Segunda execução, 10 mil arquivos inalterados | — | ≤ 5 s em SSD | não; depende do gate de `stat` (Fatia 4) |
+| Alocações por registro no parser de FASTQ | — | 0 | sim, `testing.AllocsPerRun` em `format` |
+| `get` com verificação completa | `curl` puro, mesmo arquivo e servidor local | ≤ 105% do piso | não; `get` é da Fatia 3 |
 
-Perfis de CPU e memória (`pprof`) de cada medida são versionados junto com a tabela, para que regressão apareça em diff. Uma mudança que piora uma medida em mais de 5% falha o job semanal com o perfil anexado.
+Perfis de CPU e memória (`pprof`) de cada medida serão versionados junto com a tabela, para que regressão apareça em diff, e uma mudança que piora uma medida em mais de 5% falhará o job semanal com o perfil anexado. Nenhum dos dois existe ainda; a Sessão 8 implementa o que falta desta seção.
 
 A troca de `compress/gzip` por `klauspost/compress/gzip` só entra com o resultado deste benchmark mostrando ganho.
 
@@ -263,7 +265,7 @@ O `Compute` é medido contra entrada hostil ou grande, para que uma regressão d
 | ----------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | gzip de razão enorme                            | 2 GiB de zeros, ~2 MiB comprimidos, gerados em streaming                   | termina, `uncompressed_bytes` exato, pico de heap ≤ 32 MiB acima da linha de base        |
 | 20 milhões de reads curtos (`COLLIGO_SLOW=1`)   | ~1,1 GiB gerados em streaming, comprimentos 20 a 24                        | histograma, `read_ends`, MD5 e contagens exatos; pico ≤ 32 MiB; último quarto não cresce |
-| arquivo que encolhe ou cresce durante a leitura | truncado ou acrescido quando metade foi lida                               | tamanho e hashes são dos bytes efetivamente lidos; o resultado não acusa a mudança       |
+| arquivo que encolhe ou cresce durante a leitura | truncado ou acrescido quando metade foi lida                               | `Compute`: tamanho e hashes são dos bytes efetivamente lidos e ele não acusa a mudança; quem acusa é o `CheckFile` (`changed_during_read`, `RELIABILITY.md` M2) |
 | alocações por MiB lido                          | FASTQ puro e FASTQ gzip, inclinação entre uma entrada pequena e uma grande | ≤ 8 alocações e ≤ 16 KiB alocados por MiB adicional                                      |
 | leitura única                                   | `CheckFile` e `CheckAll`, medidos por `rchar` de `/proc/self/io` (Linux)   | cada byte lido exatamente uma vez; `Discover` lê no máximo 64 KiB por arquivo            |
 
@@ -332,10 +334,23 @@ O teste gera um `.fastq.gz` com 1 GiB de FASTQ descomprimido (reads de 100 bases
 
 ## 9. O que o CI roda
 
-**Em todo PR:** nome do branch, título do PR e mensagem de cada commit (`.github/check-names.sh`, que também se autotesta), build Linux, `vet`, lint, analisador de tipos `secret`, `-race -count=2`, `sourcetest` de todas as fontes públicas, suíte de mutantes do Colligo, fuzz 60s por alvo, `apidiff`, `gitleaks`, check de fixture rastreada, check de grafo de import e da regra das duas portas.
+| Verificação | Quando | Roda hoje / planejado |
+| ----------- | ------ | --------------------- |
+| nome do branch, título do PR e mensagem de cada commit (`.github/check-names.sh`, que também se autotesta) | PR | roda hoje |
+| `gitleaks` no histórico | PR e `main` | roda hoje |
+| fixture real rastreada (`git ls-files testdata/real`) | PR e `main` | roda hoje |
+| `gofmt`, `go build`, `go vet` | PR e `main` | roda hoje |
+| analisador de tipos `secret` (`noleak`) | PR e `main` | roda hoje |
+| `go test -race -count=2 ./...`, que inclui os testes de grafo de import e da regra das duas portas, o verificador Python e a comparação com `b3sum` | PR e `main` | roda hoje |
+| alvos `Fuzz*` rodando só a semente do corpus (dentro do `go test`) | PR e `main` | roda hoje |
+| lint além de `vet` | PR | planejado |
+| `sourcetest` de todas as fontes públicas | PR | planejado, Fatia 2 em diante |
+| suíte de mutantes do Colligo | PR | planejado, Fatia 7 |
+| fuzz 60 s por alvo | PR | planejado |
+| `apidiff` contra a última tag | PR | planejado, depois da primeira tag |
+| drift de fixtures, fuzz 4 h por alvo, benchmark de mutantes contra ferramentas externas, benchmark de desempenho | semanal | planejado |
+| mutation testing | trimestral | planejado |
 
-**Semanal:** drift de fixtures, fuzz 4h por alvo, benchmark de mutantes contra ferramentas externas, benchmark de desempenho.
-
-**Trimestral:** mutation testing.
+O CI roda em `pull_request` e em `push` para `main`, nunca no push de um branch sem PR.
 
 **Nunca no CI:** qualquer teste com build tag `restricted`.
