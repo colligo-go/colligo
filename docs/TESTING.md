@@ -78,6 +78,15 @@ Para os validadores de formato, o corpus sintético é produzido por um gerador 
 
 Capturas reais. Fica na máquina de quem tem acesso. Bloqueada por `.gitignore` e por check de CI que falha se algum arquivo sob esse caminho estiver rastreado.
 
+Para regravar o corpus depois de mudar o gerador ou a versão de um extrator:
+
+```
+go test ./internal/corpus -record
+git diff --stat testdata/synthetic
+```
+
+Revise o diff antes de comitar: arquivo que mudou sem o gerador ter mudado é sinal de bug.
+
 ### Regras de gravação
 
 - Fixture é **gravada, nunca escrita à mão**: `go test -record` bate na API real, escreve o arquivo e remove credenciais.
@@ -299,6 +308,25 @@ Alguns testes comparam o Colligo com programas que não são nossos: o verificad
 | sem `b3sum` e sem a variável | a comparação não roda e o teste registra isso em log |
 
 O CI define `COLLIGO_REQUIRE_PYTHON=1` e `COLLIGO_REQUIRE_B3SUM=1`. O benchmark de desempenho é opt-in por `COLLIGO_PERF=1`, porque mede velocidade e não correção. Os testes de recurso que levam minutos são opt-in por `COLLIGO_SLOW=1`, porque custam tempo e não correção a mais no dia a dia.
+
+### Variáveis `COLLIGO_*`
+
+| Variável | Efeito |
+| -------- | ------ |
+| `COLLIGO_PYTHON` | caminho do interpretador Python com `blake3` usado pelos testes de `tools/verify_cert.py`; se definida e o interpretador não importa `blake3`, falha |
+| `COLLIGO_REQUIRE_PYTHON` | `1` transforma a ausência de Python com `blake3` em falha, em vez de pulo |
+| `COLLIGO_REQUIRE_B3SUM` | `1` transforma a ausência de `b3sum` em falha, em vez de registro em log |
+| `COLLIGO_PERF` | qualquer valor não vazio liga `TestPerformanceFloor`; sem ela o teste pula |
+| `COLLIGO_PERF_DIR` | diretório onde o benchmark guarda e reaproveita os `.fastq.gz` gerados; sem ela usa um diretório temporário do teste e gera de novo a cada execução |
+| `COLLIGO_SLOW` | qualquer valor não vazio liga os testes de recurso que levam minutos (§7.2) |
+
+### Benchmark de desempenho
+
+```
+COLLIGO_PERF=1 COLLIGO_PERF_DIR=/caminho/com/espaco go test ./facts -run TestPerformanceFloor -v
+```
+
+O teste gera um `.fastq.gz` com 1 GiB de FASTQ descomprimido (reads de 100 bases, semente fixa), mede três vezes (melhor tempo) o gunzip em Go puro, `zcat | wc -l` e `Compute` com hashes, e imprime os três tempos e as razões. Falha se o `Compute` passar de 110% do piso em Go puro; a razão contra `zcat | wc -l` só é reportada. Exige `zcat` no `PATH`. `go test ./facts -bench ComputeFastqGz` mede o mesmo `Compute` sobre um arquivo gerado com 256 MiB descomprimidos como benchmark comum do Go, sem meta.
 
 ---
 
