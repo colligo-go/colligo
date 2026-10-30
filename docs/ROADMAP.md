@@ -1,6 +1,6 @@
 # Colligo — Roadmap
 
-> **Fatia atual: 0 — Fundação mínima.** Nada fora dela deve ser construído ainda.
+> **Fatia atual: 1 — Porta leve: `colligo check`.** A Fatia 0 está fechada. Nada fora da Fatia 1 deve ser construído ainda.
 
 A regra deste documento: construir uma fatia fina de ponta a ponta antes de generalizar em largura.
 
@@ -11,7 +11,7 @@ Duas regras aprendidas no caminho:
 
 ---
 
-## Fatia 0 — Fundação mínima
+## Fatia 0 — Fundação mínima (fechada)
 
 Pequena em linhas, impossível de adicionar depois.
 
@@ -32,7 +32,7 @@ Movido para depois: `doctor`, `redact-report`, canário, detecção de pasta sin
 
 ---
 
-## Fatia 1 — Porta leve: `colligo check`
+## Fatia 1 — Porta leve: `colligo check` (atual)
 
 A menor unidade útil. Sem banco, sem TOML, sem estado.
 
