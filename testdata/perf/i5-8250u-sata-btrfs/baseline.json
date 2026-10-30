@@ -2,6 +2,11 @@
   "machine": "i5-8250u-sata-btrfs",
   "go": "go1.26.3",
   "tolerance_percent": 10,
+  "conditions": {
+    "cpu_governor": "performance",
+    "intel_pstate_no_turbo": "1",
+    "on_mains_power": "true"
+  },
   "runs": {
     "gzip": [
       {

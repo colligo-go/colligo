@@ -6,7 +6,7 @@ Laptop. Everything below was in place for every measurement in `baseline.json` a
 
 - **Quiet baseline:** mains power, turbo off during the measurement, no other programs. With turbo on and a desktop session open, the same code varied from 3.5 s to 6.0 s (hash) and by up to 21% in the gzip ratio, and a 5% gate failed with no change in the code. With turbo off, five recordings spread by 0.2% to 0.5% (`check` 0.21%, `Compute` 0.44%, `sha256sum` 0.24%).
 - **Tolerance on this machine: 10%** (`tolerance_percent` in `baseline.json`). The gate compares the median of 5 rounds with the median of the 5 recorded runs.
-- **Valid reference only with turbo off.** The turbo state is not checked by the test: whoever measures turns it off (`echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo`) and back on afterwards (`0`).
+- **Valid reference only with turbo off.** The test refuses to compare when the turbo state, the governor or the mains power differ from the ones recorded in `baseline.json` (`conditions`). Whoever measures turns turbo off (`echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo`) and back on afterwards (`0`).
 - The spread between identical measurements is far below the tolerance, so this machine serves as a reference under these conditions.
 
 | Item             | Value                                                                                                           |
