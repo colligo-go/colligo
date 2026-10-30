@@ -8,7 +8,7 @@ House style. Inviolable during implementation. Short on purpose.
 
 **No comments. None.** Not in Go, not in SQL, not in example TOML. Names communicate intent. If a piece of code needs a comment to be understood, it needs to be rewritten, not commented.
 
-**Errors are values and are handled.** No `_` swallowing an error outside genuinely irrelevant cases. Domain errors are typed (SPEC §10) and inspectable via `errors.As`. Every error carries `Severity()`.
+**Errors are values and are handled.** No `_` swallowing an error outside genuinely irrelevant cases. Domain errors are typed (SPEC §10) and inspectable via `errors.As`. Every typed error carries `Severity()`; on the light door, the failure of a file is an assertion of the `diagnoses/` catalogue with a severity (SPEC §10).
 
 **Path, URL and credential are never `string`.** Use `secret.Name`, `secret.Endpoint`, `secret.Secret`. This is not a style preference: it is the mechanism that prevents leakage. Code that passes a raw `string` to a log field does not compile, and the analyzer of `CONFIDENTIALITY.md` §3.1 rejects the side doors. Typed errors follow the same rule.
 
@@ -40,7 +40,7 @@ House style. Inviolable during implementation. Short on purpose.
 
 **Never write to a Scribo table.** `result_inputs` and `input_signals` are read-only for Colligo. `CONTRACT.md` is identical in both repositories; CI compares the copies.
 
-**State transitions never overwrite. They are new rows in `file_events`, always with `run_id`. The database is the canonical state; TSV and manifest are exports.
+**State transitions never overwrite.** They are new rows in `file_events`, always with `run_id`. The database is the canonical state; TSV and manifest are exports.
 
 **A `done` file is never overwritten.** Different content at the same URL creates a new row with `supersedes`. There is no code path that does a destructive UPDATE on `done`.
 

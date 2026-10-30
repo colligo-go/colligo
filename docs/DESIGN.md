@@ -30,11 +30,13 @@ In one sentence: Colligo does not prove that you downloaded the right bytes — 
 
 ### Two doors, same library
 
-**Light door — `colligo check`.** One command, no database, no TOML, no saved state. It reads each file once, extracts the facts and, with `--source`, compares against what the source declared. A non-zero exit code if something does not match; `--json` for machines. Distributed via bioconda and as an nf-core module. It is the door that generates users: it does not require reading any documentation.
+**Light door — `colligo check`.** One command, no database, no TOML, no saved state. It reads each file once, extracts the facts and, with `--source` (Slice 2, not built yet), compares against what the source declared. A non-zero exit code if something does not match; `--json` for machines. Distributed via bioconda and as an nf-core module. It is the door that generates users: it does not require reading any documentation.
 
 ```
 colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz --source ena
 ```
+
+`--source` arrives in Slice 2; today the same command runs without it.
 
 **Heavy door — `fetch`, `adopt`, `status`, `manifest`, `attest`, `recheck`.** SQLite database, recorded runs, watching over time, manifest, confidentiality. For those who need custody: core facilities, reanalysis at scale, consortia, controlled data.
 
@@ -267,7 +269,7 @@ Correct is not enough. A tool that is only more correct than the others is respe
 
 - **Crash at any point.** The suite kills the process at each write, `fsync` and `rename` of the resume and the database, and checks the invariant after each resumption: no file under its final name without having passed everything, no progress lost beyond the last group. Serious filesystem tools do this; bioinformatics ones almost never.
 - **Formal model of resume and the state machine**, in TLA+, verified by model checking: no sequence of failures, restarts and server responses leads to `done` without checked content. The model is written before the Slice 3 code and stays in the repository.
-- **Certificate verifiable by third parties.** `check --certificate` emits a JSON with root, size, facts, versions and assertions. A reference verifier of ~200 lines in Python, independent of the Go code, checks the certificate against the file without installing Colligo. Reliability becomes something another person checks, not something they need to believe — and the verifier is, as a bonus, one more independent implementation for M9.
+- **Certificate verifiable by third parties.** `check --certificate` emits a JSON with root, size, facts, versions and assertions. A reference verifier in Python, independent of the Go code, checks the certificate against the file without installing Colligo. Reliability becomes something another person checks, not something they need to believe — and the verifier is, as a bonus, one more independent implementation for M9.
 
 ### Speed has a physical floor, and the goal is to touch it
 
@@ -297,7 +299,7 @@ We prefer HTTPS and inherit `Range`, retry and checksum from the main path. FTP 
 
 ### Infrastructure
 
-Latest stable Go (enables `iter.Seq`, which solves iteration over large studies without loading everything into memory). MIT licence. Module `github.com/<org>/colligo`.
+Go at the version pinned in `go.mod` (enables `iter.Seq`, which solves iteration over large studies without loading everything into memory). MIT licence. Module `github.com/colligo-go/colligo`.
 
 Platform: the usage target is Linux (HPC, servers, WSL). Development also happens on Windows, and that has a consequence: `0600`/`0700` permissions, `verified_inode` and sync-folder detection assume POSIX. Decision: develop and test on WSL; the native Windows binary compiles, but only the light door is supported on it until a Windows CI exists. OneDrive is Windows's default synced folder — exactly the case `CONFIDENTIALITY.md` §5.3 wants to catch —, so a restricted study on native Windows is refused.
 
@@ -373,7 +375,7 @@ Colligo guarantees the inputs before the pipeline; Scribo observes the results a
 - **Identity confirmed by genotype.** Output of somalier or NGSCheckMate, compared with the declared, becomes `identity_confirmed` or `identity_mismatch` in custody.
 - **Reprocessing plan.** When `recheck --upstream` invalidates an input, Scribo knows which results and stages depended on it and generates the samplesheet with only the affected samples.
 - **End-to-end completeness.** `status` comes to show the funnel up to "processed".
-- **Scrub priority and `gc` with provenance**, from `result_inputs`.
+- **Scrub priority and `gc` with provenance** (postponed, `BACKLOG.md`), from `result_inputs`.
 - **Corpus of real failures**, from the signals and violations recorded.
 
 **Shape:** proposal of one module with two binaries and a common core (`facts`, `runs`, `store/open`), decided in Scribo's Slice 0. Until then, the contract guarantees the conversation without sharing code.

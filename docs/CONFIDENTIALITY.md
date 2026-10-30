@@ -108,7 +108,7 @@ Passing a raw `string` to one of those fields does not compile. This is what mak
 
 ### 3.1 What the compiler does not catch
 
-The guarantee above only holds if there is no side door. `logf` has no generic `String` field, but nothing prevents `fmt.Sprintf("%s", raw)` followed by `logf.Text`, nor a `string` with a path crossing code that does not use `logf`. The closure is a custom `go/analysis` analyzer, running in CI:
+The guarantee above only holds if there is no side door. `logf` has no field typed for a path, URL or credential other than the `secret` types, but its generic `Str` field accepts any `string`, and nothing prevents `fmt.Sprintf("%s", raw)` followed by `logf.Str`, nor a `string` with a path crossing code that does not use `logf`. The closure is a custom `go/analysis` analyzer, running in CI:
 
 - It forbids converting `secret.Name`, `secret.Endpoint` and `secret.Secret` to `string` outside `internal/fsaccess` and `transport/`.
 - It forbids `string` fields and parameters whose name matches `(?i)(path|url|uri|file|name|token|secret|key)` in core packages, except where annotated by type.
