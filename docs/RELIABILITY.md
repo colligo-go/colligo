@@ -1,56 +1,59 @@
-# Colligo — Confiabilidade
+# Colligo — Reliability
 
-Documento normativo. Catálogo dos modos de falha silenciosa e a defesa de cada um.
+Normative document. A catalogue of the silent failure modes and the defence against each.
 
-Um erro silencioso é aquele que não interrompe nada, não gera aviso, e produz resultado plausível. É a única classe de falha que consome meses de trabalho antes de ser descoberta — e às vezes é descoberta por um revisor, não por você.
+A silent error is one that interrupts nothing, raises no warning, and produces a plausible result. It is the only class of failure that consumes months of work before being discovered — and sometimes it is discovered by a reviewer, not by you.
 
-O documento é organizado por modo de falha, não por componente, porque é assim que o problema aparece na vida real.
-
----
-
-## 1. Postura: falhar fechado
-
-`DESIGN.md` diz "nunca silencioso sobre problemas". A implementação ingênua disso é avisar e continuar, o que na prática produz avisos que ninguém lê.
-
-Colligo falha fechado. Três severidades:
-
-| Severidade  | Efeito                                                                         |
-| ----------- | ------------------------------------------------------------------------------ |
-| `fatal`     | Aborta imediatamente. Estado parcial salvo. Export impossível.                 |
-| `blocking`  | Registrado. Outros arquivos seguem. Estudo **não** fica completo.               |
-| `advisory`  | Registrado e impresso. Não afeta completude.                                    |
-
-**Modo estrito é o default.** Nele, qualquer `blocking` pendente no fim da execução produz código de saída diferente de zero. `--permissive` deixa o código de saída em zero, mas **não esconde nada**: o export continua marcando o estudo como incompleto e cada linha continua carregando seu estado de custódia. Permissive muda se o pipeline para, nunca se a informação existe.
-
-### Códigos de saída
-
-| Código | Significado                                                          |
-| ------ | -------------------------------------------------------------------- |
-| 0      | Completo e verificado                                                |
-| 1      | Erro de uso ou configuração (nada foi tentado)                        |
-| 2      | `fatal`: integridade, identidade, autenticação, disco                 |
-| 3      | Incompleto: `blocking` pendente                                       |
-| 4      | Interrompido: cancelado, estado salvo, retomável                      |
-
-**Alcance do `fatal`.** Falha da própria ferramenta (vetores conhecidos de hash, canário) aborta a execução inteira: nada mais é confiável. Falha `fatal` de um arquivo (ilegível, página HTML, checksum que não confere) encerra a verificação *daquele* arquivo; na porta leve os demais continuam sendo verificados, porque não há estado a salvar e parar esconderia o diagnóstico deles. O código de saída é o da pior severidade encontrada.
-
-`--expected` com a mesma chave repetida (sem diferenciar maiúscula de minúscula, mesmo com valor igual) é erro de uso, código 1, antes de ler qualquer arquivo: dois valores para a mesma chave são ambíguos e deixar o último vencer esconderia um erro de cópia.
-
-`--expected` com hash malformado também é erro de uso, código 1, antes de ler qualquer arquivo: MD5 tem 32 hexadecimais, SHA-256 e BLAKE3 têm 64, sem diferenciar maiúscula. Valor esperado malformado é erro de quem digitou, não evidência de arquivo corrompido, então nunca vira `checksum_mismatch` fatal.
-
-`--cross-check` escreve `colligo.sha256` e `colligo.b3` no formato do GNU: se o nome tem `\` ou quebra de linha, a linha começa com `\` e o nome sai com `\\` e `\n`, o que `sha256sum -c` e `b3sum -c` entendem. Link simbólico para diretório nunca é seguido (evita ciclos com `--recursive`); sai como "symbolic link to a directory, not followed" e em `skipped_directory_links` no JSON, e não como arquivo não reconhecido.
-
-Código 3 e 4 são distintos de propósito. `3` significa "terminou e está errado". `4` significa "não terminou". Um script que trata os dois igual perde a diferença que importa.
+The document is organised by failure mode, not by component, because that is how the problem shows up in real life.
 
 ---
 
-## 2. Catálogo de modos de falha
+## 1. Posture: fail closed
 
-### M1 — Arquivo íntegro, mas errado
+`DESIGN.md` says "never silent about problems". The naive implementation of that is to warn and carry on, which in practice produces warnings that nobody reads.
 
-GTF do Ensembl 110 e do 111 são ambos válidos e passam qualquer checksum. Produzem resultados diferentes. Nenhuma verificação de bytes detecta.
+Colligo fails closed. Three severities:
 
-**Defesa.** Arquivo de referência tem identidade além do hash: `assembly`, `release`, `source`, `asset_kind`. O pipeline declara o que espera; divergência é `fatal`, não aviso.
+| Severity   | Effect                                                              |
+| ---------- | ------------------------------------------------------------------- |
+| `fatal`    | Aborts immediately. Partial state saved. Export impossible.         |
+| `blocking` | Recorded. Other files carry on. The study is **not** left complete. |
+| `advisory` | Recorded and printed. Does not affect completeness.                 |
+
+**Strict mode is the default.** In it, any `blocking` still pending at the end of the run produces a non-zero exit code. `--permissive` leaves the exit code at zero, but **hides nothing**: the export still marks the study as incomplete and each row still carries its custody state. Permissive changes whether the pipeline stops, never whether the information exists.
+
+### Exit codes
+
+| Code | Meaning                                                                   |
+| ---- | ------------------------------------------------------------------------- |
+| 0    | Complete and verified                                                     |
+| 1    | Usage or configuration error (nothing was attempted)                      |
+| 2    | `fatal`: integrity, identity, authentication, disk                        |
+| 3    | Incomplete: `blocking` pending                                            |
+| 4    | Interrupted: cancelled, state saved, resumable                            |
+| 5    | `check --quick`: nothing found in what was read, content not read in full |
+
+**Reach of `fatal`.** A failure of the tool itself (known hash vectors, canary) aborts the whole run: nothing else is trustworthy. A `fatal` failure of one file (unreadable, HTML page, checksum that does not match) ends the verification of *that* file; on the light door the others carry on being verified, because there is no state to save and stopping would hide their diagnosis. The exit code is that of the worst severity found.
+
+`--expected` with the same key repeated (case-insensitive, even with the same value) is a usage error, code 1, before any file is read: two values for the same key are ambiguous and letting the last one win would hide a copy error.
+
+`--expected` with a malformed hash is also a usage error, code 1, before any file is read: MD5 has 32 hexadecimal characters, SHA-256 and BLAKE3 have 64, case-insensitive. A malformed expected value is the typist's error, not evidence of a corrupted file, so it never becomes a fatal `checksum_mismatch`.
+
+`--cross-check` writes `colligo.sha256` and `colligo.b3` in the GNU format: if the name has `\` or a line break, the line starts with `\` and the name comes out with `\\` and `\n`, which `sha256sum -c` and `b3sum -c` understand. A symbolic link to a directory is never followed (avoids cycles with `--recursive`); it comes out as "symbolic link to a directory, not followed" and in `skipped_directory_links` in the JSON, and not as an unrecognised file.
+
+The `5` exists because `colligo check --quick x && pipeline` must not proceed as if the file had been verified: a gzip truncated in the middle passes the quick check. The `0` stays reserved for "complete and verified". A problem found by the quick check still exits `2` or `3`; `--permissive` lowers a `blocking` to `5`, never to `0`.
+
+Codes 3 and 4 are distinct on purpose. `3` means "finished and is wrong". `4` means "did not finish". A script that treats the two the same loses the difference that matters.
+
+---
+
+## 2. Catalogue of failure modes
+
+### M1 — Intact file, but the wrong one
+
+The GTFs of Ensembl 110 and 111 are both valid and pass any checksum. They produce different results. No byte verification detects it.
+
+**Defence.** A reference file has identity beyond the hash: `assembly`, `release`, `source`, `asset_kind`. The pipeline declares what it expects; a divergence is `fatal`, not a warning.
 
 ```toml
 [reference]
@@ -58,250 +61,247 @@ assembly = "GRCh38"
 release  = "GENCODE 44"
 ```
 
-Um arquivo de referência adquirido sem `release` determinável fica com `confidence = inferred` e é `blocking`. Referência sem proveniência é inútil para reprodutibilidade — este é exatamente o problema que a literatura de proveniência de referência documenta.
+A reference file acquired without a determinable `release` gets `confidence = inferred` and is `blocking`. A reference without provenance is useless for reproducibility — this is exactly the problem that the reference-provenance literature documents.
 
-A declaração é confirmada pelo conteúdo sempre que possível (`colligo identify`): digest de Sequence Collection para FASTA, cabeçalho `##description` para GTF do GENCODE, hash contra checksums oficiais para o Ensembl. Confirmado pelo conteúdo → `confidence = confirmed`. Conteúdo que desmente a declaração → `fatal`.
+The declaration is confirmed by the content whenever possible (`colligo identify`): Sequence Collection digest for FASTA, `##description` header for GENCODE GTF, hash against official checksums for Ensembl. Confirmed by the content → `confidence = confirmed`. Content that contradicts the declaration → `fatal`.
 
-### M2 — A fonte trocou o arquivo
+### M2 — The source swapped the file
 
-Mesma URL, conteúdo diferente. GEO reenvia suplementares; FTP do Ensembl reorganiza releases.
+Same URL, different content. GEO re-uploads supplementary files; the Ensembl FTP reorganises releases.
 
-**Defesa.** Captura de `ETag` e `Last-Modified` no primeiro download, gravados em `files`. Em toda revisita:
+**Defence.** Capture of `ETag` and `Last-Modified` on the first download, stored in `files`. On every revisit:
 
-- `If-Range` no resume, para detectar troca no meio.
-- Conteúdo diferente na mesma URL **nunca sobrescreve** um arquivo `done`. Cria-se linha nova com `supersedes` apontando para a anterior, ambas preservadas, e a divergência é `blocking`.
+- `If-Range` on resume, to detect a swap in the middle.
+- Different content at the same URL **never overwrites** a `done` file. A new row is created with `supersedes` pointing to the previous one, both preserved, and the divergence is `blocking`.
 
-Substituição silenciosa é impossível por construção: não existe caminho de código que faça UPDATE destrutivo em arquivo `done`.
+Silent replacement is impossible by construction: there is no code path that does a destructive UPDATE on a `done` file.
 
-**Arquivo que muda durante a leitura.** Mesmo caminho, conteúdo diferente, só que debaixo da própria leitura: um download ainda em curso, uma etapa de pipeline reescrevendo o arquivo. O `CheckFile` faz `fstat` no descritor aberto antes e depois da leitura e compara tamanho, mtime e ctime (com nanossegundos) e inode. Qualquer diferença produz `changed_during_read`, `blocking`, modo M2: o hash pode descrever bytes que nunca existiram juntos, então o arquivo não sai `verified`, não recebe hashes no relatório nem certificado, e as demais afirmações ficam `skipped` por ela. Depois da leitura o `CheckFile` também faz `stat` pelo caminho (função de `internal/fsaccess`) e compara inode e dispositivo com os do arquivo aberto: caminho que aponta para outro arquivo (`mv novo.fastq.gz reads.fastq.gz`, como terminam os downloads seguros) dá `Observed: replaced`, e caminho que sumiu dá `removed`. Fora do Linux só tamanho e mtime são comparados, e a troca por caminho não é vista. Sobrescrita no lugar que preserva tamanho, mtime e ctime (relógio parado, `utimensat` depois da escrita) não é vista.
+**A file that changes during the read.** Same path, different content, but right under the read itself: a download still in progress, a pipeline stage rewriting the file. `CheckFile` does an `fstat` on the open descriptor before and after the read and compares size, mtime and ctime (with nanoseconds) and inode. Any difference produces `changed_during_read`, `blocking`, mode M2: the hash may describe bytes that never existed together, so the file does not come out `verified`, receives no hashes in the report or certificate, and the remaining assertions are `skipped` because of it. After the read `CheckFile` also does a `stat` by path (a function of `internal/fsaccess`) and compares inode and device with those of the open file: a path that points to another file (`mv new.fastq.gz reads.fastq.gz`, which is how safe downloads end) gives `Observed: replaced`, and a path that disappeared gives `removed`. Outside Linux only size and mtime are compared, and the swap by path is not seen. An in-place overwrite that preserves size, mtime and ctime (a stopped clock, `utimensat` after the write) is not seen.
 
-### M3 — Página de erro salva como dado
+### M3 — Error page saved as data
 
-Servidor devolve `200` com HTML de erro. Você fica com um `.fastq.gz` de 4 KB que é uma página web.
+The server returns `200` with an HTML error. You are left with a 4 KB `.fastq.gz` that is a web page.
 
-**Defesa.** Checagem de bytes mágicos no primeiro grupo, antes de gravar o segundo. Se o formato declarado é gzip, os dois primeiros bytes são `1f 8b`. `fatal` para o arquivo, e o `.part` é preservado para inspeção.
+**Defence.** Check of the magic bytes in the first group, before writing the second. If the declared format is gzip, the first two bytes are `1f 8b`. `fatal` for the file, and the `.part` is preserved for inspection.
 
-Custa microssegundos e pega uma quantidade desproporcional de falhas reais.
+It costs microseconds and catches a disproportionate number of real failures.
 
-### M4 — Truncamento que passa batido
+### M4 — Truncation that slips through
 
-O pior modo. Um `.gz` cortado descomprime parcialmente. Muita ferramenta downstream aceita sem reclamar e produz números plausíveis.
+The worst mode. A cut `.gz` decompresses partially. Many downstream tools accept it without complaint and produce plausible numbers.
 
-**Defesa.** Validação estrutural de formato ao final de todo download, **depois** do checksum e **antes** do rename para o nome final. O objetivo é verificar que o arquivo termina onde deveria terminar.
+**Defence.** Structural validation of the format at the end of every download, **after** the checksum and **before** the rename to the final name. The goal is to verify that the file ends where it should end.
 
-Custo, dito com precisão: para BGZF, BAM e CRAM há marcador de fim, e a verificação é barata. Para gzip simples e FASTQ não há — o ISIZE só confere descomprimindo tudo, e contar linhas também. Nesses formatos a validação é uma leitura completa do conteúdo descomprimido. Por isso ela acontece **uma vez por raiz de hash e versão de validador** (`DESIGN.md`, "Fatos e afirmações"), e a mesma leitura extrai contagens e IDs usados por M5 e M15.
+Cost, stated precisely: for BGZF, BAM and CRAM there is an end marker, and the verification is cheap. For plain gzip and FASTQ there is none — ISIZE only checks by decompressing everything, and counting lines too. In these formats the validation is a full read of the decompressed content. That is why it happens **once per hash root and validator version** (`DESIGN.md`, "Facts and assertions"), and the same read extracts the counts and IDs used by M5 and M15.
 
-| Formato     | Prefixo         | Verificação de término                                                                                                                                   |
-| ----------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| gzip        | `1f 8b`         | último membro fecha; ISIZE bate com o descomprimido mod 2^32                                                                                             |
-| bgzf        | `1f 8b` + XLEN  | cadeia de BSIZE contígua até o fim; bloco EOF presente                                                                                                   |
-| bam         | `BAM\1` em bgzf | bloco EOF de bgzf presente                                                                                                                               |
-| cram        | `CRAM`          | contêiner EOF presente                                                                                                                                   |
-| fastq / .gz | `@`             | contagem de linhas múltipla de 4; última linha completa; linha em branco só depois do último registro, e então `advisory`; BOM UTF-8 no início rejeitado |
-| fasta       | `>`             | termina com newline; sem linha de sequência truncada; linha de comentário `;` rejeitada; BOM UTF-8 no início rejeitado                                   |
-| vcf / .gz   | `##fileformat`  | header presente; última linha tem contagem de campos válida                                                                                              |
-| gtf / gff3  | texto           | toda linha de feature tem 9 campos separados por tab; BOM UTF-8 no início rejeitado                                                                      |
-| hdf5 / h5ad | `\x89HDF\r\n`   | superbloco íntegro; raiz abre                                                                                                                            |
-| pdb         | texto           | registro `END` presente                                                                                                                                  |
-| mmcif       | `data_`         | último bloco fecha                                                                                                                                       |
-| rds         | magic RDS       | prefixo apenas                                                                                                                                           |
-| tsv / csv   | —               | contagem de campos consistente; última linha completa                                                                                                    |
+| Format      | Prefix          | End-of-file verification                                                                                                                    |
+| ----------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| gzip        | `1f 8b`         | last member closes; ISIZE matches the decompressed size mod 2^32                                                                            |
+| bgzf        | `1f 8b` + XLEN  | contiguous BSIZE chain up to the end; EOF block present                                                                                     |
+| bam         | `BAM\1` in bgzf | bgzf EOF block present                                                                                                                      |
+| cram        | `CRAM`          | EOF container present                                                                                                                       |
+| fastq / .gz | `@`             | line count a multiple of 4; last line complete; blank line only after the last record, and then `advisory`; UTF-8 BOM at the start rejected |
+| fasta       | `>`             | ends with a newline; no truncated sequence line; `;` comment line rejected; UTF-8 BOM at the start rejected                                 |
+| vcf / .gz   | `##fileformat`  | header present; last line has a valid field count                                                                                           |
+| gtf / gff3  | text            | every feature line has 9 tab-separated fields; UTF-8 BOM at the start rejected                                                              |
+| hdf5 / h5ad | `\x89HDF\r\n`   | superblock intact; root opens                                                                                                               |
+| pdb         | text            | `END` record present                                                                                                                        |
+| mmcif       | `data_`         | last block closes                                                                                                                           |
+| rds         | RDS magic       | prefix only                                                                                                                                 |
+| tsv / csv   | —               | consistent field count; last line complete                                                                                                  |
 
-Formato declarado vem do perfil ou do TOML. Inferido por extensão → `confidence = inferred` e `advisory`.
+The declared format comes from the profile or the TOML. Inferred from the extension → `confidence = inferred` and `advisory`.
 
-Falha de validação estrutural → status `invalid`, severidade `blocking`. O arquivo nunca chega a `done`, portanto nunca conta para completude, portanto nunca vaza para o pipeline como se estivesse bom.
+Structural validation failure → status `invalid`, severity `blocking`. The file never reaches `done`, therefore never counts toward completeness, therefore never leaks into the pipeline as if it were good.
 
-**Se eu tivesse que escolher uma única defesa deste documento, seria esta.**
+**If I had to choose a single defence in this document, it would be this one.**
 
-### M5 — Par R1/R2 desalinhado
+### M5 — Misaligned R1/R2 pair
 
-Contagens diferentes de reads, ou arquivos de amostras diferentes pareados por engano. Produz alinhamento lixo sem erro nenhum.
+Different read counts, or files of different samples paired by mistake. Produces garbage alignment with no error at all.
 
-**Defesa.** Quando ambos os membros de um `pair_id` chegam a validado:
+**Defence.** When both members of a `pair_id` reach validated:
 
-- Contagem de registros idêntica.
-- ID do primeiro e do último registro compatíveis descontando o sufixo de par (`/1`, `/2`, ` 1:`, ` 2:`, e o `.1`/`.2` do `fastq-dump --readids`, só na forma `<acesso>.<spot>.<1|2>`, como `SRR001666.1.1`). Um `.1` ou `.2` final fora desse formato é parte do ID: `SRR1.1` e `SRR1.2` são spots diferentes.
+- Identical record count.
+- ID of the first and last record compatible after discounting the pair suffix (`/1`, `/2`, ` 1:`, ` 2:`, and the `.1`/`.2` of `fastq-dump --readids`, only in the form `<accession>.<spot>.<1|2>`, such as `SRR001666.1.1`). A trailing `.1` or `.2` outside that form is part of the ID: `SRR1.1` and `SRR1.2` are different spots.
 
-Divergência → `blocking` nos dois arquivos, com `pair_mismatch`. Nenhum dos dois vira `done`.
+Divergence → `blocking` on both files, with `pair_count` (different counts) or `pair_ids` (different first or last ID). Neither becomes `done`.
 
-**Como os pares se formam.** Pelo nome, no mesmo diretório: mesmo radical, `_1`/`_2`, `_R1`/`_R2` ou `.1`/`.2`, e o mesmo número de pedaço (`_001`). `_R1_001` com `_R2_002` não pareia. Se dois arquivos disputam o mesmo mate (por exemplo `s_R1.fastq` e `s_R1.fastq.gz`), nenhum dos três recebe afirmação de par. Um mate em gzip e o outro em texto puro pareiam normalmente.
+**How pairs are formed.** By name, in the same directory: same stem, `_1`/`_2`, `_R1`/`_R2` or `.1`/`.2`, and the same chunk number (`_001`). `_R1_001` with `_R2_002` do not pair. If two files compete for the same mate (for example `s_R1.fastq` and `s_R1.fastq.gz`), none of the three receives a pair assertion. A mate in gzip and the other in plain text pair normally.
 
-**Mate ausente.** Arquivo com sufixo de mate (`_R1`, `_2`, `.1`...) cujo outro mate não está entre os arquivos verificados recebe `pair_missing`, `advisory`, modo M5, com o nome do mate esperado. Só dispara quando a execução tem mais de um arquivo. Vale também para mates em diretórios diferentes e para `_R1_001` com `_R2_002`, que não pareiam.
+**Missing mate.** A file with a mate suffix (`_R1`, `_2`, `.1`...) whose other mate is not among the files verified receives `pair_missing`, `advisory`, mode M5, with the name of the expected mate. It only fires when the run has more than one file. It also applies to mates in different directories and to `_R1_001` with `_R2_002`, which do not pair.
 
-**O que a invariante não pega.** Ela compara contagem e o primeiro e o último ID. Dois arquivos com o mesmo número de reads, o mesmo primeiro e o mesmo último ID, mas reads do meio trocados ou reordenados, passam como `verified`. Conferir todos os IDs exigiria guardar ou resumir a sequência de IDs na mesma leitura; está fora da fatia atual.
+**What the invariant does not catch.** It compares the count and the first and last ID. Two files with the same number of reads, the same first and the same last ID, but swapped or reordered reads in the middle, pass as `verified`. Checking all the IDs would require storing or summarising the sequence of IDs in the same read; that is outside the current slice.
 
-### M6 — Sucesso parcial com saída zero
+### M6 — Partial success with exit zero
 
-47 de 50 arquivos baixados. O pipeline segue com 47. O resultado sai. Ninguém percebe.
+47 of 50 files downloaded. The pipeline carries on with 47. The result comes out. Nobody notices.
 
-**Defesa.** Completude é operação de primeira classe, não inspeção manual.
+**Defence.** Completeness is a first-class operation, not a manual inspection.
 
-- No `fetch`, grava-se `expected_file_count` e `expected_set_hash` (hash do conjunto ordenado de identidades de arquivo retornado pela fonte).
-- Um fetch posterior que produz conjunto diferente → `blocking` "conjunto da fonte mudou", com o diff em `discrepancies`.
-- Completude = todo arquivo do estudo em `done` **e** contagem igual a `expected_file_count`.
-- Com `[results]` declarado e o Scribo no mesmo banco, completude vai até "processado": todo resultado esperado presente e não obsoleto (`CONTRACT.md` §7).
-- `colligo status --require-complete` sai com 3 se não estiver completo. É a linha que vai no topo do seu script de análise.
-- Export de estudo incompleto **recusa** sem `--permissive`.
+- In `fetch`, `expected_file_count` and `expected_set_hash` are stored (hash of the sorted set of file identities returned by the source).
+- A later fetch that produces a different set → `blocking` "source set changed", with the diff in `discrepancies`.
+- Completeness = every file of the study in `done` **and** a count equal to `expected_file_count`.
+- With `[results]` declared and Scribo in the same database, completeness goes up to "processed": every expected result present and not stale (`CONTRACT.md` §7).
+- `colligo status --require-complete` exits with 3 if not complete. It is the line that goes at the top of your analysis script.
+- Export of an incomplete study **refuses** without `--permissive`.
 
-### M7 — Execução interrompida e esquecida
+### M7 — Interrupted run, forgotten
 
-Ctrl+C, três dias passam, você volta e esqueceu que ficou estado parcial.
+Ctrl+C, three days pass, you come back and forgot that partial state was left.
 
-**Defesa.** `tool_runs` registra início, fim e código de saída. Uma execução sem registro de fim é interrompida. Na abertura do banco, **sem ser perguntado**, Colligo relata: quando foi, quantos arquivos ficaram fora de `done`, e o comando exato para retomar.
+**Defence.** `tool_runs` records start, end and exit code. A run without an end record is an interrupted one. On opening the database, **without being asked**, Colligo reports: when it was, how many files were left outside `done`, and the exact command to resume.
 
-### M8 — Config mudou entre execuções
+### M8 — Config changed between runs
 
-Metade do acervo adquirida com um conjunto de parâmetros, metade com outro. Silencioso e insidioso.
+Half the collection acquired with one set of parameters, half with another. Silent and insidious.
 
-**Defesa.** `tool_runs.config_hash` — hash canônico da configuração efetiva, após precedência resolvida. Mudança de hash para o mesmo estudo → `advisory` na abertura, listando quais chaves mudaram. Mudança em chave que afeta integridade (tamanho de grupo, versão de extrator, política de checksum) → `blocking`.
+**Defence.** `tool_runs.config_hash` — canonical hash of the effective configuration, after precedence is resolved. A change of hash for the same study → `advisory` on opening, listing which keys changed. A change in a key that affects integrity (group size, extractor version, checksum policy) → `blocking`.
 
-### M9 — Bug na própria ferramenta
+### M9 — Bug in the tool itself
 
-Se o cálculo de hash tem erro, tudo "verifica" e tudo está errado. Nenhuma defesa interna alcança isso, porque a defesa usa o código defeituoso.
+If the hash computation has an error, everything "verifies" and everything is wrong. No internal defence reaches that, because the defence uses the faulty code.
 
-**Defesa em camadas.**
+**Layered defence.**
 
-1. **Vetores conhecidos na inicialização.** Vetores oficiais de BLAKE3, MD5 e SHA-256 rodados em toda abertura de banco. Falha → `fatal`, ferramenta ou ambiente suspeito. Custa microssegundos.
-2. **Canário.** Cada estudo tem um arquivo canário de 128 KiB de conteúdo determinístico e hash conhecido, verificado em toda execução pelo mesmo caminho de código dos arquivos reais. Se o canário falha, o problema é ambiente ou ferramenta, não dado — e a mensagem diz isso, para você não sair caçando corrupção onde não há.
-3. **Verificação cruzada externa.** `colligo verify --cross-check` emite arquivos no formato de `sha256sum` e `b3sum`, para você conferir com ferramenta que não é a nossa. Na suíte de testes, quando `b3sum` está no PATH, os hashes são comparados contra ele.
-4. **Verificador de certificado independente.** `tools/verify_cert.py` recalcula hashes e contagens sem código do Colligo e confere o certificado (SPEC §13). Roda na suíte sobre todo o corpus sintético.
-5. **Segunda implementação do extrator, quando existir.** Se o acelerador Rust de `DESIGN.md` entrar, os fatos dele e os do extrator Go são comparados byte a byte na suíte, e `check --cross-extract` roda os dois sobre o mesmo arquivo em produção. Divergência → `fatal` com os dois valores, e a mensagem aponta a ferramenta, não o dado.
+1. **Known vectors at start-up.** Official vectors of BLAKE3, MD5 and SHA-256 run on every database opening. Failure → `fatal`, tool or environment suspect. Costs microseconds.
+2. **Canary.** Each study has a 128 KiB canary file of deterministic content and known hash, verified on every run through the same code path as the real files. If the canary fails, the problem is the environment or the tool, not the data — and the message says so, so that you do not go hunting for corruption where there is none.
+3. **External cross-verification.** `colligo check --cross-check` emits files in the format of `sha256sum` and `b3sum`, for you to check with a tool that is not ours. In the test suite, when `b3sum` is on the PATH, the hashes are compared against it.
+4. **Independent certificate verifier.** `tools/verify_cert.py` recomputes hashes and counts without Colligo code and checks the certificate (SPEC §13). It runs in the suite over the whole synthetic corpus.
+5. **Second implementation of the extractor, when it exists.** If the Rust accelerator of `DESIGN.md` enters, its facts and those of the Go extractor are compared byte for byte in the suite, and `check --cross-extract` runs both on the same file in production. Divergence → `fatal` with both values, and the message points at the tool, not the data.
 
-Duas implementações independentes da checagem crítica é a única defesa real contra bug na checagem.
+Two independent implementations of the critical check is the only real defence against a bug in the check.
 
-### M10 — Espaço em disco esgotado no meio
+### M10 — Disk space exhausted midway
 
-`statfs` antes de começar não basta: outro processo pode consumir o disco durante uma transferência de horas.
+`statfs` before starting is not enough: another process can consume the disk during a transfer of hours.
 
-**Defesa.** Pré-checagem com margem de 5% além do tamanho esperado. `ENOSPC` durante escrita é `fatal`, mas o caminho de erro **grava o offset seguro antes de abortar** — é o que torna "dado parcial tem valor" verdadeiro sob a falha que mais ameaça o dado parcial. Reverificação de espaço a cada 1 GiB transferido, com aviso em 95% de uso.
+**Defence.** Pre-check with a 5% margin beyond the expected size. `ENOSPC` during a write is `fatal`, but the error path **writes the safe offset before aborting** — that is what makes "partial data has value" true under the failure that most threatens partial data. Space re-check every 1 GiB transferred, with a warning at 95% usage.
 
-### M11 — Convenção de cromossomo divergente
+### M11 — Divergent chromosome convention
 
-`chr1` do UCSC/GENCODE contra `1` do Ensembl. Se as convenções não batem entre genoma e anotação, a quantificação falha silenciosamente: sem erro, só números errados.
+UCSC/GENCODE's `chr1` against Ensembl's `1`. If the conventions do not match between genome and annotation, quantification fails silently: no error, only wrong numbers.
 
-**Defesa.** `chromosome_naming` é metadado de primeira classe de todo asset de referência, detectado por amostragem do arquivo. Registro de artefato derivado cujos pais divergem na convenção → `fatal`. Colligo **nunca converte automaticamente**; converter em silêncio é criar o erro que se tenta evitar.
+**Defence.** `chromosome_naming` is first-class metadata of every reference asset, detected by sampling the file. Registration of a derived artifact whose parents diverge in convention → `fatal`. Colligo **never converts automatically**; converting silently is creating the error one is trying to avoid.
 
-Generalização: `colligo compat` compara o sistema de coordenadas de arquivos heterogêneos pelo digest `sorted_name_length_pairs` do padrão Sequence Collections, e devolve o diff de nomes quando não batem. Convenção de nome é o caso visível; comprimento divergente com o mesmo nome — build diferente — é o caso invisível que o digest também pega.
+Generalisation: `colligo compat` compares the coordinate system of heterogeneous files by the `sorted_name_length_pairs` digest of the Sequence Collections standard, and returns the name diff when they do not match. Name convention is the visible case; a divergent length with the same name — a different build — is the invisible case that the digest also catches.
 
-### M12 — Artefato derivado sem proveniência
+### M12 — Derived artifact without provenance
 
-Um GTF fundido de GENCODE com Dfam não foi baixado, foi construído. Se você não sabe qual versão de cada pai entrou, o resultado não é reproduzível — e a ausência é invisível.
+A GTF merged from GENCODE with Dfam was not downloaded, it was built. If you do not know which version of each parent went in, the result is not reproducible — and the absence is invisible.
 
-**Defesa.** `derived_files` e `derived_parents`. Todo derivado registra pais, ferramenta construtora, versão dela e hash dos parâmetros. Derivado sem pai registrado é `blocking`. O manifesto exporta a árvore completa.
+**Defence.** `derived_files` and `derived_parents`. Every derivative records parents, builder tool, its version and the hash of the parameters. A derivative without a registered parent is `blocking`. The manifest exports the complete tree.
 
-### M13 — Relógio errado
+### M13 — Wrong clock
 
-Timestamps são a espinha da auditoria. Relógio errado corrompe a ordem dos eventos sem corromper byte nenhum.
+Timestamps are the backbone of the audit. A wrong clock corrupts the order of events without corrupting a single byte.
 
-**Defesa.** Todo timestamp em UTC. Na abertura, se o horário atual é anterior ao último evento gravado, `blocking` com a diferença. Sem NTP, Colligo pelo menos detecta a inconsistência.
+**Defence.** Every timestamp in UTC. On opening, if the current time is earlier than the last recorded event, `blocking` with the difference. Without NTP, Colligo at least detects the inconsistency.
 
-### M14 — Fixture apodrecida
+### M14 — Rotten fixture
 
-A fonte mudou o formato de resposta; sua suíte segue verde porque testa contra a captura de dois anos atrás.
+The source changed the response format; your suite stays green because it tests against the capture from two years ago.
 
-**Defesa.** Job de drift semanal, separado do CI de PR, que regrava fixtures contra as APIs reais e abre issue na divergência. Detalhe em `TESTING.md` §3.
+**Defence.** A weekly drift job, separate from the PR CI, that re-records fixtures against the real APIs and opens an issue on divergence. Detail in `TESTING.md` §3.
 
-### M15 — Conteúdo válido, mas menor do que a fonte declarou
+### M15 — Valid content, but smaller than the source declared
 
-Caso documentado: extração com `fastq-dump` produziu read 2 com 1 bp em vez de 98, terminou com código 0, e o FASTQ resultante é estruturalmente válido. Não existe MD5 da fonte para um arquivo extraído localmente, a estrutura passa, e o erro só aparece no trimming ou no alinhamento — quando aparece.
+Documented case: an extraction with `fastq-dump` produced a read 2 with 1 bp instead of 98, finished with code 0, and the resulting FASTQ is structurally valid. There is no source MD5 for a locally extracted file, the structure passes, and the error only appears in trimming or alignment — when it appears.
 
-**Defesa.** O ENA publica `read_count` e `base_count` por run. A leitura que valida a estrutura do FASTQ já descomprime tudo, então conta reads e bases sem custo adicional. Soma de R1 e R2 comparada contra o declarado; divergência → `blocking`, com os dois números em `discrepancies`.
+**Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The sum of R1 and R2 is compared against the declared; divergence → `blocking`, with both numbers in `discrepancies`.
 
-É a defesa mais barata por falha real pega deste catálogo: zero leitura extra, uma consulta de metadado que o fetch já faz.
+It is the cheapest defence per real failure caught in this catalogue: zero extra reading, one metadata query that fetch already makes.
 
-### M16 — A fonte condenou o dado depois que você o baixou
+### M16 — The source condemned the data after you downloaded it
 
-Um run pode ser suprimido no ENA depois do download. Suprimido some da busca, mas continua recuperável por accession — o pipeline segue funcionando. Supressão permanente é para dado considerado incorreto sem perspectiva de correção. Nada no disco muda, então nenhuma verificação local detecta.
+A run can be suppressed at ENA after the download. Suppressed disappears from the search, but remains retrievable by accession — the pipeline keeps working. Permanent suppression is for data considered incorrect with no prospect of correction. Nothing on the disk changes, so no local verification detects it.
 
-**Defesa.** `colligo recheck --upstream` reexecuta a parte de metadados dos adapters e compara com `raw_responses`: status do registro, conjunto de arquivos, checksums publicados. Run suprimido → `blocking`. Checksum publicado diferente do guardado → `blocking`, com a mesma lógica de `supersedes` de M2. Estudo com `recheck` mais antigo que `recheck_window` → `advisory` na abertura.
+**Defence.** `colligo recheck --upstream` re-runs the metadata part of the adapters and compares with `raw_responses`: record status, set of files, published checksums. Suppressed run → `blocking`. Published checksum different from the stored one → `blocking`, with the same `supersedes` logic as M2. A study with a `recheck` older than `recheck_window` → `advisory` on opening.
 
 
-### M17 — Química de single-cell declarada errada
+### M17 — Single-cell chemistry declared wrong
 
-Declarar 10x v3 para um dado v2, ou o contrário, é erro comum de metadado. O pipeline roda, a whitelist de barcodes errada derruba a taxa de célula válida, e o resultado sai plausível e pior.
+Declaring 10x v3 for v2 data, or the other way round, is a common metadata error. The pipeline runs, the wrong barcode whitelist drops the valid-cell rate, and the result comes out plausible and worse.
 
-**Defesa.** Fato `barcode`: comprimento do R1 (26 bp no 10x v2, 28 bp no v3) e taxa de acerto de uma amostra de barcodes contra as whitelists conhecidas. Química observada diferente da declarada no metadado ou no TOML → `blocking`. O Cell Ranger detecta a química sozinho, mas dentro do pipeline; aqui a divergência aparece antes, contra o que o GEO declarou.
+**Defence.** `barcode` fact: R1 length (26 bp in 10x v2, 28 bp in v3) and the hit rate of a sample of barcodes against the known whitelists. Observed chemistry different from the one declared in the metadata or the TOML → `blocking`. Cell Ranger detects the chemistry by itself, but inside the pipeline; here the divergence appears earlier, against what GEO declared.
 
-### M18 — Matriz do GEO incoerente com o próprio GEO
+### M18 — GEO matrix incoherent with GEO itself
 
-Arquivo suplementar de contagem com colunas trocadas, amostras faltando, nomes de coluna que não correspondem aos GSMs, ou IDs de gene de um namespace incompatível com o genoma declarado. A matriz é um TSV válido; nada quebra.
+A supplementary count file with swapped columns, missing samples, column names that do not correspond to the GSMs, or gene IDs from a namespace incompatible with the declared genome. The matrix is a valid TSV; nothing breaks.
 
-**Defesa.** Fato `matrix`: nomes de coluna, contagem de linhas e namespace de ID (Ensembl com versão, Ensembl sem versão, símbolo). Afirmações: colunas ⊆ amostras do estudo e cobrindo todas; namespace compatível com a referência declarada. Divergência de colunas → `blocking`; namespace inesperado → `advisory` com o namespace observado.
+**Defence.** `matrix` fact: column names, row count and ID namespace (Ensembl with version, Ensembl without version, symbol). Assertions: columns ⊆ the study's samples and covering all of them; namespace compatible with the declared reference. Column divergence → `blocking`; unexpected namespace → `advisory` with the observed namespace.
 
-### M19 — O mesmo dado depositado duas vezes
+### M19 — The same data deposited twice
 
-Dois runs com conteúdo idêntico, ou lidos do mesmo flowcell e lane, entram como réplicas distintas numa meta-análise e inflam a evidência.
+Two runs with identical content, or read from the same flowcell and lane, enter as distinct replicates in a meta-analysis and inflate the evidence.
 
-**Defesa.** Fatos são indexados pela raiz do hash, então conteúdo idêntico entre accessions aparece sem custo: `advisory` listando as accessions. Fato `read_header` (instrumento, run, flowcell, lane) aponta a suspeita mais sutil — arquivos diferentes vindos da mesma lane declarados como amostras diferentes — também como `advisory`, porque há desenhos legítimos que produzem isso.
+**Defence.** Facts are indexed by the hash root, so identical content across accessions shows up at no cost: `advisory` listing the accessions. The `read_header` fact (instrument, run, flowcell, lane) points to the subtler suspicion — different files from the same lane declared as different samples — also as `advisory`, because there are legitimate designs that produce this.
 
-### M20 — Queda no meio de uma escrita deixa estado que mente
+### M20 — A crash in the middle of a write leaves a state that lies
 
-Energia cai, o job é morto pelo escalonador, o disco some. Se a ordem das escritas estiver errada, a retomada encontra um arquivo com nome final que nunca foi verificado, um grupo marcado `verified` cujo conteúdo não chegou ao disco, ou um evento no banco sem o arquivo correspondente.
+Power goes out, the job is killed by the scheduler, the disk vanishes. If the order of the writes is wrong, the resumption finds a file with a final name that was never verified, a group marked `verified` whose content did not reach the disk, or an event in the database without the corresponding file.
 
-**Defesa em duas camadas.**
+**Two-layer defence.**
 
-1. **Modelo formal.** O protocolo de resume, o rename e a máquina de estados são especificados em TLA+ e verificados por model checking antes da implementação: em nenhuma sequência de falhas e reinícios um arquivo chega a `done` sem conteúdo conferido, e nenhum grupo fica `verified` sem `fsync` do conteúdo que ele cobre.
-2. **Crash em qualquer ponto.** A suíte enumera cada escrita, `fsync` e `rename` de um `get` e de um `fetch`, mata o processo em cada um deles, retoma, e confere as invariantes do modelo. `TESTING.md` §6.1.
+1. **Formal model.** The resume protocol, the rename and the state machine are specified in TLA+ and verified by model checking before implementation: in no sequence of failures and restarts does a file reach `done` without checked content, and no group is left `verified` without an `fsync` of the content it covers.
+2. **Crash at any point.** The suite enumerates each write, `fsync` and `rename` of a `get` and of a `fetch`, kills the process at each one, resumes, and checks the invariants of the model. `TESTING.md` §6.1.
 
-Ordem obrigatória, derivada do modelo: gravar bytes → `fsync` do `.part` → marcar grupo `verified` → commit do banco. Rename do `.part` só depois de `fsync` e de todas as afirmações; `fsync` do diretório depois do rename.
+Mandatory order, derived from the model: write bytes → `fsync` of the `.part` → mark group `verified` → commit the database. Rename of the `.part` only after `fsync` and all the assertions; `fsync` of the directory after the rename.
 ---
 
-## 3. Custódia visível
+## 3. Visible custody
 
-Estado de custódia por arquivo, sempre disponível e sempre exportado:
+Per-file custody state, always available and always exported:
 
-| Estado       | Significado                                                        |
-| ------------ | ------------------------------------------------------------------ |
-| `verified`   | Conteúdo lido e conferido, dentro da janela de scrub. O gate de `stat` nunca produz este estado |
-| `stale`      | Já foi conferido; janela expirou ou baseline mudou                  |
-| `unverified` | Nunca conferido por conteúdo                                        |
-| `invalid`    | Conferência falhou; grupos divergentes ou afirmação falha conhecidos                   |
-| `adopted`    | Sob custódia, sem checksum de origem para cruzar                    |
-| `suspect`    | Somado a qualquer estado: o Scribo observou, depois do pipeline, resultado incoerente para esta entrada |
+| State        | Meaning                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| `verified`   | Content read and checked, within the scrub window. The `stat` gate never produces this state |
+| `stale`      | Was checked before; window expired or baseline changed                                       |
+| `unverified` | Never checked by content                                                                     |
+| `invalid`    | Check failed; diverging groups or failed assertion known                                     |
+| `adopted`    | Under custody, with no origin checksum to cross against                                      |
+| `suspect`    | Added to any state: Scribo observed, after the pipeline, an incoherent result for this input |
 
-Todo export carrega `custody_state`, `last_verified_at` e `verified_fraction` por linha, mais um sidecar `.custody.json` com o resumo do estudo. Quem consome o TSV downstream vê o estado no arquivo que já está lendo, sem precisar consultar o banco.
+Every export carries `custody_state`, `last_verified_at` and `verified_fraction` per row, plus a `.custody.json` sidecar with the study summary. Whoever consumes the TSV downstream sees the state in the file they are already reading, without needing to query the database.
 
-`adopted` merece nota: um arquivo adotado que veio sem checksum publicado tem integridade **interna** garantida a partir do momento da adoção, mas Colligo não pode afirmar que ele chegou correto. A distinção é registrada em vez de dissolvida.
+`adopted` deserves a note: an adopted file that came without a published checksum has **internal** integrity guaranteed from the moment of adoption, but Colligo cannot claim that it arrived correct. The distinction is recorded instead of being dissolved.
 
 ---
 
 ## 4. `colligo doctor`
 
-Diagnóstico de ambiente. Roda em qualquer momento, e automaticamente antes de transferência longa.
+Environment diagnosis. Runs at any time, and automatically before a long transfer.
 
-- Espaço livre contra o esperado da fila
-- Permissões de banco, WAL, SHM e diretório
-- Caminho em diretório de sincronização de nuvem
-- Versão do SQLite e PRAGMAs efetivos (lê de volta, não assume que o SET funcionou)
-- Vetores conhecidos de hash
-- Canário do estudo
-- Sanidade do relógio
-- Presença de credencial por fonte configurada — **presença apenas**, nunca valor
-- Execução anterior interrompida
-- `.part` e arquivo final no mesmo filesystem
-- Conectividade e limite efetivo por fonte
+- Free space against the queue's expected size
+- Permissions of database, WAL, SHM and directory
+- Path inside a cloud-sync directory
+- SQLite version and effective PRAGMAs (reads back, does not assume the SET worked)
+- Known hash vectors
+- Study canary
+- Clock sanity
+- Presence of a credential per configured source — **presence only**, never the value
+- Previous interrupted run
+- `.part` and final file on the same filesystem
+- Connectivity and effective limit per source
 
-Saída legível e `--json`. Zero identificadores, para poder ser colada em público.
+Readable output and `--json`. Zero identifiers, so that it can be pasted in public.
 
 ---
 
-## 5. Precedência das defesas
+## 5. Precedence of the defences
 
-Quando defesas discordam, esta é a ordem. Existe para não haver dúvida na implementação.
+When defences disagree, this is the order. It exists so that there is no doubt in the implementation.
 
-1. Vetores conhecidos de hash — se falham, nada mais é confiável
-2. Canário do estudo
-3. Sanidade do relógio
-4. Permissões e classificação
-5. Identidade do arquivo (assembly, release, ETag, arquivo estável durante a leitura)
-6. Checksum da fonte
-7. Árvore BLAKE3
-8. Validação estrutural de formato
-9. Invariantes de par
-10. Contagem declarada pela fonte
-11. Química e coerência de matriz declaradas
-12. Completude do conjunto
-13. Status do registro na fonte
-14. Duplicata entre accessions
-
-Uma falha em nível mais alto torna as verificações abaixo dela sem sentido, e a mensagem de erro diz isso em vez de despejar dez falhas derivadas.
+1. Known hash vectors — if they fail, nothing else is trustworthy
+2. Study canary
+3. Clock sanity
+4. Permissions and classification
+5. File identity (assembly, release, ETag, file stable during the read)
+6. Source checksum
+7. BLAKE3 tree
+8. Structural format validation
+9. Pair invariants
+10. Count declared by the source
+11. Declared chemistry and matrix coherence
+12. Completeness of the set
+13. Record status at the source

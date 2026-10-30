@@ -1,193 +1,193 @@
 # Colligo — Backlog
 
-Features conscientemente adiadas. **Não implementar nada daqui sem pedido explícito.**
+Features that were consciously postponed. **Do not implement anything from here without an explicit request.**
 
-Saíram do backlog e foram para o `ROADMAP.md`: `compat` (Fatia 6, sobre Sequence Collections — já existem refcompat, em Python e experimental, e o CompareReferences do GATK, também experimental; o buraco agora é um binário rápido integrado à identidade dos arquivos, não a ideia), o validador como porta separada (virou a porta leve, Fatia 1), módulo nf-core e receita bioconda (esboço na Fatia 2), e o posicionamento contra prior art (virou `RELATED.md`, escrito agora e não na publicação).
+These left the backlog and went to `ROADMAP.md`: `compat` (Slice 6, on top of Sequence Collections — refcompat already exists, in Python and experimental, and so does GATK's CompareReferences, also experimental; the gap now is a fast binary integrated with file identity, not the idea), the validator as a separate door (it became the light door, Slice 1), the nf-core module and bioconda recipe (sketched in Slice 2), and the positioning against prior art (it became `RELATED.md`, written now and not at publication time).
 
-Regra: todo item carrega uma frase de "o que destravaria". Sem ela, o item é capricho; com ela, é decisão adiada com gatilho.
-
----
-
-## Diagnósticos traduzidos
-
-Frases do catálogo `diagnoses/` em português e outros idiomas, escolhidas por locale.
-
-Destrava quando: houver usuário que precise da frase na própria língua; os identificadores no `--json` já são estáveis e não dependem do texto.
+Rule: every item carries a sentence on "what would unlock it". Without it, the item is a whim; with it, it is a postponed decision with a trigger.
 
 ---
 
-## `colligo gc` — coletor de lixo que entende proveniência
+## Translated diagnostics
 
-Responder "estes 8TB podem morrer porque a receita está registrada e refazer custa X horas".
+Sentences of the `diagnoses/` catalogue in Portuguese and other languages, chosen by locale.
 
-Todo laboratório tem scratch com dezenas de terabytes que ninguém tem coragem de apagar, porque ninguém sabe o que é regenerável.
-
-Status: não existe nada bom. O Snakemake tem `temporary()`, mas só dentro de um workflow que você controla e cuja regra não editou desde então. Centros de HPC têm purga por idade — ferramenta de administrador, que não entende o que o arquivo é. A pergunta por "um CCleaner para bioinformática" circula na comunidade sem resposta.
-
-Destrava quando: houver alguns meses de `result_inputs` reais do Scribo, que é o histórico de uso que faltava — arquivo que nenhum resultado usa é candidato; arquivo cujo resultado pode ser refeito a partir de entradas sob custódia é regenerável; o resto é insubstituível. `derived_files` complementa para derivados construídos fora de pipeline.
-
-Nota: é o maior buraco genuíno da lista — o item onde "ninguém tem isso" é mais literalmente verdade.
+Unlocks when: a user needs the sentence in their own language; the identifiers in `--json` are already stable and do not depend on the text.
 
 ---
 
-## `colligo scan` — desidentificação antes de compartilhar
+## `colligo gc` — a garbage collector that understands provenance
 
-Antes de subir um VCF para repositório público: contém variantes identificantes? O header do BAM tem nome de paciente? O nome do arquivo tem prontuário?
+Answer "these 8TB can die because the recipe is recorded and redoing it costs X hours".
 
-Status: ferramentaria fina, risco alto. Conecta diretamente com o regime de `CONFIDENTIALITY.md`, e é a contrapartida de saída dele — hoje o documento protege o dado que entra, não o que sai.
+Every lab has a scratch area with tens of terabytes that nobody dares to delete, because nobody knows what is regenerable.
 
-Destrava quando: houver compartilhamento efetivo de dado derivado de fonte restrita. Não antes: um scanner mal calibrado dá falsa confiança, que é pior que nenhum scanner.
+Status: nothing good exists. Snakemake has `temporary()`, but only inside a workflow you control and whose rule you have not edited since. HPC centres purge by age — an administrator's tool, which does not understand what the file is. The question about "a CCleaner for bioinformatics" circulates in the community without an answer.
 
----
+Unlocks when: there are a few months of real Scribo `result_inputs`, which is the usage history that was missing — a file that no result uses is a candidate; a file whose result can be redone from inputs under custody is regenerable; the rest is irreplaceable. `derived_files` complements this for derivatives built outside a pipeline.
 
-## Identidade de amostra propagada
-
-Token que viaja com a amostra por todas as etapas e é conferido em cada uma, para pegar o glob que embaralhou arquivos e fez o FASTQ da amostra A virar o BAM da amostra B.
-
-Status: ferramentas genéticas (somalier, NGSCheckMate) pegam troca depois do fato, comparando os dados, e só para dado genômico. Ninguém pega no nível do encanamento, que é onde o erro acontece.
-
-Caminho escolhido: não um token no encanamento, e sim o Scribo importando a saída do somalier ou do NGSCheckMate e devolvendo `identity_confirmed` ou `identity_mismatch` à custódia (`CONTRACT.md` §4). Pega a troca depois do fato, mas com ferramentas que já existem e sem mudar o pipeline.
-
-Destrava quando: a Fatia 4 do Scribo estiver pronta. Nada a implementar no Colligo além de consumir o sinal (SPEC §14.1).
+Note: this is the biggest genuine gap on the list — the item where "nobody has this" is most literally true.
 
 ---
 
-## Diff semântico de saídas de pipeline
+## `colligo scan` — de-identification before sharing
 
-Registrado sem gatilho, intencionalmente.
+Before uploading a VCF to a public repository: does it contain identifying variants? Does the BAM header have a patient name? Does the file name have a medical record number?
 
-Você atualiza o STAR de 2.7.10 para 2.7.11 e reroda. Os resultados mudaram? Mudaram de forma que importa? Hoje isso é `md5sum` (que sempre difere, por timestamp em header) ou olhar gráfico e torcer.
+Status: thin tooling, high risk. It connects directly with the regime of `CONFIDENTIALITY.md`, and is its outbound counterpart — today the document protects the data that comes in, not the data that goes out.
 
-Não é extensão do Colligo — é projeto separado, grande, com lógica específica por formato (BAM, VCF, matriz de contagem, conjunto de picos), separando ruído de versão de resultado diferente.
+Unlocks when: derived data from a restricted source is actually shared. Not before: a badly calibrated scanner gives false confidence, which is worse than no scanner.
 
-É o de maior valor científico entre tudo que foi considerado, e o único candidato real a paper além do próprio Colligo. Fica aqui como ideia registrada, não como item adiado: não tem gatilho porque não é decisão adiada, é outro projeto.
+---
+
+## Propagated sample identity
+
+A token that travels with the sample through all the stages and is checked at each one, to catch the glob that shuffled files and made sample A's FASTQ become sample B's BAM.
+
+Status: genetic tools (somalier, NGSCheckMate) catch a swap after the fact, by comparing the data, and only for genomic data. Nobody catches it at the plumbing level, which is where the error happens.
+
+Chosen path: not a token in the plumbing, but Scribo importing the output of somalier or NGSCheckMate and returning `identity_confirmed` or `identity_mismatch` to custody (`CONTRACT.md` §4). It catches the swap after the fact, but with tools that already exist and without changing the pipeline.
+
+Unlocks when: Scribo's Slice 4 is ready. Nothing to implement in Colligo beyond consuming the signal (SPEC §14.1).
+
+---
+
+## Semantic diff of pipeline outputs
+
+Recorded without a trigger, on purpose.
+
+You upgrade STAR from 2.7.10 to 2.7.11 and rerun. Did the results change? Did they change in a way that matters? Today that is `md5sum` (which always differs, because of a timestamp in a header) or looking at a plot and hoping.
+
+It is not an extension of Colligo — it is a separate, large project, with format-specific logic (BAM, VCF, count matrix, peak set), separating version noise from a genuinely different result.
+
+It is the one of highest scientific value among everything considered, and the only real candidate for a paper besides Colligo itself. It stays here as a recorded idea, not as a postponed item: it has no trigger because it is not a postponed decision, it is another project.
 
 ---
 
 
-## Tipos `atacseq`, `methylation`, `wgs`
+## Types `atacseq`, `methylation`, `wgs`
 
-Perfis e schemas dos três tipos que saíram da v1.
+Profiles and schemas of the three types that left v1.
 
-Status: o padrão está validado pelas fatias anteriores. Cada um é uma repetição — definir as colunas de `*_samples` ao implementar, não antes.
+Status: the pattern has been validated by the previous slices. Each one is a repetition — define the columns of `*_samples` when implementing, not before.
 
-Destrava quando: um projeto ativo precisar de um deles. Tipo construído especulativamente é tipo não testado contra realidade.
-
----
-
-## Reparo granular
-
-Comando que pega um arquivo já completo, revalida bloco a bloco e rebaixa só os corrompidos via `Range`.
-
-Status: a fundação já existe. A tabela `file_groups`, o outboard Bao e o download por faixa são construídos para resume na Fatia 3, e `attest` na Fatia 4 já identifica os grupos divergentes. Só o gatilho do comando não é plugado.
-
-Destrava quando: aparecer o primeiro caso real de arquivo corrompido em produção e a rebaixada completa virar cara o suficiente para justificar reparo cirúrgico.
+Unlocks when: an active project needs one of them. A type built speculatively is a type not tested against reality.
 
 ---
 
-## Resync por conteúdo (rolling hash)
+## Granular repair
 
-Para o caso de corrupção que desloca bytes, re-sincronizar os grupos por conteúdo estilo rsync, em vez de rebaixar do ponto do erro até o fim.
+A command that takes an already complete file, revalidates it block by block and downloads again only the corrupted ones via `Range`.
 
-Destrava quando: o caso de deslocamento se mostrar comum o suficiente para justificar a complexidade. Hoje é raro e o comportamento atual é correto, só não ótimo.
+Status: the foundation already exists. The `file_groups` table, the Bao outboard and ranged download are built for resume in Slice 3, and `attest` in Slice 4 already identifies the diverging groups. Only the trigger for the command is not wired.
+
+Unlocks when: the first real case of a corrupted file appears in production and the full re-download becomes expensive enough to justify surgical repair.
+
+---
+
+## Content resync (rolling hash)
+
+For the case of corruption that shifts bytes, resynchronise the groups by content, rsync-style, instead of re-downloading from the point of the error to the end.
+
+Unlocks when: the shift case proves common enough to justify the complexity. Today it is rare and the current behaviour is correct, just not optimal.
 
 ---
 
 ## Aspera (ascp)
 
-Transferência via protocolo Aspera, ganho de ordem de magnitude em FASTQ grande transcontinental.
+Transfer via the Aspera protocol, an order-of-magnitude gain on large transcontinental FASTQ.
 
-Destrava quando: houver demanda real e recorrente, e o usuário tiver o `ascp` configurado. É binário externo com licença e configuração de rede fora do nosso controle — alto custo de suporte. Nota: para dado de dbGaP, `adopt` cobre o caso sem precisar do protocolo.
-
----
-
-## Suporte a Windows nativo testado
-
-Decisão atual: desenvolvimento e teste em Linux ou WSL; Windows nativo compila e suporta só a porta leve; estudo restrito em Windows nativo é recusado (`CONFIDENTIALITY.md` §5.2). Este item é suporte completo à porta pesada em Windows nativo.
-
-Destrava quando: houver usuário real em Windows nativo e CI Windows estável.
+Unlocks when: there is real, recurring demand, and the user has `ascp` configured. It is an external binary with a licence and network configuration outside our control — a high support cost. Note: for dbGaP data, `adopt` covers the case without needing the protocol.
 
 ---
 
-## Store PostgreSQL
+## Tested native Windows support
 
-Implementação alternativa da interface `Store` para escala de consórcio.
+Current decision: development and testing on Linux or WSL; native Windows compiles and supports only the light door; a restricted study on native Windows is refused (`CONFIDENTIALITY.md` §5.2). This item is full support for the heavy door on native Windows.
 
-Status: a interface `Store` já é abstração desde o início, e `storetest` é o gate que qualquer implementação alternativa precisa passar. Manter a interface estreita, mas não investir especulativamente.
+Unlocks when: there is a real user on native Windows and a stable Windows CI.
 
-Destrava quando: um caso real exceder o que o SQLite confortavelmente atende E houver necessidade de escrita concorrente multi-processo.
+---
+
+## PostgreSQL Store
+
+An alternative implementation of the `Store` interface for consortium scale.
+
+Status: the `Store` interface has been an abstraction from the start, and `storetest` is the gate any alternative implementation must pass. Keep the interface narrow, but do not invest speculatively.
+
+Unlocks when: a real case exceeds what SQLite comfortably handles AND there is a need for concurrent multi-process writes.
 
 ---
 
 
 
-## Tipos de dado — v2 e além
+## Data types — v2 and beyond
 
-Candidatos: TCGA/GDC, GSA (BGI), CUT&RUN, Hi-C, validação de estrutura de output de single-cell, e os que a v1 revelar.
+Candidates: TCGA/GDC, GSA (BGI), CUT&RUN, Hi-C, structure validation of single-cell output, and those that v1 reveals.
 
-GDC requer token e arquivos controlados; GSA tem API pouco documentada e instável — ambos merecem planejamento dedicado, e ambos são candidatos naturais a `adopt` em vez de adapter.
+GDC requires a token and controlled files; GSA has a poorly documented, unstable API — both deserve dedicated planning, and both are natural candidates for `adopt` instead of an adapter.
 
-Destrava quando: a v1 estiver estável e o uso real indicar quais faltam. Não decidir os 5 da v2 no papel agora.
-
----
-
-## Prefetch especulativo de metadados
-
-Otimização: buscar metadados de experimentos prováveis antes de o usuário pedir.
-
-Destrava quando: profiling mostrar que latência de fetch de metadados é gargalo real. Improvável dado o fan-out paralelo já planejado.
+Unlocks when: v1 is stable and real use shows which are missing. Do not decide the 5 of v2 on paper now.
 
 ---
 
-## Ler o data lineage do Nextflow
+## Speculative metadata prefetch
 
-Importar registros `lid://` do Nextflow como `derived_files`, e verificar depois os outputs que ele registrou. O lineage do Nextflow, experimental desde a 25.04, grava caminho, tamanho e checksum, mas não tem comando de verificação posterior.
+Optimisation: fetch metadata of likely experiments before the user asks.
 
-Destrava quando: o lineage sair de experimental e houver uso real de Colligo junto com Nextflow. Reproduzir o algoritmo de checksum do Nextflow é pré-requisito a investigar.
-
----
-
-## Organismo declarado × observado
-
-Sketch MinHash de alguns milhares de reads comparado a sketches de referência pequenos responde "isto é mesmo humano?". Pega amostra rotulada com o organismo errado e contaminação grosseira, antes de qualquer alinhamento. sourmash e Mash já fazem o sketch; o novo é usá-lo como afirmação contra o metadado.
-
-Alternativa já coberta: o sinal `suspect` do Scribo por desvio de taxa de alinhamento entre amostras pega o mesmo erro depois do pipeline, sem sketches e sem o Colligo cruzar a fronteira da análise. O MinHash continua útil para pegar o erro **antes** do alinhamento.
-
-Destrava quando: houver um caso real de organismo trocado que o sinal pós-pipeline pegou tarde demais, e uma forma de distribuir os sketches de referência sem inchar o binário da porta leve.
+Unlocks when: profiling shows that metadata fetch latency is a real bottleneck. Unlikely given the parallel fan-out already planned.
 
 ---
 
-## Acelerador Rust do extrator
+## Reading Nextflow data lineage
 
-Implementação em Rust do extrator de fatos, como processo separado, pelo contrato de SPEC §9 "Fronteira de substituição". Libdeflate ou zlib-ng para descompressão, parser de FASTQ sobre o buffer, mesmos fatos byte a byte que o extrator Go.
+Import Nextflow `lid://` records as `derived_files`, and later verify the outputs it recorded. Nextflow's lineage, experimental since 25.04, records path, size and checksum, but has no command for later verification.
 
-Regras, fixadas agora para a arquitetura nascer com a porta aberta:
-
-- Processo separado. Nem cgo, nem WASM.
-- Opcional. Nada quebra sem ele.
-- Uma fronteira: o extrator. Rede, banco, adapters e CLI ficam só em Go.
-- Um sentido: Go chama Rust.
-- Um contrato: esquema de fatos com `extractor_version` compartilhada.
-- Entra só com teste diferencial e fuzz contra o extrator Go.
-
-Destrava quando: o benchmark de `TESTING.md` §7.1 mostrar, depois da troca para `klauspost/compress` e da distribuição paralela dos consumidores, que o `check` completo ainda fica acima da meta de 110% do piso por causa da descompressão.
-
-Nota: ganha também como segunda implementação independente, a defesa de `RELIABILITY.md` M9.
+Unlocks when: lineage leaves experimental status and there is real use of Colligo together with Nextflow. Reproducing Nextflow's checksum algorithm is a prerequisite to investigate.
 
 ---
 
-## Descompressão paralela de gzip simples
+## Declared × observed organism
 
-Gzip simples não tem ponto de entrada no meio do fluxo, então não se paraleliza trivialmente. O rapidgzip mostra que descompressão especulativa paralela funciona e chega a várias vezes a velocidade de um núcleo.
+A MinHash sketch of a few thousand reads compared with small reference sketches answers "is this really human?". It catches a sample labelled with the wrong organism and gross contamination, before any alignment. sourmash and Mash already do the sketch; what is new is using it as an assertion against the metadata.
 
-Destrava quando: o benchmark de `TESTING.md` §7.1 mostrar que a descompressão de gzip simples é o gargalo dominante em uso real, depois de esgotadas a troca de biblioteca e a distribuição paralela dos consumidores.
+Alternative already covered: Scribo's `suspect` signal, from deviation in alignment rate between samples, catches the same error after the pipeline, without sketches and without Colligo crossing the boundary of the analysis. MinHash remains useful for catching the error **before** alignment.
+
+Unlocks when: there is a real case of a swapped organism that the post-pipeline signal caught too late, and a way to distribute the reference sketches without bloating the light-door binary.
 
 ---
 
-## Criptografia em repouso
+## Rust accelerator for the extractor
 
-Envelopar o banco e os arquivos com chave gerenciada.
+A Rust implementation of the fact extractor, as a separate process, through the contract of SPEC §9 "Substitution boundary". Libdeflate or zlib-ng for decompression, a FASTQ parser over the buffer, the same facts byte for byte as the Go extractor.
 
-Status: fora de escopo por decisão, documentado em `CONFIDENTIALITY.md` §7. Criptografia de disco do sistema operacional resolve o mesmo problema melhor e não é nossa responsabilidade.
+Rules, fixed now so that the architecture is born with the door open:
 
-Destrava quando: houver requisito regulatório explícito que a criptografia de disco não satisfaça.
+- A separate process. Neither cgo nor WASM.
+- Optional. Nothing breaks without it.
+- One boundary: the extractor. Network, database, adapters and CLI stay in Go only.
+- One direction: Go calls Rust.
+- One contract: the fact schema with a shared `extractor_version`.
+- It enters only with a differential test and fuzzing against the Go extractor.
+
+Unlocks when: the benchmark of `TESTING.md` §7.1 shows, after the switch to `klauspost/compress` and the parallel distribution of the consumers, that a full `check` is still above the 110% target of the floor because of decompression.
+
+Note: it also pays off as a second, independent implementation, the defence of `RELIABILITY.md` M9.
+
+---
+
+## Parallel decompression of plain gzip
+
+Plain gzip has no entry point in the middle of the stream, so it is not trivially parallelisable. rapidgzip shows that speculative parallel decompression works and reaches several times the speed of one core.
+
+Unlocks when: the benchmark of `TESTING.md` §7.1 shows that plain gzip decompression is the dominant bottleneck in real use, after the library switch and the parallel distribution of the consumers have been exhausted.
+
+---
+
+## Encryption at rest
+
+Wrap the database and the files with a managed key.
+
+Status: out of scope by decision, documented in `CONFIDENTIALITY.md` §7. Operating-system disk encryption solves the same problem better and is not our responsibility.
+
+Unlocks when: there is an explicit regulatory requirement that disk encryption does not satisfy.
