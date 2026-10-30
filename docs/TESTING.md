@@ -130,7 +130,7 @@ Seed with the synthetic fixtures. Invariants:
 - Allocation does not grow disproportionately to the input
 - Never returns a format outside the registry
 
-PR CI: 60s per target. Weekly job: 4h per target. Interesting corpus versioned.
+Planned, not running yet (see §9): PR CI 60s per target, weekly job 4h per target. Interesting corpus versioned.
 
 This is the item of highest value per line written against a bug that nobody imagined.
 
@@ -251,7 +251,7 @@ Speed is a measured requirement, not an impression. A versioned benchmark, runni
 | Allocations per record in the FASTQ parser | —                                                            | 0                                                          | yes, `testing.AllocsPerRun` in `format`           |
 | `get` with full verification               | plain `curl`, same file and local server                     | ≤ 105% of the floor                                        | no; `get` is Slice 3                              |
 
-CPU and memory profiles (`pprof`) of each measurement will be versioned together with the table, so that a regression shows up in a diff, and a change that worsens a measurement by more than 5% will fail the weekly job with the profile attached. Neither exists yet; Session 8 implements what is missing from this section.
+CPU and memory profiles (`pprof`) of each measurement will be versioned together with the table, so that a regression shows up in a diff, and a change that worsens a measurement by more than 5% will fail the weekly job with the profile attached. Neither exists yet, nor do the other rows marked "no" above.
 
 The switch from `compress/gzip` to `klauspost/compress/gzip` only enters with the result of this benchmark showing a gain.
 

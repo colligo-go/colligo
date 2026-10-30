@@ -123,7 +123,7 @@ What unlocks the terabytes that arrive from outside.
 
 Scope: `adopt/` individual and in batch by CSV; `stat` gate that decides what to read, without declaring anything verified; amortised scrub by `last_verified_at`; `manifest/` with root and outboard; `attest`; `colligo lock` and `check --lock`; duplicate across accessions by root (M19).
 
-Criterion: adopt a file coming from `prefetch` and reverify it later pointing at the corrupted slice; export a manifest, corrupt one byte, and the attestation points at the exact index; change the release of a reference and the diff of `colligo.lock` shows only that line; a second run over 10 thousand unchanged files within the target of `TESTING.md` §10.
+Criterion: adopt a file coming from `prefetch` and reverify it later pointing at the corrupted slice; export a manifest, corrupt one byte, and the attestation points at the exact index; change the release of a reference and the diff of `colligo.lock` shows only that line; a second run over 10 thousand unchanged files within the target of `TESTING.md` §7.1.
 
 ---
 

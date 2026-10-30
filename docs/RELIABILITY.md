@@ -20,7 +20,7 @@ Colligo fails closed. Three severities:
 | `blocking` | Recorded. Other files carry on. The study is **not** left complete. |
 | `advisory` | Recorded and printed. Does not affect completeness.                 |
 
-**Strict mode is the default.** In it, any `blocking` still pending at the end of the run produces a non-zero exit code. `--permissive` leaves the exit code at zero, but **hides nothing**: the export still marks the study as incomplete and each row still carries its custody state. Permissive changes whether the pipeline stops, never whether the information exists.
+**Strict mode is the default.** In it, any `blocking` still pending at the end of the run produces a non-zero exit code. `--permissive` leaves the exit code at zero (at 5 under `--quick`, see below), but **hides nothing**: the export still marks the study as incomplete and each row still carries its custody state. Permissive changes whether the pipeline stops, never whether the information exists.
 
 ### Exit codes
 
@@ -247,6 +247,7 @@ Power goes out, the job is killed by the scheduler, the disk vanishes. If the or
 2. **Crash at any point.** The suite enumerates each write, `fsync` and `rename` of a `get` and of a `fetch`, kills the process at each one, resumes, and checks the invariants of the model. `TESTING.md` §6.1.
 
 Mandatory order, derived from the model: write bytes → `fsync` of the `.part` → mark group `verified` → commit the database. Rename of the `.part` only after `fsync` and all the assertions; `fsync` of the directory after the rename.
+
 ---
 
 ## 3. Visible custody

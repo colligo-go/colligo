@@ -2,10 +2,10 @@
 
 Declarative document. It describes **what exists**, without narrative. For the why, see `DESIGN.md`. For the defences against silent error, `RELIABILITY.md`. For leakage of restricted data, `CONFIDENTIALITY.md`. Implement from here.
 
-Module: `github.com/<org>/colligo`
-Go: latest stable.
+Module: `github.com/colligo-go/colligo`
+Go: the version pinned in `go.mod`.
 SQLite driver: `modernc.org/sqlite`.
-BLAKE3: `lukechampine.com/blake3` or `zeebo/blake3`.
+BLAKE3: `lukechampine.com/blake3`.
 
 ---
 
@@ -445,7 +445,7 @@ Scrub: selects by number of dependent results descending (count in Scribo's `res
 
 Verification concurrency: default 1–2, configurable, rises only on flash storage.
 
-`check`, `validate` and `verify` standalone, stateless, with no database: accept a loose file with `--expected`, a checksums file, or `--source` to compare against the source. `--cross-check` emits output compatible with `sha256sum` and `b3sum`.
+`check`, `validate` and `verify` standalone, stateless, with no database: accept a loose file with `--expected`, a checksums file, or `--source` (Slice 2) to compare against the source. `--cross-check` emits output compatible with `sha256sum` and `b3sum`.
 
 ### Single read
 
@@ -483,7 +483,7 @@ Batch: 100 events or 50ms, whichever comes first, with a forced commit on cancel
 
 ## 9. Public interfaces
 
-Adapters are **pure**: they do not receive a `Store`, do not receive a disk path, do not open files, do not write. The metadata part of an adapter — `Fetch` and `Resolve` without download — is what the light door uses in `check --source` and what `recheck --upstream` re-runs.
+Adapters are **pure**: they do not receive a `Store`, do not receive a disk path, do not open files, do not write. The metadata part of an adapter — `Fetch` and `Resolve` without download — is what the light door uses in `check --source` (Slice 2) and what `recheck --upstream` re-runs.
 
 The extractor receives the content through `Write`, in the single read, and returns facts in `Finish`. It does not open files, does not seek, does not read twice. A format whose validation requires random access is modelled as an extractor that accumulates only what is necessary — the BGZF EOF block is the last 28 bytes.
 
@@ -847,19 +847,19 @@ The `--json` output of `check` and `validate` is an object with `schema_version`
 
 **Heavy door** — study with a database.
 
-| Command         | Slice | Function                                                                                      |
-| --------------- | ----- | --------------------------------------------------------------------------------------------- |
-| `fetch`         | 3     | main flow: metadata, download, verification                                                   |
-| `verify`        | 3     | with a database: funnel of §7 and scrub (scrub in Slice 4)                                    |
-| `status`        | 3     | state of the study; `--require-complete` (Slice 5) exits 3 if incomplete                      |
-| `adopt`         | 4     | registers a pre-existing file under custody                                                   |
-| `manifest`      | 4     | exports a portable manifest                                                                   |
-| `attest`        | 4     | compares the collection against a manifest                                                    |
-| `recheck`       | 5     | `--upstream`: re-queries the source and compares with the stored one                          |
-| `doctor`        | 7     | environment diagnosis                                                                         |
-| `redact-report` | 7     | bug report safe to publish                                                                    |
-| `export`        | 7     | TSV/JSON/CSV with custody                                                                     |
-| `gc`            | —     | cleanup of orphan `.part` and expired `raw_responses`; `--dry-run` mandatory before `--force` |
+| Command         | Slice | Function                                                                                                                |
+| --------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
+| `fetch`         | 3     | main flow: metadata, download, verification                                                                             |
+| `verify`        | 3     | with a database: funnel of §7 and scrub (scrub in Slice 4)                                                              |
+| `status`        | 3     | state of the study; `--require-complete` (Slice 5) exits 3 if incomplete                                                |
+| `adopt`         | 4     | registers a pre-existing file under custody                                                                             |
+| `manifest`      | 4     | exports a portable manifest                                                                                             |
+| `attest`        | 4     | compares the collection against a manifest                                                                              |
+| `recheck`       | 5     | `--upstream`: re-queries the source and compares with the stored one                                                    |
+| `doctor`        | 7     | environment diagnosis                                                                                                   |
+| `redact-report` | 7     | bug report safe to publish                                                                                              |
+| `export`        | 7     | TSV/JSON/CSV with custody                                                                                               |
+| `gc`            | —     | (postponed, `BACKLOG.md`) cleanup of orphan `.part` and expired `raw_responses`; `--dry-run` mandatory before `--force` |
 
 **The CLI contains no logic.** It reads flags, resolves config, calls the library, translates an error into an exit code. Behaviour that exists only in the CLI is a bug.
 
