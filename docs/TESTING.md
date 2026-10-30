@@ -246,6 +246,24 @@ A troca de `compress/gzip` por `klauspost/compress/gzip` só entra com o resulta
 
 ---
 
+## 7.2 Recursos e limites
+
+O `Compute` é medido contra entrada hostil ou grande, para que uma regressão de memória quebre a suíte em vez de aparecer num servidor.
+
+| Teste                                           | Entrada                                                                    | O que afirma                                                                             |
+| ----------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| gzip de razão enorme                            | 2 GiB de zeros, ~2 MiB comprimidos, gerados em streaming                   | termina, `uncompressed_bytes` exato, pico de heap ≤ 32 MiB acima da linha de base        |
+| 20 milhões de reads curtos (`COLLIGO_SLOW=1`)   | ~1,1 GiB gerados em streaming, comprimentos 20 a 24                        | histograma, `read_ends`, MD5 e contagens exatos; pico ≤ 32 MiB; último quarto não cresce |
+| arquivo que encolhe ou cresce durante a leitura | truncado ou acrescido quando metade foi lida                               | tamanho e hashes são dos bytes efetivamente lidos; o resultado não acusa a mudança       |
+| alocações por MiB lido                          | FASTQ puro e FASTQ gzip, inclinação entre uma entrada pequena e uma grande | ≤ 8 alocações e ≤ 16 KiB alocados por MiB adicional                                      |
+| leitura única                                   | `CheckFile` e `CheckAll`, medidos por `rchar` de `/proc/self/io` (Linux)   | cada byte lido exatamente uma vez; `Discover` lê no máximo 64 KiB por arquivo            |
+
+Os limites partem do piso estrutural, não do que a máquina de hoje faz: o anel de leitura tem 8 buffers de 1 MiB e o descompressor mais o extrator ficam abaixo de 1 MiB, então o pico medido fica entre 8 e 13 MiB e o teto de 32 MiB deixa folga para o coletor de lixo. Reter mais de 1,5% da saída descomprimida (32 MiB de 2 GiB) já passa do teto. A inclinação de alocações medida é zero dentro do ruído (no máximo uma alocação e algumas centenas de bytes por MiB); os limites pegam uma alocação por registro (milhares por MiB) ou um buffer novo por pedaço (1 MiB por MiB).
+
+`COLLIGO_SLOW=1` liga os testes que levam minutos (20 milhões de reads: cerca de 9 s sem `-race` e 50 s com). Sem a variável eles pulam e a mensagem diz como ligar. O CI não a define.
+
+---
+
 ## 8. Regras mecânicas
 
 Nenhuma delas depende de alguém lembrar.
@@ -280,7 +298,7 @@ Alguns testes comparam o Colligo com programas que não são nossos: o verificad
 | `COLLIGO_REQUIRE_B3SUM=1` e sem `b3sum` | falha |
 | sem `b3sum` e sem a variável | a comparação não roda e o teste registra isso em log |
 
-O CI define `COLLIGO_REQUIRE_PYTHON=1` e `COLLIGO_REQUIRE_B3SUM=1`. O benchmark de desempenho é opt-in por `COLLIGO_PERF=1`, porque mede velocidade e não correção.
+O CI define `COLLIGO_REQUIRE_PYTHON=1` e `COLLIGO_REQUIRE_B3SUM=1`. O benchmark de desempenho é opt-in por `COLLIGO_PERF=1`, porque mede velocidade e não correção. Os testes de recurso que levam minutos são opt-in por `COLLIGO_SLOW=1`, porque custam tempo e não correção a mais no dia a dia.
 
 ---
 
