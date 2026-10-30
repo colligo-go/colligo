@@ -94,7 +94,7 @@ Estilo da casa. Inviolável durante implementação. Curto de propósito.
 
 **`gitleaks` em pre-commit.** Credencial vazada não se desvaza.
 
-**Nada entra em `main` sem pull request.** Todo trabalho acontece num branch, o CI roda no branch e no PR, e o merge só acontece depois de revisão.
+**Nada entra em `main` sem pull request.** Todo trabalho acontece num branch, o CI roda em cada PR (e em `main` depois de cada merge, não no push de branch sem PR), e o merge só acontece depois de revisão.
 
 **Nome de branch:** `<tipo>/<descrição>`, com o tipo da lista abaixo e a descrição em inglês, minúscula, palavras separadas por hífen, só `a-z`, `0-9` e `-`, até 50 caracteres no total. Número de issue, quando houver, abre a descrição: `fix/12-bgzf-bsize`. O branch diz o que muda; a sessão de trabalho fica registrada no PR.
 
@@ -116,7 +116,7 @@ Estilo da casa. Inviolável durante implementação. Curto de propósito.
 - Trailers: `Co-Authored-By:` quando um agente escreveu o commit; `Refs: #N` para ligar issue ou PR.
 - O título do PR segue o mesmo formato. O commit de merge gerado pelo GitHub é a única exceção.
 
-Commits pequenos, por fatia ou sub-fatia. `.github/check-names.sh` confere nome do branch, título do PR e cada commit do PR no CI; branch ou mensagem fora do padrão deixa o PR vermelho. A regra vale do PR que a introduziu em diante; o histórico anterior não é reescrito por ela.
+Commits pequenos, por fatia ou sub-fatia. `.github/check-names.sh` confere nome do branch, título do PR e cada commit do PR no CI do PR; branch ou mensagem fora do padrão deixa o PR vermelho. A regra vale do PR que a introduziu em diante; o histórico anterior não é reescrito por ela.
 
 **`main` é protegido no GitHub** pela regra versionada em `.github/rulesets/main.json`: sem push direto, sem `push --force`, sem apagar o branch, e merge só por PR com o check `test` (o job do CI, publicado pelo GitHub Actions) verde e atualizado com `main`. Só merge commit, para preservar os commits pequenos. Ninguém tem bypass, nem o dono da org. O plano gratuito só aplica a regra em repositório público; ela entra no dia em que o repositório fica público:
 
