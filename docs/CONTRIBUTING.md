@@ -16,7 +16,7 @@ Adapters são puros: não recebem `Store`, não recebem caminho de disco, não a
 
 1. Branch a partir de `main` atualizado, com nome `<tipo>/<descrição>`: `feat/ena-source`, `fix/12-bgzf-bsize`.
 2. Commits em Conventional Commits: `fix(format): reject a leading UTF-8 BOM`, com corpo explicando o porquê em `feat` e `fix`.
-3. PR com título no mesmo formato. O CI confere nome do branch, título e commits, e roda a suíte inteira.
+3. Push do branch e `gh pr create`, com título no mesmo formato. O CI roda no PR, não no push do branch: sem PR aberto não há CI. Ele confere nome do branch, título e commits, e roda a suíte inteira.
 4. Merge só com o CI verde e depois de revisão. Nada entra em `main` de outro jeito.
 
 As regras completas estão em `docs/CONVENTIONS.md`, seção Git.
