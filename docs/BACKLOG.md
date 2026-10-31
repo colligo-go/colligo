@@ -8,6 +8,22 @@ Rule: every item carries a sentence on "what would unlock it". Without it, the i
 
 ---
 
+## Usability for people who do not use a terminal
+
+Most biologists will not run a command line tool, however polished. Colligo should reach them where they already work, on top of the modular text output of Slice 2 (SPEC §16, "Text output"):
+
+- A self-contained HTML report: one more renderer of `render/`, opened in a browser, with the same blocks as the text report.
+- A Galaxy tool wrapper, so that `check` and `identify` are a form and a button.
+- A quickstart for biologists: three commands with screenshots, a glossary (what *blocking* and *advisory* mean) and common situations ("I downloaded with fastq-dump", "I renamed my files").
+- Usability tests: three tasks for three to five lab users, watched; they decide the order of the rest.
+- Small touches of the text report: a link from each diagnosis id to its documentation on terminals that support it, a ready rerun command after a failure, and an ASCII theme chosen automatically when the terminal has no Unicode.
+
+Bioconda and static binaries in the GitHub releases are already planned (`packaging/`).
+
+Unlocks when: `v0.2.0` is released with the polished text output and the first users outside the project try it.
+
+---
+
 ## Translated diagnostics
 
 Sentences of the `diagnoses/` catalogue in Portuguese and other languages, chosen by locale.

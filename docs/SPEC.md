@@ -31,6 +31,7 @@ colligo/
 ├── downloader/       worker pools, retry, rate limit, resume
 ├── adopt/            registration of a pre-existing file under custody
 ├── verifier/         funnel: stat gate, facts, assertions, comparison with a source declaration, scrub
+├── render/           presentation of a report, apart from the checks: text, json, theme, format (§16 "Text output")
 ├── format/           structural validators that also extract facts
 ├── samplesheet/      reads nf-core samplesheets (rnaseq and generic) and resolves their paths; never opens a data file
 ├── identity/         identification by content: seqcol, GTF header, hash against official checksums
@@ -880,6 +881,7 @@ Implemented today: `check`, `validate`, `identify` (FASTA only) and `version`, w
 | `check --source`        | 2     | compares against the source: ENA `read_count`, `base_count`, status, MD5 and size (implemented, see below)                       |
 | `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated (implemented, see below) |
 | `identify`              | 2     | identity by content: seqcol (FASTA, implemented), GTF header, hash against official checksums                                    |
+| `explain`               | 2     | the long explanation of a diagnosis of the `diagnoses/` catalogue, offline (see "Text output")                                   |
 | `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
 | `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
 | `check --lock`          | 4     | checks the collection against a `colligo.lock`                                                                                   |
@@ -932,6 +934,39 @@ Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known ve
 Exit codes: 0 when every file was answered, identified or not; 3 when any file is `invalid`; 2 when any file is unreadable (missing, unreadable, changed during the read), which outranks 3; 1 for a usage error; 4 when interrupted.
 
 `--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified`, `invalid` or `unreadable`.
+
+### Text output
+
+Planned in Slice 2; today the text report is a list per file. Text is for people and `--json` is for machines: the styling below never changes the `--json` document.
+
+**Layers.** `verifier` (and `identify`) produce a report value with no presentation in it. `render/` turns it into output: `render/json` writes the `--json` document described above, `render/text` writes this section's report, and later renderers (an HTML report, a Galaxy wrapper) read the same value. `render/theme` holds the symbols and colours in one value, so a colourless, an ASCII or a high-contrast style is another theme and not another layout. `render/format` holds numbers, sizes, durations and the terminal width. The CLI only picks a renderer and a theme; it contains no presentation logic either.
+
+**Blocks.** The text report is built from blocks, each a function of the report: the verdict, the summary table, the issue (problem, likely cause, what to do), checked and not checked, what to do, and the footer. Whether a block is shown as a table or as lines of text is a choice of the renderer, not part of the report. A block can move from lines to a table, be reordered, added or dropped without touching the checks or the other blocks.
+
+**Default layout of `check`.**
+
+1. **Verdict**, the first line: symbol, word, subject and exit code. `✗ DRR021374 does not match ENA: do not use these files` with `exit 3`; `✓ DRR021374 matches ENA` with the number of files, the size and the time; `✓ … with gaps` when a comparison could not be made.
+2. **Summary table**, for more than one run: one row per run with layout, files present over listed, bases observed over declared with the difference in percent, and the result. Details follow only for the runs that failed or carry an advisory, failures first.
+3. **Issue**, once each: *Problem* (observed against declared, with the numbers), *Likely* (the probable cause of the `diagnoses/` entry, marked as a hypothesis) and *Do* (the suggested action). It is never repeated for every file: the files of a failed run point to the issue of the run.
+4. **Files of a run**, as a table: reads, bases, bases per read and status, so that a shortened mate shows in measured numbers and is not guessed.
+5. **Checked and not checked**: which comparisons ran, and which did not and why (a decompressed file cannot match the published MD5; the source declares no `read_count`). Without `--source`, the source comparison is listed as not checked, and when the names look like ENA accessions the line suggests `--source ena:<accession>`. Colligo never queries the network unless asked.
+6. **What to do**: the actions of every issue as one numbered list, without repetition.
+7. **Footer**: counts by result, number of files, total size and elapsed time.
+
+Colligo's own outputs (`*.colligo-cert.json`, `colligo.sha256`, `colligo.b3`) are not listed. `--verbose` lists them, the other skipped files and every assertion that passed; `--quiet` prints only the verdict line. `identify` and `check --samplesheet` use the same blocks.
+
+**Style.**
+
+- A symbol and a word always go together; colour is never the only signal.
+- Green for ✓ verified, red for ✗ blocking with the verdict in bold, yellow for ! advisory, dim for secondary information such as sizes, times and the diagnosis id.
+- Colour only when the output is a terminal; `NO_COLOR` turns it off; `--color=auto|always|never` overrides.
+- Numbers right-aligned with thousands separators, sizes in human units, lines wrapped to the terminal width.
+- The progress of a long read goes to stderr, only on a terminal, and never into the report.
+- Friendlier never means softer: a failure is stated as a failure, with its exit code, in the first line.
+
+**`colligo explain <id>`** prints the long explanation of a diagnosis: what it means, why it happens, what to do and how to confirm. It reads the `diagnoses/` catalogue, which gains a long text per entry, and needs no network. The report ends with the command for each failed assertion.
+
+**Tests.** Golden files: each case (verified, blocking, advisory, not checked, unreadable, a study with several runs) has its expected text recorded, with colour off and on, so any change of the text shows in the diff of the pull request. `--json` has a golden test of its own, which the styling must never change.
 
 **Heavy door** — study with a database.
 

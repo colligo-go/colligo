@@ -74,6 +74,7 @@ Scope:
 - `colligo identify`: Sequence Collection digest for FASTA; GENCODE GTF release by the header; hash against official checksums where they exist.
 - `colligo check --samplesheet`: nf-core pipeline samplesheet checked against the content.
 - MultiQC module that reads the `--json` of `check` and shows the result in the report the user already opens.
+- Polished, modular text output (SPEC §16, "Text output"): the verdict first, each problem once with its likely cause and what to do, what was checked and what was not, and `colligo explain`. Rendering lives in `render/`, apart from the checks, so the presentation (tables or lines, colours, symbols, order of the blocks) can change later without touching them.
 
 Definition of done:
 
@@ -83,6 +84,9 @@ Definition of done:
 - A samplesheet with R2 swapped between two samples is rejected.
 - The result of `check` appears in a MultiQC report.
 - Distribution: bioconda recipe drafted and nf-core module sketched.
+- The text report of the QC Fail case starts with the verdict and the exit code, points at the shortened mate by its bases per read, and says what was not checked; it is a golden file, like every case of the text output.
+- Without `--source`, a folder whose names look like ENA runs gets "not checked" for the source comparison and the suggestion of `--source`, never a network query.
+- The text report and `--json` come from separate renderers over the same report; colour is off when the output is not a terminal and with `NO_COLOR`.
 
 ---
 
