@@ -31,6 +31,7 @@ colligo/
 ├── adopt/            registration of a pre-existing file under custody
 ├── verifier/         funnel: stat gate, facts, assertions, scrub
 ├── format/           structural validators that also extract facts
+├── samplesheet/      reads nf-core samplesheets (rnaseq and generic) and resolves their paths; never opens a data file
 ├── identity/         identification by content: seqcol, GTF header, hash against official checksums
 ├── compat/           comparison of coordinate systems by Sequence Collections
 ├── upstream/         re-query of metadata at the source and comparison with the stored one
@@ -50,11 +51,11 @@ colligo/
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `samplesheet`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
-**Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
+**Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format`, `samplesheet` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
-**Two-doors rule, verified in test:** the path of `colligo check`, `validate`, `identify` and `compat` does not import `store`. `facts`, `format`, `identity`, `compat` and the metadata part of `source/*` do not depend on a database.
+**Two-doors rule, verified in test:** the path of `colligo check`, `validate`, `identify` and `compat` does not import `store`. `facts`, `format`, `samplesheet`, `identity`, `compat` and the metadata part of `source/*` do not depend on a database.
 
 ---
 
@@ -623,7 +624,7 @@ type SelfTestError struct{ ... }
 type ClockError struct{ ... }
 ```
 
-Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) exists; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
+Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) and `samplesheet.FormatError` (a samplesheet that cannot be read, a usage error) exist; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
 
 ---
 
@@ -822,7 +823,7 @@ Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository
 
 ## 16. CLI
 
-Implemented today: `check`, `validate` and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` and `--certificate`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
+Implemented today: `check`, `validate` and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate` and `--samplesheet`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
 `--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
@@ -836,7 +837,7 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 | `check --quick`         | 1     | only magic bytes, end of file and sample of the start; never `verified`; exits 5                                                 |
 | `check --certificate`   | 1     | emits a certificate verifiable by third parties (§13)                                                                            |
 | `check --source`        | 2     | compares against the source                                                                                                      |
-| `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated |
+| `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated (implemented, see below) |
 | `identify`              | 2     | identity by content: seqcol, GTF header, hash against official checksums                                                         |
 | `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
 | `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
@@ -844,6 +845,15 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 | `compat`                | 6     | compares coordinate systems between FASTA, `.fai`, BAM, VCF, GTF, BED                                                            |
 | `verify`                | —     | standalone with `--expected` or a checksums file; today `check --expected` and `check --cross-check` cover the use               |
 | `check --cross-extract` | —     | runs the Go and an external extractor on the same file and compares the facts; only with an external extractor present           |
+
+`check --samplesheet <file.csv>` takes the samplesheet as the flag value and no other path; `--quick`, `--expected`, `--format` and `--recursive` do not apply and are usage errors. `--json`, `--permissive`, `--jobs`, `--cross-check` and `--certificate` work as in `check`, over the files the samplesheet lists.
+
+- **Formats.** Two, checked against the schema of nf-core/rnaseq 3.27.0 (`assets/schema_input.json`). The nf-core/rnaseq format has the columns `sample`, `fastq_1`, `strandedness` (`forward`, `reverse`, `unstranded` or `auto`) and optionally `fastq_2`, `seq_platform`, `seq_center`, `genome_bam`, `transcriptome_bam`, `percent_mapped`; the BAM columns are not checked. The generic format is exactly `sample,fastq_1,fastq_2` in any order. Any other header, a repeated column, a malformed CSV, a sample name that is empty or has spaces, an empty `fastq_1`, a bad `strandedness` or a sheet without samples is a usage error (exit 1) naming the line; nothing was read. A UTF-8 byte order mark is accepted. Blank lines are skipped and lines are counted as an editor shows them, the header being line 1.
+- **Paths.** Each path becomes a `secret.Name` when the line is read. A relative path is resolved against the directory that holds the samplesheet, not against the working directory. A value with a scheme (`s3://`, `https://`, `ftp://`...) becomes a `secret.Endpoint`, is never fetched and is reported as `sheet_remote_path`, `blocking`: nothing about that entry was verified, so the run cannot exit 0 (`--permissive` lowers it to 0, as for any `blocking`).
+- **Reading.** Each distinct path is read once, however many lines name it, by the single read of §7. Mates are the ones the samplesheet declares in `fastq_1` and `fastq_2`, not the ones the names suggest, and the comparison is the same as for `check .` (`pair_count`, `pair_ids`); the failed assertion names the column and the line. A row without `fastq_2` is single-end and is not a missing mate.
+- **Repetition.** Several lines with the same `sample` are lanes and are legitimate when their files differ. `sheet_duplicate_row` (`blocking`) is the same sample with the same file content in the same columns. `sheet_shared_file` (`blocking`) is the same content in two lines of different samples, in two lines of one sample that are not otherwise identical, or as `fastq_1` and `fastq_2` of one line. The comparison is by BLAKE3 root, so a copy under another name counts. `sheet_mates_swapped` (`blocking`) fires when two lines fail the pair check and each line's `fastq_1` fits the other line's `fastq_2`; it names both lines.
+- **Missing file.** `read_failed`, `fatal` (exit 2), with the line where the file is listed; the other files are still checked.
+- **Output.** The `--json` document is the one of `check`, schema version 1, with one entry per distinct file (and one per remote location); no field was added.
 
 The `--json` output of `check` and `validate` is an object with `schema_version` (today 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` and `exit_code`. Each assertion carries `id` (from the `diagnoses/` catalogue), `mode`, `severity`, `passed`, `skipped`, `declared` and `observed`, and, when it failed, `observation`, `probable_cause` and `suggested_action`. A new field requires bumping `schema_version`.
 

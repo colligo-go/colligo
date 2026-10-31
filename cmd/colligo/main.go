@@ -16,6 +16,7 @@ import (
 	"github.com/colligo-go/colligo/format"
 	"github.com/colligo-go/colligo/internal/buildinfo"
 	"github.com/colligo-go/colligo/manifest"
+	"github.com/colligo-go/colligo/samplesheet"
 	"github.com/colligo-go/colligo/secret"
 	"github.com/colligo-go/colligo/verifier"
 )
@@ -23,7 +24,8 @@ import (
 const usage = `usage: colligo <command> [flags] <path>...
 
 commands:
-  check      facts and assertions of loose files or a directory
+  check      facts and assertions of loose files or a directory;
+             --samplesheet checks an nf-core samplesheet against the content
   validate   structural validation of the format only
   version    print the version
 
@@ -70,6 +72,7 @@ type settings struct {
 	format      string
 	jobs        int
 	expected    multiFlag
+	samplesheet string
 }
 
 func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.FlagSet, *settings) {
@@ -86,6 +89,7 @@ func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.Fla
 		fs.BoolVar(&s.crossCheck, "cross-check", false, "write colligo.sha256 and colligo.b3 for sha256sum -c and b3sum -c")
 		fs.BoolVar(&s.certificate, "certificate", false, "write <file>.colligo-cert.json next to each file")
 		fs.Var(&s.expected, "expected", "key=value declaration: md5, sha256, blake3, size, reads, bases (one file only)")
+		fs.StringVar(&s.samplesheet, "samplesheet", "", "check an nf-core samplesheet (CSV) against the content of the files it lists")
 	}
 	return fs, s
 }
@@ -136,6 +140,9 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 		}
 		return verifier.ExitUsage
 	}
+	if s.samplesheet != "" {
+		return runSamplesheet(s, paths, stdout, stderr)
+	}
 	if len(paths) == 0 {
 		fmt.Fprintf(stderr, "colligo %s: no path given\n", command)
 		return verifier.ExitUsage
@@ -172,8 +179,10 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 		return failed(err, stderr)
 	}
 	report.Skipped, report.SkippedLinks = skipped, dirLinks
-	code := report.ExitCode(s.permissive)
+	return emit(report, report.ExitCode(s.permissive), s, stdout, stderr)
+}
 
+func emit(report verifier.Report, code int, s *settings, stdout, stderr io.Writer) int {
 	if s.jsonOut {
 		if err := report.WriteJSON(stdout, code); err != nil {
 			fmt.Fprintf(stderr, "colligo: %v\n", err)
@@ -200,6 +209,48 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 		}
 	}
 	return code
+}
+
+func runSamplesheet(s *settings, paths []string, stdout, stderr io.Writer) int {
+	const command = "check --samplesheet"
+	switch {
+	case len(paths) > 0:
+		fmt.Fprintf(stderr, "colligo %s: the samplesheet lists the files; no other path is accepted\n", command)
+	case s.quick:
+		fmt.Fprintf(stderr, "colligo %s: --quick does not apply: every listed file is read in full\n", command)
+	case len(s.expected) > 0:
+		fmt.Fprintf(stderr, "colligo %s: --expected applies to one file, not to a samplesheet\n", command)
+	case s.format != "":
+		fmt.Fprintf(stderr, "colligo %s: --format does not apply: a samplesheet lists FASTQ files\n", command)
+	case s.recursive:
+		fmt.Fprintf(stderr, "colligo %s: --recursive does not apply: the samplesheet lists the files\n", command)
+	default:
+		return checkSamplesheet(s, stdout, stderr)
+	}
+	return verifier.ExitUsage
+}
+
+func checkSamplesheet(s *settings, stdout, stderr io.Writer) int {
+	sheet, err := samplesheet.Read(secret.NewName(s.samplesheet))
+	if err != nil {
+		var malformed *samplesheet.FormatError
+		if errors.As(err, &malformed) {
+			fmt.Fprintf(stderr, "colligo check --samplesheet: %v\n", err)
+			return verifier.ExitUsage
+		}
+		return failed(err, stderr)
+	}
+	if err := checksum.Verify(); err != nil {
+		fmt.Fprintf(stderr, "colligo: %v\nthe tool or its environment is suspect; nothing was checked\n", err)
+		return verifier.ExitFatal
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	report, err := verifier.CheckSamplesheet(ctx, sheet, verifier.Options{Jobs: s.jobs})
+	if err != nil {
+		return failed(err, stderr)
+	}
+	return emit(report, report.ExitCode(s.permissive), s, stdout, stderr)
 }
 
 func collect(ctx context.Context, paths []string, recursive bool) (names []secret.Name, skipped, dirLinks []string, err error) {

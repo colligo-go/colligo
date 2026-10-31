@@ -4,6 +4,11 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added
+
+- `colligo check --samplesheet <file.csv>` checks an nf-core samplesheet (the nf-core/rnaseq format, schema 3.27.0, or the generic `sample,fastq_1,fastq_2`) against the content of the files it lists: every file is read once, the mates are the ones the samplesheet declares, and a swapped, missing, repeated or shared file is reported with the line it is on. Lanes of one sample are legitimate. A remote location (`s3://`, `https://`) is not fetched and is `blocking`. An unknown format, a missing column or a malformed CSV is a usage error (exit 1). The `--json` output keeps schema version 1.
+- Diagnoses `sheet_remote_path`, `sheet_shared_file`, `sheet_duplicate_row` and `sheet_mates_swapped`.
+
 ## [0.1.0] - 2026-10-30
 
 First release: slices 0 and 1, the light door. One command, no database, no configuration.

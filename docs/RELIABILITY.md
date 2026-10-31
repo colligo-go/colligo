@@ -131,6 +131,8 @@ Divergence → `blocking` on both files, with `pair_count` (different counts) or
 
 **Missing mate.** A file with a mate suffix (`_R1`, `_2`, `.1`...) whose other mate is not among the files verified receives `pair_missing`, `advisory`, mode M5, with the name of the expected mate. It only fires when the run has more than one file. It also applies to mates in different directories and to `_R1_001` with `_R2_002`, which do not pair.
 
+**In a samplesheet.** `check --samplesheet` applies the same invariant to the mates the samplesheet declares, ignoring the names. The failed assertion carries the column and the line, and when two lines exchanged their `fastq_2` files, `sheet_mates_swapped` names both lines. A row without `fastq_2` is single-end and gets no `pair_missing`.
+
 **What the invariant does not catch.** It compares the count and the first and last ID. Two files with the same number of reads, the same first and the same last ID, but swapped or reordered reads in the middle, pass as `verified`. Checking all the IDs would require storing or summarising the sequence of IDs in the same read; that is outside the current slice.
 
 ### M6 — Partial success with exit zero
@@ -261,6 +263,8 @@ A supplementary count file with swapped columns, missing samples, column names t
 Two runs with identical content, or read from the same flowcell and lane, enter as distinct replicates in a meta-analysis and inflate the evidence.
 
 **Defence.** Facts are indexed by the hash root, so identical content across accessions shows up at no cost: `advisory` listing the accessions. The `read_header` fact (instrument, run, flowcell, lane) points to the subtler suspicion — different files from the same lane declared as different samples — also as `advisory`, because there are legitimate designs that produce this.
+
+**In a samplesheet.** The same root listed twice is `blocking`, not `advisory`, because a pipeline reads the samplesheet literally: `sheet_duplicate_row` for one sample listed twice with the same files, `sheet_shared_file` for the same content under two samples or as both mates of one line. Lines of one sample with different files are lanes and are not flagged.
 
 ### M20 — A crash in the middle of a write leaves a state that lies
 
