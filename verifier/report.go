@@ -26,7 +26,7 @@ const (
 	ExitQuick       = 5
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 type FileReport struct {
 	Name       secret.Name       `json:"path"`
@@ -47,9 +47,11 @@ type FileReport struct {
 // unsupported verb is dumped without calling the methods of its fields.
 func (r *FileReport) String() string { return fmt.Sprintf("%s: %s", r.Name, r.Status) }
 
-func (r *FileReport) Worst() model.Severity {
+func (r *FileReport) Worst() model.Severity { return worstOf(r.Assertions) }
+
+func worstOf(as []model.Assertion) model.Severity {
 	var worst model.Severity
-	for _, a := range r.Assertions {
+	for _, a := range as {
 		if !a.Passed && !a.Skipped && a.Severity.Rank() > worst.Rank() {
 			worst = a.Severity
 		}
@@ -72,6 +74,7 @@ type Report struct {
 	Files        []*FileReport `json:"files"`
 	Skipped      []string      `json:"skipped,omitempty"`
 	SkippedLinks []string      `json:"skipped_directory_links,omitempty"`
+	Source       *SourceReport `json:"source,omitempty"`
 	Quick        bool          `json:"-"`
 }
 
@@ -81,6 +84,9 @@ func (r Report) ExitCode(permissive bool) int {
 		if w := f.Worst(); w.Rank() > worst.Rank() {
 			worst = w
 		}
+	}
+	if w := r.Source.Worst(); w.Rank() > worst.Rank() {
+		worst = w
 	}
 	switch worst {
 	case model.Fatal:
@@ -101,13 +107,14 @@ type jsonReport struct {
 	Files         []*FileReport `json:"files"`
 	Skipped       []string      `json:"skipped,omitempty"`
 	SkippedLinks  []string      `json:"skipped_directory_links,omitempty"`
+	Source        *SourceReport `json:"source,omitempty"`
 	ExitCode      int           `json:"exit_code"`
 }
 
 func (r Report) WriteJSON(w io.Writer, exitCode int) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	return enc.Encode(jsonReport{SchemaVersion: SchemaVersion, Files: r.Files, Skipped: r.Skipped, SkippedLinks: r.SkippedLinks, ExitCode: exitCode})
+	return enc.Encode(jsonReport{SchemaVersion: SchemaVersion, Files: r.Files, Skipped: r.Skipped, SkippedLinks: r.SkippedLinks, Source: r.Source, ExitCode: exitCode})
 }
 
 func (r Report) WriteText(w io.Writer) {
@@ -115,18 +122,7 @@ func (r Report) WriteText(w io.Writer) {
 	for _, f := range r.Files {
 		counts[f.Status]++
 		fmt.Fprintf(w, "%s\n  %s\n", f.Name, summaryLine(f))
-		for _, a := range f.Assertions {
-			if a.Passed || a.Skipped {
-				continue
-			}
-			fmt.Fprintf(w, "  [%s] %s (%s): %s\n", upper(a.Severity), a.ID, a.Mode, a.Observation)
-			fmt.Fprintf(w, "      probable cause: %s\n      suggested action: %s\n", a.Cause, a.Action)
-		}
-		for _, a := range f.Assertions {
-			if a.Skipped {
-				fmt.Fprintf(w, "  (%s not evaluated: %s failed, and everything below it depends on it)\n", a.ID, a.SkippedBy)
-			}
-		}
+		writeAssertions(w, f.Assertions)
 	}
 	for _, s := range r.Skipped {
 		fmt.Fprintf(w, "%s\n  skipped: not a recognised data file\n", s)
@@ -134,8 +130,32 @@ func (r Report) WriteText(w io.Writer) {
 	for _, s := range r.SkippedLinks {
 		fmt.Fprintf(w, "%s\n  skipped: symbolic link to a directory, not followed\n", s)
 	}
+	r.Source.writeText(w)
 	fmt.Fprintf(w, "\n%d file(s): %d verified, %d valid, %d quick, %d invalid, %d unreadable\n",
 		len(r.Files), counts[StatusVerified], counts[StatusValid], counts[StatusQuick], counts[StatusInvalid], counts[StatusUnreadable])
+}
+
+func writeAssertions(w io.Writer, as []model.Assertion) {
+	for _, a := range as {
+		if a.Passed || a.Skipped {
+			continue
+		}
+		fmt.Fprintf(w, "  [%s] %s (%s): %s\n", upper(a.Severity), a.ID, a.Mode, a.Observation)
+		fmt.Fprintf(w, "      probable cause: %s\n      suggested action: %s\n", a.Cause, a.Action)
+	}
+	for _, a := range as {
+		if !a.Skipped {
+			continue
+		}
+		switch a.SkippedBy {
+		case NotDeclared:
+			fmt.Fprintf(w, "  (%s not evaluated: the source does not declare the value)\n", a.ID)
+		case NoFilesListed:
+			fmt.Fprintf(w, "  (%s not evaluated: the source lists no file for the run)\n", a.ID)
+		default:
+			fmt.Fprintf(w, "  (%s not evaluated: %s failed, and everything below it depends on it)\n", a.ID, a.SkippedBy)
+		}
+	}
 }
 
 func upper(s model.Severity) string {

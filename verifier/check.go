@@ -131,7 +131,9 @@ func evaluatedIDs() []string {
 	for _, id := range AssertionIDs() {
 		switch id {
 		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing,
-			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped:
+			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
+			diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
+			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed:
 		default:
 			ids = append(ids, id)
 		}
@@ -145,7 +147,7 @@ func unreadable(rep *FileReport, err error) *FileReport {
 	return rep
 }
 
-func checkFiles(ctx context.Context, names []secret.Name, opts Options) ([]*FileReport, error) {
+func checkFiles(ctx context.Context, names []secret.Name, opts Options, expected []Expected) ([]*FileReport, error) {
 	jobs := opts.Jobs
 	if jobs <= 0 {
 		jobs = defaultJobs
@@ -154,8 +156,12 @@ func checkFiles(ctx context.Context, names []secret.Name, opts Options) ([]*File
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(jobs)
 	for i, name := range names {
+		fileOpts := opts
+		if expected != nil {
+			fileOpts.Expected = expected[i]
+		}
 		g.Go(func() error {
-			rep, err := CheckFile(gctx, name, opts)
+			rep, err := CheckFile(gctx, name, fileOpts)
 			reports[i] = rep
 			return err
 		})
@@ -167,7 +173,7 @@ func checkFiles(ctx context.Context, names []secret.Name, opts Options) ([]*File
 }
 
 func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, error) {
-	reports, err := checkFiles(ctx, names, opts)
+	reports, err := checkFiles(ctx, names, opts, nil)
 	if err != nil {
 		return Report{}, err
 	}

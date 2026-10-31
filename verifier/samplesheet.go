@@ -50,7 +50,7 @@ func (s *sheetRun) attach(a model.Assertion, reports ...*FileReport) {
 // remote location is blocking, because nothing about it is checked.
 func CheckSamplesheet(ctx context.Context, sheet samplesheet.Sheet, opts Options) (Report, error) {
 	names := localNames(sheet)
-	reports, err := checkFiles(ctx, names, opts)
+	reports, err := checkFiles(ctx, names, opts, nil)
 	if err != nil {
 		return Report{}, err
 	}

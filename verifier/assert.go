@@ -31,6 +31,8 @@ func AssertionIDs() []string {
 		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.CountMismatch,
 		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
 		diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
+		diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
+		diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed,
 	}
 }
 
