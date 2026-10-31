@@ -219,3 +219,11 @@ func TestExplainAppearsInTheUsage(t *testing.T) {
 		t.Errorf("usage:\n%s", out)
 	}
 }
+
+func TestTheProgressBarExistsOnlyForATerminal(t *testing.T) {
+	counter, finish := (&presentation{color: "always"}).startProgress(&bytes.Buffer{})
+	finish()
+	if counter != nil {
+		t.Fatal("a progress counter was created for a stderr that is not a terminal")
+	}
+}
