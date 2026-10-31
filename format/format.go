@@ -21,6 +21,21 @@ type FormatValidator interface {
 	NewExtractor() Extractor
 }
 
+// Identifying is implemented by a validator whose extractor can also derive
+// identity facts from the same stream, such as the seqcol digest of a FASTA.
+type Identifying interface {
+	NewIdentifyingExtractor() Extractor
+}
+
+// ExtractorFor returns the identifying extractor when identify is set and the
+// validator offers one, and the plain extractor otherwise.
+func ExtractorFor(v FormatValidator, identify bool) Extractor {
+	if i, ok := v.(Identifying); ok && identify {
+		return i.NewIdentifyingExtractor()
+	}
+	return v.NewExtractor()
+}
+
 const (
 	ContainerNone = "none"
 	ContainerGzip = "gzip"

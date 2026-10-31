@@ -3,6 +3,7 @@ package format
 import (
 	"bytes"
 
+	"github.com/colligo-go/colligo/identity"
 	"github.com/colligo-go/colligo/model"
 )
 
@@ -14,6 +15,32 @@ func (fastaValidator) MagicPrefix() []byte { return []byte{'>'} }
 func (fastaValidator) Compressed() bool    { return false }
 func (v fastaValidator) NewExtractor() Extractor {
 	return rejectBOM(ContentFasta, v.Version(), newFastaExtractor())
+}
+
+func (v fastaValidator) NewIdentifyingExtractor() Extractor {
+	return rejectBOM(ContentFasta, v.Version(), &identifyingFasta{inner: newFastaExtractor(), collector: identity.NewCollector()})
+}
+
+type identifyingFasta struct {
+	inner     *fastaExtractor
+	collector *identity.Collector
+}
+
+func (f *identifyingFasta) Write(p []byte) (int, error) {
+	f.collector.Write(p)
+	return f.inner.Write(p)
+}
+
+func (f *identifyingFasta) Finish() ([]model.Fact, error) {
+	found, err := f.inner.Finish()
+	if err != nil || f.inner.bad != nil {
+		return found, err
+	}
+	seqcol, err := f.collector.Fact()
+	if err != nil {
+		return nil, err
+	}
+	return append(found, seqcol), nil
 }
 
 type fastaExtractor struct {
