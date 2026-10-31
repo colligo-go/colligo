@@ -208,7 +208,24 @@ The source changed the response format; your suite stays green because it tests 
 
 Documented case: an extraction with `fastq-dump` produced a read 2 with 1 bp instead of 98, finished with code 0, and the resulting FASTQ is structurally valid. There is no source MD5 for a locally extracted file, the structure passes, and the error only appears in trimming or alignment — when it appears.
 
-**Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The sum of R1 and R2 is compared against the declared; divergence → `blocking`, with both numbers in `discrepancies`.
+**Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The observed count is compared against the declared one; divergence → `blocking`, with both numbers in `discrepancies`.
+
+What the declared number counts depends on the run, and the source label cannot be trusted to say which. Checked against real runs (2026-10-30):
+
+| Run | ENA label | `read_count` | Reads in each file | Reading that holds |
+|---|---|---|---|---|
+| DRR021374 | PAIRED | 13767 | 13767 and 13767 | per file |
+| SRR10641224 | PAIRED | 12958 | 12958 and 12958 | per file |
+| ERR5060520 | SINGLE | 8014 | 4007 and 4007 | sum of the pair |
+
+So the rule is not "R1 plus R2 equals `read_count`": that would raise a false `blocking` on every ordinary paired run. The layout comes from the content, not from the label:
+
+- The files form a pair when they have the same number of reads and compatible IDs (the `pair_count` and `pair_ids` assertions, which need no source).
+- Labelled paired, or a single file: every file must have `read_count` reads.
+- Labelled single, but the files form a pair: each file may have `read_count` reads, or the two together may. The second reading is accepted only because the content shows a pair, and it raises `layout_mismatch`, `advisory`: the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples.
+- No reading matches → `blocking` `count_mismatch`, with the observed count, the declared one and the reading that came closest.
+
+Regression fixtures are the recorded metadata responses of the runs above, not the files.
 
 It is the cheapest defence per real failure caught in this catalogue: zero extra reading, one metadata query that fetch already makes.
 
