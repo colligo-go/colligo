@@ -1,0 +1,142 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/sample_R1.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 631,
+      "blake3_root": "aa367cc6ed322d0651e5c99a7316d91b1bd9b103e20b342c4e2951e710bfed01",
+      "md5": "cfdc92bfde6b1939697630f8fcb6c7e4",
+      "sha256": "928a05cba80f9b59a8f9235fd13cda3b2134627219f7fa854180ffd2edda0ebd",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "20",
+          "observed": "20"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=S.1 last=S.20",
+          "observed": "first=S.1 last=S.20"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/sample_R2.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 631,
+      "blake3_root": "aa367cc6ed322d0651e5c99a7316d91b1bd9b103e20b342c4e2951e710bfed01",
+      "md5": "cfdc92bfde6b1939697630f8fcb6c7e4",
+      "sha256": "928a05cba80f9b59a8f9235fd13cda3b2134627219f7fa854180ffd2edda0ebd",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "20",
+          "observed": "20"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=S.1 last=S.20",
+          "observed": "first=S.1 last=S.20"
+        }
+      ]
+    }
+  ],
+  "exit_code": 0
+}
