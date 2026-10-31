@@ -1,0 +1,34 @@
+[31m✗ FAILED[0m  [1m1 of 2 runs of PRJDB0001 do not match ENA: do not use their files[0m  [2mexit 3[0m
+
+[2mRun[0m          [2mLayout[0m  [2mFiles[0m  [2mObserved bases[0m  [2mDeclared bases[0m    [2mDiff[0m  [2mResult[0m
+DRR021374    PAIRED    2/2       1,747,050       3,454,158  -49.4%  [31m✗ fails[0m
+ERR12477684  PAIRED    2/2         528,600         528,600      0%  [32m✓ matches[0m
+
+[1mRun DRR021374[0m[2m  PAIRED · ENA status public[0m
+  [2mBases  [0m  3,454,158 declared by ENA, 1,747,050 observed (-49.4%)
+  [31m✗ count_mismatch[0m[2m · blocking · M15[0m
+    [2mProblem[0m  The content has 1747050 bases over the 2 file(s) of run DRR021374, but 3454158 were expected.
+    [2mLikely [0m  (hypothesis) The content is valid but shorter or longer than the source declared, as with an extraction that shortened the reads.
+    [2mDo     [0m  Extract or download the file again and compare the counts with the source record.
+  [2mFile[0m                [2mReads[0m      [2mBases[0m  [2mBases/read[0m  [2mResult[0m
+  DRR021374_1.fastq  13,767  1,733,283       125.9  [31m✗ invalid (its run failed)[0m
+  DRR021374_2.fastq  13,767     13,767         1.0  [31m✗ invalid (its run failed)[0m
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 4 files
+  [32m✓[0m the mates among 4 files agree in read count and read names
+  [32m✓[0m ENA lists 2 runs as public
+  [31m✗[0m bases against what ENA declares: 1 of 2 runs pass
+  [32m✓[0m the read count of 1 run matches a reading seen in real runs
+
+[1mNot checked[0m
+  [2m–[0m MD5 and size of 4 extracted files: not the published .gz, so they cannot match its MD5
+  [2m–[0m read count of run DRR021374: skipped, because count_mismatch failed
+
+[1mWhat to do[0m
+  1. Extract or download the file again and compare the counts with the source record.
+
+[2m4 files: 2 verified, 2 invalid · 2 runs: 1 fail, 1 match · 5.2 MB · <time>[0m
+
+[1mExplain[0m
+  colligo explain count_mismatch

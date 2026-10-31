@@ -24,12 +24,24 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 - `facts.Options.MD5`: the MD5 of the read without the BLAKE3 tree and the SHA-256.
 - `identity.Table`, `identity.Embedded`, `identity.ParseChecksums`, `identity.ParseGencode`.
 
+- `render/`: the presentation of a report, apart from the checks. `render/text` writes the text report, `render/json` writes the `--json` document, `render/theme` holds the symbols and colours (a colour and a colourless theme), `render/format` holds numbers, sizes, durations, tables and the terminal width, and `render/progress` draws the bar of a long read. `verifier` now produces only the report value.
+- The text report of `check`, `validate`, `check --samplesheet` and `identify` is built from separate blocks: the verdict with its exit code in the first line, a summary table when there are several runs (with the difference in percent), each problem once as Problem, Likely (marked as a hypothesis) and Do, a table of reads, bases and bases per read, what was checked and what was not, a numbered list of what to do, and a footer with counts, size and time. Without `--source`, the source comparison is listed as not checked, and file names that look like ENA runs get the suggestion `--source ena:<accession>`; nothing is queried.
+- `--quiet`, `--verbose` and `--color=auto|always|never` for `check`, `validate` and `identify`. Colour appears only on a terminal, `NO_COLOR` turns it off and `--color` overrides both.
+- `colligo explain <id>` prints the long explanation of a diagnosis (what it means, why it happens, what to do, how to confirm), offline; every entry of the catalogue has one. An unknown id is a usage error that lists similar ids. Every text report that has a failed assertion ends with its `explain` command.
+- A progress bar for a long read, on stderr and only when stderr is a terminal; it is never in the report or in `--json`.
+- `verifier.Progress`, `verifier.NewProgress`, `verifier.WithProgress`, `verifier.RunTotals` and the `Report` fields `Elapsed` and `FromSamplesheet`, none of which is in the JSON document.
+- Golden files for the text of every case, with colour off and on, and for the `--json` document, which the new output leaves byte for byte as it was.
+- A dependency on `golang.org/x/term`, maintained by the Go team, to tell a terminal from a pipe and to read its width.
+
 ### Fixed
 
 - `colligo check --source`: a download the user renamed (for example `SRR10663037_1.fastq.gz` to `amostra1_R1.fastq.gz` while assembling a samplesheet) is now linked to the declared file by its MD5 and size once the files are read, instead of being reported as `source_file_missing` (blocking, exit 3) plus `source_file_unlisted`. The name still comes first, two candidates are `source_file_ambiguous`, and the report says the link was by content (`linked_by` in `--json`, a line in the text). A file both renamed and decompressed is still not linked. `linked_by` is added inside `schema_version` 2, which is not released yet.
 
 ### Changed
 
+- The text report is new, so anything that parsed the old text must read `--json`, which has not changed. The files of Colligo itself (`*.colligo-cert.json`, `colligo.sha256`, `colligo.b3`) are no longer listed as skipped; the other skipped files and the directory links not followed are counted in the footer and listed by `--verbose`.
+- `verifier.Report.WriteText`, `Report.WriteJSON`, `IdentifyReport.WriteText` and `IdentifyReport.WriteJSON` are removed: use `render/text` and `render/json`.
+- A quick check is shown as `! quick (not read in full)` and its verdict is `! QUICK`, never `✓`.
 - The `--json` output of `check` and `validate` is now `schema_version` 2: it gains the `source` object, present only with `--source`. Nothing else changed in the document.
 - The `count_mismatch` observation says "The content has" instead of "The file has", since it now also describes a run.
 

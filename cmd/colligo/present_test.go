@@ -26,7 +26,7 @@ func (r *refusingTransport) Get(_ context.Context, _ secret.Endpoint, _ *transpo
 
 func TestExitCodesDoNotDependOnHowTheReportIsPresented(t *testing.T) {
 	want := map[string]int{
-		"verified": 0, "source-verified": 0, "blocking": 3, "advisory": 0, "not-declared": 0, "unreadable": 2,
+		"verified": 0, "source-verified": 0, "study": 3, "blocking": 3, "advisory": 0, "not-declared": 0, "unreadable": 2,
 		"samplesheet-swapped": 3, "identify-fasta": 0, "identify-gtf-declared": 0, "identify-gtf-conflict": 3, "identify-gtf-checksum": 0,
 	}
 	styles := [][]string{{}, {"--json"}, {"--quiet"}, {"--verbose"}, {"--color=always"}, {"--color=never"}, {"--json", "--color=always", "--verbose"}}

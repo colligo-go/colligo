@@ -32,7 +32,7 @@ colligo/
 ├── adopt/            registration of a pre-existing file under custody
 ├── verifier/         funnel: stat gate, facts, assertions, comparison with a source declaration, scrub
 ├── request/          turns what the user typed into one request: paths, folders, list files, samplesheets, source references (§16 "Input"); never reads a data file
-├── render/           presentation of a report, apart from the checks: text, json, theme, format (§16 "Text output")
+├── render/           presentation of a report, apart from the checks: text, json, theme, format, progress (§16 "Text output")
 ├── format/           structural validators that also extract facts
 ├── samplesheet/      reads nf-core samplesheets (rnaseq and generic) and resolves their paths; never opens a data file
 ├── identity/         identification by content: seqcol, GTF header, hash against official checksums
@@ -866,7 +866,7 @@ Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository
 
 ## 16. CLI
 
-Implemented today: `check`, `validate`, `identify` (FASTA and GTF) and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate`, `--samplesheet` and `--source` (ENA only). The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
+Implemented today: `check`, `validate`, `identify` (FASTA and GTF), `explain` and `version`, with the flags `--json`, `--quiet`, `--verbose`, `--color`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate`, `--samplesheet` and `--source` (ENA only). The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
 `--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
@@ -987,36 +987,36 @@ Planned in Slice 2, apart from what already exists (paths, folders, `--recursive
 
 ### Text output
 
-Planned in Slice 2; today the text report is a list per file. Text is for people and `--json` is for machines: the styling below never changes the `--json` document.
+Implemented in Slice 2. Text is for people and `--json` is for machines: the styling below never changes the `--json` document, which golden files hold byte for byte.
 
-**Layers.** `verifier` (and `identify`) produce a report value with no presentation in it. `render/` turns it into output: `render/json` writes the `--json` document described above, `render/text` writes this section's report, and later renderers (an HTML report, a Galaxy wrapper) read the same value. `render/theme` holds the symbols and colours in one value, so a colourless, an ASCII or a high-contrast style is another theme and not another layout. `render/format` holds numbers, sizes, durations and the terminal width. The CLI only picks a renderer and a theme; it contains no presentation logic either.
+**Layers.** `verifier` (and `identify`) produce a report value with no presentation in it. `render/` turns it into output: `render/json` writes the `--json` document described above, `render/text` writes this section's report, and later renderers (an HTML report, a Galaxy wrapper) read the same value. `render/theme` holds the symbols and colours in one value, so a colourless, an ASCII or a high-contrast style is another theme and not another layout. `render/format` holds numbers, sizes, durations, tables and the terminal width. `render/progress` draws the bar of a long read on stderr. The CLI only picks a renderer and a theme; it contains no presentation logic either. What the renderers need and the checks do not decide (the elapsed time, the totals counted per run, whether the report came from a samplesheet) travels in fields of `Report` that are tagged out of the JSON.
 
 **Blocks.** The text report is built from blocks, each a function of the report: the verdict, the summary table, the issue (problem, likely cause, what to do), checked and not checked, what to do, and the footer. Whether a block is shown as a table or as lines of text is a choice of the renderer, not part of the report. A block can move from lines to a table, be reordered, added or dropped without touching the checks or the other blocks.
 
 **Default layout of `check`.**
 
-1. **Verdict**, the first line: symbol, word, subject and exit code. `✗ DRR021374 does not match ENA: do not use these files` with `exit 3`; `✓ DRR021374 matches ENA` with the number of files, the size and the time; `✓ … with gaps` when a comparison could not be made.
+1. **Verdict**, the first line: symbol, word, subject and exit code. `✗ FAILED  DRR021374 does not match ENA: do not use these files  exit 3`; `✓ VERIFIED  DRR021374 matches ENA  exit 0`, with the number of files, the size and the time in the footer; `✓ VERIFIED … with gaps: see Not checked` when a comparison could not be made because the source declares no value. The word is `VERIFIED`, `ADVISORY`, `FAILED`, `QUICK`, `NOTHING CHECKED` (no data file was found) or, for `identify`, `IDENTIFIED` and `NOT CONFIRMED`. Without `--source` the subject is the files and says only what was run (`2 files pass every check run`), never a comparison that was not made. Under `--permissive` a failure keeps its verdict and the exit reads `exit 0 (--permissive)`.
 2. **Summary table**, for more than one run: one row per run with layout, files present over listed, bases observed over declared with the difference in percent, and the result. Details follow only for the runs that failed or carry an advisory, failures first.
 3. **Issue**, once each: *Problem* (observed against declared, with the numbers), *Likely* (the probable cause of the `diagnoses/` entry, marked as a hypothesis) and *Do* (the suggested action). It is never repeated for every file: the files of a failed run point to the issue of the run.
 4. **Files of a run**, as a table: reads, bases, bases per read and status, so that a shortened mate shows in measured numbers and is not guessed.
-5. **Checked and not checked**: which comparisons ran, and which did not and why (a decompressed file cannot match the published MD5; the source declares no `read_count`). Without `--source`, the source comparison is listed as not checked, and when the names look like ENA accessions the line suggests `--source ena:<accession>`. Colligo never queries the network unless asked.
+5. **Checked and not checked**, two lists in one block: which comparisons ran (a ✗ marks one that did not pass), and which did not and why (a decompressed file cannot match the published MD5; the source declares no `read_count`; a quick check reads only part). Without `--source`, the source comparison is listed as not checked, and when the names look like ENA run accessions (`ERR`, `SRR` or `DRR` followed by digits) the line suggests `--source ena:<accession>`. Colligo never queries the network unless asked.
 6. **What to do**: the actions of every issue as one numbered list, without repetition.
 7. **Footer**: counts by result, number of files, total size and elapsed time.
 
-Colligo's own outputs (`*.colligo-cert.json`, `colligo.sha256`, `colligo.b3`) are not listed. `--verbose` lists them, the other skipped files and every assertion that passed; `--quiet` prints only the verdict line. `identify` and `check --samplesheet` use the same blocks.
+Colligo's own outputs (`*.colligo-cert.json`, `colligo.sha256`, `colligo.b3`) are not listed or counted. The other skipped files and the directory links that were not followed are counted in the footer, so nothing is skipped in silence. `--verbose` lists all of them and every assertion that passed; `--quiet` prints only the verdict line. `identify` and `check --samplesheet` use the same blocks that apply to them: the verdict, the problem, checked and not checked, and the footer.
 
 **Style.**
 
 - A symbol and a word always go together; colour is never the only signal.
 - Green for ✓ verified, red for ✗ blocking with the verdict in bold, yellow for ! advisory, dim for secondary information such as sizes, times and the diagnosis id.
 - Colour only when the output is a terminal; `NO_COLOR` turns it off; `--color=auto|always|never` overrides.
-- Numbers right-aligned with thousands separators, sizes in human units, lines wrapped to the terminal width.
-- The progress of a long read goes to stderr, only on a terminal, and never into the report.
+- Numbers right-aligned with thousands separators, sizes in human units (decimal: kB, MB, GB), prose wrapped to the terminal width. When the output is not a terminal its width is unknown and nothing is wrapped; tables never wrap.
+- The progress of a long read goes to stderr, only when stderr is a terminal and not with `--quiet`, and never into the report. A read shorter than 100 ms draws nothing.
 - Friendlier never means softer: a failure is stated as a failure, with its exit code, in the first line.
 
-**`colligo explain <id>`** prints the long explanation of a diagnosis: what it means, why it happens, what to do and how to confirm. It reads the `diagnoses/` catalogue, which gains a long text per entry, and needs no network. The report ends with the command for each failed assertion.
+**`colligo explain <id>`** prints the long explanation of a diagnosis: what it means, why it happens, what to do and how to confirm. It reads the `diagnoses/` catalogue, which has a long text for every entry (a test fails when one has none), and needs no network. An unknown id is a usage error (exit 1) that lists the similar ids. The report ends with the command for each failed assertion.
 
-**Tests.** Golden files: each case (verified, blocking, advisory, not checked, unreadable, a study with several runs) has its expected text recorded, with colour off and on, so any change of the text shows in the diff of the pull request. `--json` has a golden test of its own, which the styling must never change.
+**Tests.** Golden files: each case (verified, blocking, advisory, not declared, not checked, unreadable, a samplesheet with swapped mates, and `identify` of a FASTA and of a GTF) has its expected text recorded, with colour off and on, so any change of the text shows in the diff of the pull request; the elapsed time is normalised to `<time>`. `--json` has a golden test of its own, which the styling must never change, and a test checks that the colour output is the plain output with escapes added. The summary table of several runs is covered by unit tests of `render/text`, which build the report by hand.
 
 **Heavy door** — study with a database.
 

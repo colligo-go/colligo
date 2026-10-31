@@ -102,10 +102,10 @@ func TestRunTotalsAreAbsentWhenTheComparisonCouldNotCountThem(t *testing.T) {
 	if got := none.Source.Runs[0].Measured; got != nil {
 		t.Errorf("a run that lists no file must not report totals: %+v", got)
 	}
-	notFastq := write(t, dir, "R_2.fastq", []byte("not a fastq at all\n"))
-	unreadable := against(t, Declaration{Samples: []model.Sample{sample("R", "SINGLE", "public", nil, count(40), "R_2.fastq.gz")}}, notFastq)
-	if got := unreadable.Source.Runs[0].Measured; got != nil {
-		t.Errorf("a file without FASTQ records must not report totals: %+v", got)
+	noRecords := []*FileReport{{Name: secret.NewName("/data/R_2.fastq"), Status: StatusVerified}}
+	_, totals := contentAssertions(sample("R", "SINGLE", "public", nil, count(40), "R_2.fastq.gz"), noRecords, "")
+	if totals != nil {
+		t.Errorf("a file with no records to count must not report totals: %+v", totals)
 	}
 }
 

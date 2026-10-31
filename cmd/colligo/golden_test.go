@@ -74,6 +74,18 @@ func goldenCases() []goldenCase {
 		{"source-verified", sourceCase("DRR021374", nil, nil)},
 		{"blocking", sourceCase("DRR021374", shortenSecondMate("DRR021374"), nil)},
 		{"advisory", sourceCase("ERR5060520", nil, nil)},
+		{"study", func(t *testing.T, dir string) goldenRun {
+			first, second := specOf(t, "DRR021374"), specOf(t, "ERR12477684")
+			files := syntheticRun(first)
+			files["DRR021374_2.fastq.gz"] = shortenReads(files["DRR021374_2.fastq.gz"])
+			for name, data := range syntheticRun(second) {
+				files[name] = data
+			}
+			writeDecompressed(t, dir, files)
+			rows := strings.SplitN(string(recorded(t, "ERR12477684")), "\n", 2)[1]
+			body := append(recorded(t, "DRR021374"), []byte(rows)...)
+			return checkRun([]string{"--source", "ena:PRJDB0001", dir}, &fakeTransport{body: body})
+		}},
 		{"not-declared", sourceCase("DRR021374", nil, func(t *testing.T, body []byte) []byte {
 			return setField(t, body, "read_count", to(""))
 		})},

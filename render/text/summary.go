@@ -15,7 +15,7 @@ func summaryBlock(v *view) []string {
 	dim := v.theme.Style(theme.Dim)
 	rows := [][]format.Cell{{
 		format.Text("Run").Styled(dim), format.Text("Layout").Styled(dim), format.Num("Files").Styled(dim),
-		format.Num("Bases observed").Styled(dim), format.Num("declared").Styled(dim), format.Num("diff").Styled(dim),
+		format.Num("Observed bases").Styled(dim), format.Num("Declared bases").Styled(dim), format.Num("Diff").Styled(dim),
 		format.Text("Result").Styled(dim),
 	}}
 	for _, rv := range v.runs {
