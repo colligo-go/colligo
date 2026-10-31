@@ -1,6 +1,6 @@
-// Package drift compares the structure of a recorded source response with the
-// structure of the response the source gives today. It never reports a value:
-// only columns, cell classes and outcomes, so the report is safe to publish.
+// Package drift compares a recorded source response with the response the
+// source gives today: its structure, what the adapter makes of it, and the
+// values Colligo uses.
 package drift
 
 import (
@@ -90,10 +90,12 @@ func elementClass(element string) string {
 }
 
 // Diff lists, one line each, how live differs structurally from baseline.
-// It returns nothing when the structure is the same.
-func Diff(baseline, live Shape) []string {
+// drift holds what changes what Colligo reads; notes holds what does not, a
+// column that moved or one that Colligo never reads, because the adapter
+// reads the columns by name.
+func Diff(baseline, live Shape) (drift, notes []string) {
 	if baseline.Tabular != live.Tabular {
-		return []string{fmt.Sprintf("table: tabular was %t, is now %t", baseline.Tabular, live.Tabular)}
+		return []string{fmt.Sprintf("table: tabular was %t, is now %t", baseline.Tabular, live.Tabular)}, nil
 	}
 	var lines []string
 	for _, name := range baseline.Header {
@@ -103,13 +105,13 @@ func Diff(baseline, live Shape) []string {
 	}
 	for _, name := range live.Header {
 		if !slices.Contains(baseline.Header, name) {
-			lines = append(lines, "column appeared: "+name)
+			notes = append(notes, "column appeared: "+name)
 		}
 	}
 	for _, name := range baseline.Header {
 		was, now := slices.Index(baseline.Header, name), slices.Index(live.Header, name)
 		if now >= 0 && was != now {
-			lines = append(lines, fmt.Sprintf("column moved: %s from position %d to %d", name, was+1, now+1))
+			notes = append(notes, fmt.Sprintf("column moved: %s from position %d to %d", name, was+1, now+1))
 		}
 	}
 	for _, name := range baseline.Header {
@@ -123,5 +125,5 @@ func Diff(baseline, live Shape) []string {
 	if baseline.Ragged != live.Ragged {
 		lines = append(lines, fmt.Sprintf("rows: ragged was %t, is now %t", baseline.Ragged, live.Ragged))
 	}
-	return lines
+	return lines, notes
 }

@@ -41,8 +41,8 @@ func TestShapeOfHTMLIsNotTabular(t *testing.T) {
 }
 
 func TestDiffSameShapeIsEmpty(t *testing.T) {
-	if lines := Diff(ShapeOf([]byte(header+row)), ShapeOf([]byte(header+row))); len(lines) != 0 {
-		t.Errorf("%v", lines)
+	if drift, notes := Diff(ShapeOf([]byte(header+row)), ShapeOf([]byte(header+row))); len(drift)+len(notes) != 0 {
+		t.Errorf("%v %v", drift, notes)
 	}
 }
 
@@ -51,21 +51,26 @@ func TestDiffNamesEveryKindOfChange(t *testing.T) {
 		name string
 		live string
 		want string
+		note bool
 	}{
-		{"column disappeared", "run_accession\tfastq_md5\tstatus\nRUN1\t" + strings.Split(row, "\t")[1] + "\tpublic\n", "column disappeared: read_count"},
-		{"column appeared", "run_accession\tfastq_md5\tread_count\tstatus\textra\n" + strings.TrimSuffix(row, "\n") + "\tx\n", "column appeared: extra"},
-		{"column moved", "fastq_md5\trun_accession\tread_count\tstatus\n" + strings.Split(row, "\t")[1] + "\tRUN1\t10\tpublic\n", "column moved: run_accession from position 1 to 2"},
-		{"type changed", strings.Replace(header+row, "\t10\t", "\t1.5e3\t", 1), "column read_count: cell classes were [integer], are now [word]"},
-		{"list became single", "run_accession\tfastq_md5\tread_count\tstatus\nRUN1\t0123456789abcdef0123456789abcdef\t10\tpublic\n", "column fastq_md5: cell classes were [md5-list], are now [md5]"},
-		{"ragged", header + row + "RUN2\t10\n", "rows: ragged was false, is now true"},
-		{"not tabular", "<html>\n", "table: tabular was true, is now false"},
+		{"column disappeared", "run_accession\tfastq_md5\tstatus\nRUN1\t" + strings.Split(row, "\t")[1] + "\tpublic\n", "column disappeared: read_count", false},
+		{"column appeared", "run_accession\tfastq_md5\tread_count\tstatus\textra\n" + strings.TrimSuffix(row, "\n") + "\tx\n", "column appeared: extra", true},
+		{"column moved", "fastq_md5\trun_accession\tread_count\tstatus\n" + strings.Split(row, "\t")[1] + "\tRUN1\t10\tpublic\n", "column moved: run_accession from position 1 to 2", true},
+		{"type changed", strings.Replace(header+row, "\t10\t", "\t1.5e3\t", 1), "column read_count: cell classes were [integer], are now [word]", false},
+		{"list became single", "run_accession\tfastq_md5\tread_count\tstatus\nRUN1\t0123456789abcdef0123456789abcdef\t10\tpublic\n", "column fastq_md5: cell classes were [md5-list], are now [md5]", false},
+		{"ragged", header + row + "RUN2\t10\n", "rows: ragged was false, is now true", false},
+		{"not tabular", "<html>\n", "table: tabular was true, is now false", false},
 	}
 	baseline := ShapeOf([]byte(header + row))
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			lines := Diff(baseline, ShapeOf([]byte(tc.live)))
-			if !contains(lines, tc.want) {
-				t.Errorf("got %q, want a line %q", lines, tc.want)
+			drift, notes := Diff(baseline, ShapeOf([]byte(tc.live)))
+			got, other := drift, notes
+			if tc.note {
+				got, other = notes, drift
+			}
+			if !contains(got, tc.want) || contains(other, tc.want) {
+				t.Errorf("drift %q, notes %q, want %q among the %s", drift, notes, tc.want, map[bool]string{true: "notes", false: "drift"}[tc.note])
 			}
 		})
 	}
@@ -73,7 +78,8 @@ func TestDiffNamesEveryKindOfChange(t *testing.T) {
 
 func TestDiffNeverCarriesAValue(t *testing.T) {
 	live := strings.Replace(header+row, "\t10\t", "\tsecretvalue\t", 1)
-	for _, line := range Diff(ShapeOf([]byte(header+row)), ShapeOf([]byte(live))) {
+	drift, notes := Diff(ShapeOf([]byte(header+row)), ShapeOf([]byte(live)))
+	for _, line := range append(drift, notes...) {
 		if strings.Contains(line, "secretvalue") || strings.Contains(line, "0123456789abcdef") {
 			t.Errorf("a value reached the report: %s", line)
 		}

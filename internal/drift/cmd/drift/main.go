@@ -65,13 +65,21 @@ func run(dir string, source transport.Transport, stdout, stderr io.Writer) int {
 		}
 
 		lines := drift.DiffOutcome(drift.Observe(baselineFetched, baselineErr), drift.Observe(liveFetched, liveErr))
+		var notes []string
 		if len(liveFetched.Raw) == 1 {
 			raw := liveFetched.Raw[0]
 			lines = append(lines, drift.DiffEnvelope(raw)...)
-			lines = append(lines, drift.Diff(drift.ShapeOf(f.body), drift.ShapeOf(raw.Body))...)
+			shapeDrift, shapeNotes := drift.Diff(drift.ShapeOf(f.body), drift.ShapeOf(raw.Body))
+			lines, notes = append(lines, shapeDrift...), shapeNotes
+		}
+		if baselineErr == nil && liveErr == nil {
+			lines = append(lines, drift.DiffValues(baselineFetched, liveFetched)...)
 		}
 		if len(lines) == 0 {
 			fmt.Fprintf(stdout, "ok     %s\n", f.name)
+			for _, note := range notes {
+				fmt.Fprintf(stdout, "         note: %s\n", note)
+			}
 			continue
 		}
 		drifted++
@@ -79,9 +87,12 @@ func run(dir string, source transport.Transport, stdout, stderr io.Writer) int {
 		for _, line := range lines {
 			fmt.Fprintf(stdout, "         %s\n", line)
 		}
+		for _, note := range notes {
+			fmt.Fprintf(stdout, "         note: %s\n", note)
+		}
 	}
 	if drifted > 0 {
-		fmt.Fprintf(stdout, "\n%d of %d recorded responses no longer match the structure the source gives today.\n", drifted, len(recorded))
+		fmt.Fprintf(stdout, "\n%d of %d recorded responses no longer match what the source gives today.\n", drifted, len(recorded))
 		return exitDrift
 	}
 	return exitClean

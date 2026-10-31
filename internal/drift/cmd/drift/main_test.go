@@ -142,3 +142,64 @@ func TestEmptyDirectoryStopsTheJob(t *testing.T) {
 		t.Errorf("code %d\n%s", code, errOut)
 	}
 }
+
+func replaceIn(target, old, replacement string) func(string, []byte) []byte {
+	return func(accession string, body []byte) []byte {
+		if accession != target {
+			return body
+		}
+		return bytes.Replace(body, []byte(old), []byte(replacement), 1)
+	}
+}
+
+func TestAStatusChangeIsDriftAndNamesTheValues(t *testing.T) {
+	code, out, _ := execute(t, fixtures, live{mutate: replaceIn("DRR021374", "\tpublic", "\tsuppressed")})
+	if code != exitDrift || !strings.Contains(out, "run DRR021374: status was public, is now suppressed") {
+		t.Fatalf("code %d\n%s", code, out)
+	}
+}
+
+func TestAChangedCountOrMD5IsDrift(t *testing.T) {
+	for name, mutate := range map[string]func(string, []byte) []byte{
+		"base_count": replaceIn("DRR021374", "\t3454158\t", "\t3454157\t"),
+		"md5":        replaceIn("DRR021374", "8f8e57d7be5e2ad58b836563fe99457e", "0f8e57d7be5e2ad58b836563fe99457e"),
+	} {
+		code, out, _ := execute(t, fixtures, live{mutate: mutate})
+		if code != exitDrift || !strings.Contains(out, "DRIFT  DRR021374.tsv") || !strings.Contains(out, name) {
+			t.Errorf("%s: code %d\n%s", name, code, out)
+		}
+	}
+}
+
+func swapFirstTwoColumns(_ string, body []byte) []byte {
+	var lines []string
+	for _, line := range strings.Split(strings.TrimRight(string(body), "\n"), "\n") {
+		cells := strings.Split(line, "\t")
+		if len(cells) > 1 {
+			cells[0], cells[1] = cells[1], cells[0]
+		}
+		lines = append(lines, strings.Join(cells, "\t"))
+	}
+	return []byte(strings.Join(lines, "\n") + "\n")
+}
+
+func addColumn(_ string, body []byte) []byte {
+	var lines []string
+	for i, line := range strings.Split(strings.TrimRight(string(body), "\n"), "\n") {
+		extra := "x"
+		if i == 0 {
+			extra = "unused_field"
+		}
+		lines = append(lines, line+"\t"+extra)
+	}
+	return []byte(strings.Join(lines, "\n") + "\n")
+}
+
+func TestReorderedOrExtraColumnsAreNotesNotDrift(t *testing.T) {
+	for name, mutate := range map[string]func(string, []byte) []byte{"reordered": swapFirstTwoColumns, "extra column": addColumn} {
+		code, out, _ := execute(t, fixtures, live{mutate: mutate})
+		if code != exitClean || strings.Contains(out, "DRIFT") || !strings.Contains(out, "note: column") {
+			t.Errorf("%s: code %d, want 0 with a note\n%s", name, code, out)
+		}
+	}
+}

@@ -105,7 +105,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           {
-            echo "The ENA answers with a structure that differs from the recorded fixtures in \`source/ena/testdata\`. The lines below name columns, cell classes and outcomes, never values."
+            echo "The ENA answer differs from the recorded fixtures in \`source/ena/testdata\`, in the structure Colligo reads or in the values it uses (public metadata of the recorded runs)."
             echo
             echo '```'
             cat "$RUNNER_TEMP/drift.txt"
