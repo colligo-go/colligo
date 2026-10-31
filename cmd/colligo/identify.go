@@ -49,7 +49,9 @@ func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) 
 	if err != nil {
 		return failed(err, stderr)
 	}
-	report, err := verifier.IdentifyAll(ctx, names, table)
+	counter, finish := present.startProgress(stderr)
+	report, err := verifier.IdentifyAll(ctx, names, table, verifier.WithProgress(counter))
+	finish()
 	if err != nil {
 		return failed(err, stderr)
 	}

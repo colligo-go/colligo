@@ -81,7 +81,7 @@ func (v *view) issueLines(g *issueGroup, indent string) []string {
 	for _, p := range g.problems {
 		lines = append(lines, v.labelled(indent+"  ", "Problem", p.observation)...)
 		if len(p.where) > 0 {
-			lines = append(lines, v.labelled(indent+"  ", "", v.theme.Apply(theme.Dim, "in "+whereText(p.where)))...)
+			lines = append(lines, v.labelledAs(indent+"  ", "", "in "+whereText(p.where), theme.Dim)...)
 		}
 	}
 	lines = append(lines, v.labelled(indent+"  ", "Likely", "(hypothesis) "+g.cause)...)
@@ -96,6 +96,10 @@ func whereText(where []string) string {
 }
 
 func (v *view) labelled(indent, label, text string) []string {
+	return v.labelledAs(indent, label, text, theme.Plain)
+}
+
+func (v *view) labelledAs(indent, label, text string, role theme.Role) []string {
 	plain := indent + padRight(label, labelWidth) + "  "
 	width := 0
 	if v.opts.Width > 0 {
@@ -105,10 +109,10 @@ func (v *view) labelled(indent, label, text string) []string {
 	lines := make([]string, len(wrapped))
 	for i, w := range wrapped {
 		if i == 0 && label != "" {
-			lines[i] = indent + v.theme.Apply(theme.Dim, padRight(label, labelWidth)) + "  " + w
+			lines[i] = indent + v.theme.Apply(theme.Dim, padRight(label, labelWidth)) + "  " + v.theme.Apply(role, w)
 			continue
 		}
-		lines[i] = strings.Repeat(" ", format.Width(plain)) + w
+		lines[i] = strings.Repeat(" ", format.Width(plain)) + v.theme.Apply(role, w)
 	}
 	return lines
 }

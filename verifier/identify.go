@@ -50,13 +50,21 @@ func (i *Identification) String() string { return fmt.Sprintf("%s: %s", i.Name, 
 // cancellation; every other failure is the Status of the answer, with the
 // Reason.
 func IdentifyFile(ctx context.Context, name secret.Name, table identity.Table) (*Identification, error) {
+	return identifyFile(ctx, name, table, nil)
+}
+
+func identifyFile(ctx context.Context, name secret.Name, table identity.Table, progress *Progress) (*Identification, error) {
 	answer := &Identification{Name: name}
 	f, err := fsaccess.Open(name.Raw)
 	if err != nil {
 		return unreadableIdentity(answer, err), nil
 	}
 	defer f.Close()
-	return identifySource(ctx, answer, f, table)
+	var source readSource = f
+	if progress != nil {
+		source = countingSource{readSource: f, progress: progress}
+	}
+	return identifySource(ctx, answer, source, table)
 }
 
 func identifySource(ctx context.Context, answer *Identification, f readSource, table identity.Table) (*Identification, error) {
@@ -217,12 +225,26 @@ func unreadableIdentity(answer *Identification, err error) *Identification {
 	return answer
 }
 
+type identifyConfig struct{ progress *Progress }
+
+type IdentifyOption func(*identifyConfig)
+
+// WithProgress makes IdentifyAll count the bytes it reads.
+func WithProgress(p *Progress) IdentifyOption {
+	return func(c *identifyConfig) { c.progress = p }
+}
+
 // IdentifyAll identifies each file in order, one at a time.
-func IdentifyAll(ctx context.Context, names []secret.Name, table identity.Table) (IdentifyReport, error) {
+func IdentifyAll(ctx context.Context, names []secret.Name, table identity.Table, options ...IdentifyOption) (IdentifyReport, error) {
 	start := time.Now()
 	report := IdentifyReport{}
+	var config identifyConfig
+	for _, option := range options {
+		option(&config)
+	}
+	config.progress.expect(names)
 	for _, name := range names {
-		answer, err := IdentifyFile(ctx, name, table)
+		answer, err := identifyFile(ctx, name, table, config.progress)
 		if err != nil {
 			return IdentifyReport{}, err
 		}

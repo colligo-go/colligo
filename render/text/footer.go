@@ -18,6 +18,19 @@ func (v *view) wrapped(text string, prefix int) []string {
 	return format.Wrap(text, width)
 }
 
+func (v *view) bulleted(mark, text string) []string {
+	wrapped := v.wrapped(text, 4)
+	lines := make([]string, len(wrapped))
+	for i, w := range wrapped {
+		if i == 0 {
+			lines[i] = "  " + mark + " " + w
+			continue
+		}
+		lines[i] = "    " + w
+	}
+	return lines
+}
+
 func footerBlock(v *view) []string {
 	r := v.report
 	counts := map[string]int{}
@@ -51,7 +64,15 @@ func footerBlock(v *view) []string {
 	if r.Elapsed > 0 {
 		parts = append(parts, format.Duration(r.Elapsed))
 	}
-	return []string{v.theme.Apply(theme.Dim, strings.Join(parts, " · "))}
+	return v.dimmed(strings.Join(parts, " · "))
+}
+
+func (v *view) dimmed(text string) []string {
+	wrapped := v.wrapped(text, 0)
+	for i, w := range wrapped {
+		wrapped[i] = v.theme.Apply(theme.Dim, w)
+	}
+	return wrapped
 }
 
 func (v *view) runCounts() string {

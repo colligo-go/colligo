@@ -32,6 +32,7 @@ commands:
              --samplesheet checks an nf-core samplesheet against the content;
              --source ena:<accession> compares them with what ENA declares
   validate   structural validation of the format only
+  explain    the long explanation of a diagnosis id from a report, offline
   identify   name a FASTA or GTF by its content: seqcol digest, GENCODE header, official checksum
   version    print the version
 
@@ -64,6 +65,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return verifier.ExitFatal
 		}
 		return runIdentify(args[1:], stdout, stderr, table)
+	case "explain":
+		return runExplain(args[1:], stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintf(stdout, "colligo %s (%s)\n", buildinfo.Version(), buildinfo.GitSHA())
 		return verifier.ExitOK
@@ -212,7 +215,9 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 	if err != nil {
 		return failed(err, stderr)
 	}
-	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs}
+	counter, finish := s.presentation.startProgress(stderr)
+	defer finish()
+	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs, Progress: counter}
 	var report verifier.Report
 	if s.source != "" {
 		decl, fetchErr := fetchDeclaration(ctx, ref, net)
@@ -223,6 +228,7 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 	} else {
 		report, err = verifier.CheckAll(ctx, names, opts)
 	}
+	finish()
 	if err != nil {
 		return failed(err, stderr)
 	}
@@ -296,7 +302,10 @@ func checkSamplesheet(s *settings, stdout, stderr io.Writer) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	report, err := verifier.CheckSamplesheet(ctx, sheet, verifier.Options{Jobs: s.jobs})
+	counter, finish := s.presentation.startProgress(stderr)
+	defer finish()
+	report, err := verifier.CheckSamplesheet(ctx, sheet, verifier.Options{Jobs: s.jobs, Progress: counter})
+	finish()
 	if err != nil {
 		return failed(err, stderr)
 	}

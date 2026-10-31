@@ -29,6 +29,8 @@ type Options struct {
 	// result is never verified.
 	Quick bool
 	Jobs  int
+	// Progress, when set, counts the bytes read. It never changes what is read.
+	Progress *Progress
 }
 
 const defaultJobs = 2
@@ -74,7 +76,11 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 		return unreadable(rep, statFailure(err)), nil
 	}
 	before := stateOf(info)
-	res, err := facts.Compute(ctx, f, facts.Options{Format: contentFormat(opts.Format), Hashes: !opts.Structure})
+	var reader io.Reader = f
+	if opts.Progress != nil {
+		reader = countingSource{readSource: f, progress: opts.Progress}
+	}
+	res, err := facts.Compute(ctx, reader, facts.Options{Format: contentFormat(opts.Format), Hashes: !opts.Structure})
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -154,6 +160,9 @@ func checkFiles(ctx context.Context, names []secret.Name, opts Options, expected
 		jobs = defaultJobs
 	}
 	reports := make([]*FileReport, len(names))
+	if !opts.Quick {
+		opts.Progress.expect(names)
+	}
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(jobs)
 	for i, name := range names {

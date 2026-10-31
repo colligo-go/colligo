@@ -35,7 +35,7 @@ func checkedBlock(v *view) []string {
 			if !c.ok {
 				mark = v.theme.Apply(theme.Bad, v.theme.Failed)
 			}
-			lines = append(lines, "  "+mark+" "+c.text)
+			lines = append(lines, v.bulleted(mark, c.text)...)
 		}
 	}
 	if len(notChecked) > 0 {
@@ -44,7 +44,7 @@ func checkedBlock(v *view) []string {
 		}
 		lines = append(lines, v.theme.Apply(theme.Strong, "Not checked"))
 		for _, n := range notChecked {
-			lines = append(lines, "  "+v.theme.Apply(theme.Dim, v.theme.NotChecked)+" "+n)
+			lines = append(lines, v.bulleted(v.theme.Apply(theme.Dim, v.theme.NotChecked), n)...)
 		}
 	}
 	return lines

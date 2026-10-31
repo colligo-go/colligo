@@ -245,7 +245,7 @@ func identifyChecked(v *identifyView) []string {
 	if len(checked) > 0 {
 		lines = append(lines, v.theme.Apply(theme.Strong, "Checked"))
 		for _, c := range checked {
-			lines = append(lines, "  "+v.theme.Apply(theme.Good, v.theme.Verified)+" "+c)
+			lines = append(lines, bullet(v.theme, v.opts.Width, v.theme.Apply(theme.Good, v.theme.Verified), c)...)
 		}
 	}
 	if len(not) > 0 {
@@ -254,7 +254,7 @@ func identifyChecked(v *identifyView) []string {
 		}
 		lines = append(lines, v.theme.Apply(theme.Strong, "Not checked"))
 		for _, n := range not {
-			lines = append(lines, "  "+v.theme.Apply(theme.Dim, v.theme.NotChecked)+" "+n)
+			lines = append(lines, bullet(v.theme, v.opts.Width, v.theme.Apply(theme.Dim, v.theme.NotChecked), n)...)
 		}
 	}
 	return lines
@@ -269,5 +269,30 @@ func identifyFooter(v *identifyView) []string {
 	if v.report.Elapsed > 0 {
 		parts = append(parts, format.Duration(v.report.Elapsed))
 	}
-	return []string{v.theme.Apply(theme.Dim, strings.Join(parts, " · "))}
+	return dimmedText(v.theme, v.opts.Width, strings.Join(parts, " · "))
+}
+
+func dimmedText(t theme.Theme, width int, text string) []string {
+	wrapped := format.Wrap(text, width)
+	for i, w := range wrapped {
+		wrapped[i] = t.Apply(theme.Dim, w)
+	}
+	return wrapped
+}
+
+func bullet(t theme.Theme, width int, mark, text string) []string {
+	wrapAt := 0
+	if width > 0 {
+		wrapAt = max(width-4, 20)
+	}
+	wrapped := format.Wrap(text, wrapAt)
+	lines := make([]string, len(wrapped))
+	for i, w := range wrapped {
+		if i == 0 {
+			lines[i] = "  " + mark + " " + w
+			continue
+		}
+		lines[i] = "    " + w
+	}
+	return lines
 }
