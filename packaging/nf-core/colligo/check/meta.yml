@@ -44,22 +44,11 @@ output:
           description: |
             The report of `colligo check --json` (schema_version 2): one entry
             per file with its assertions, and a `source` object with --source.
+            A blocking result (exit 3) fails the task; with ext.args
+            '--permissive' it is reported here and the task succeeds.
           pattern: "*.colligo.json"
           ontologies:
             - edam: http://edamontology.org/format_3464 # JSON
-  exit_code:
-    - - meta:
-          type: map
-          description: |
-            Groovy Map containing sample information
-            e.g. [ id:'test', single_end:false ]
-      - "*.colligo.exit_code":
-          type: file
-          description: |
-            The exit code of colligo: 0 verified, 3 blocking failure. Any other
-            code fails the task before this file is published.
-          pattern: "*.colligo.exit_code"
-          ontologies: []
   versions:
     - versions.yml:
         type: file

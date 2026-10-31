@@ -16,17 +16,16 @@ build:
 
 requirements:
   build:
-    - {{ compiler('go') }}
-    - {{ stdlib('c') }}
+    - {{ compiler('go-nocgo') }}
     - go-licenses
 
 test:
   files:
     - tiny.fastq
   commands:
-    - colligo version | grep -q "^colligo v{{ version }} "
+    - colligo version | grep "^colligo v{{ version }} " > /dev/null
     - colligo check tiny.fastq
-    - colligo check --json tiny.fastq | grep -q '"schema_version": 2'
+    - "colligo check --json tiny.fastq | grep '\"schema_version\": 2' > /dev/null"
 
 about:
   home: https://github.com/colligo-go/colligo
@@ -35,7 +34,7 @@ about:
   license_family: MIT
   license_file:
     - LICENSE
-    - thirdparty
+    - thirdparty/
   summary: Check that the genomic data you have is the data you think you have
 
 extra:

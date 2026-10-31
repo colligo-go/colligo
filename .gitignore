@@ -16,6 +16,7 @@ colligo.b3
 *.so
 *.dylib
 *.test
+!*.nf.test
 *.out
 coverage.*
 *.coverprofile
