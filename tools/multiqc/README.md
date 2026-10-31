@@ -30,11 +30,11 @@ The module runs before the modules of `module_order`. To put it elsewhere, list 
 
 ## What the report shows
 
-- **General Statistics**: two columns per Colligo report, the result (`✓ verified`, `! advisory`, `✗ failed`, `– not verified`) and the number of blocking problems, each counted once.
+- **General Statistics**: three columns per Colligo report: the result (`✓ verified`, `! advisory`, `✗ failed`, `– not verified`), the source the files were compared with (`ena:DRR021374`, or `– not compared` when only the files themselves were checked), and the number of blocking problems, each counted once.
 - **Files**: one row per file with the status Colligo gave it, the exit code of the report, the result of the whole report, the number of reads, and how many advisory and not-checked assertions the file has.
 - **Problems**: each failed assertion once, with what Colligo observed, the likely cause (marked as a hypothesis) and what to do, and the files or runs it applies to. A failed run is one problem, not one per file.
 - **Not checked**: every comparison Colligo did not make and why, including a missing `--source`.
-- **Source: ACCESSION**, one section per report that has `source`: for each run, the declared and observed counts, the result of each comparison, the files the source lists and the local file that stands for each.
+- **Source: ACCESSION**, one section per report that has `source`: for each run, the declared and observed counts, the result of each comparison, the files the source lists, the local file that stands for each, and whether its MD5 was compared: `✓ matched`, `✗ differs`, or `– not compared` (a decompressed copy can never match the MD5 published for the compressed file, so it is also listed under Not checked; the MD5 of the source is shown, never as a match).
 
 ### What counts as verified
 
@@ -85,5 +85,7 @@ colligo check --json --permissive testdata/synthetic/truncated.fastq.gz > tests/
 | `unreadable` | a file that could not be read (exit 2) |
 | `quick`, `validate` | never `verified` |
 | `permissive-invalid` | a truncated gzip under `--permissive`: exit 0, file `invalid` |
+
+The data directory gets two flat tables: `multiqc_colligo` (one row per report) and `multiqc_colligo_files` (one row per file).
 
 The end-to-end tests run the real `multiqc` on these examples and read the HTML and the General Statistics table it writes.

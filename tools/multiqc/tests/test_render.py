@@ -31,7 +31,8 @@ def test_general_stats_never_shows_a_failed_or_unverified_report_as_verified(exa
         shown = data[view.name]["colligo_status"]
         if view.state not in (State.VERIFIED, State.VERIFIED_GAPS):
             assert not shown.startswith("✓"), (view.name, shown)
-    assert data["blocking"] == {"colligo_status": "✗ failed", "colligo_failures": 2}
+    assert data["blocking"] == {"colligo_status": "✗ failed", "colligo_source": "ena:DRR021374", "colligo_failures": 2}
+    assert data["verified"]["colligo_source"] == "– not compared"
     assert data["quick"]["colligo_status"] == "– not verified"
     assert data["advisory"]["colligo_status"] == "! advisory"
 
@@ -102,3 +103,51 @@ def test_missing_local_file_is_flagged(example):
     view = parse("n", json.dumps(doc)).view
     view.name = "n"
     assert "no local file" in render.source_section(view)
+
+
+def test_an_md5_that_was_not_compared_is_never_shown_as_matching(example):
+    view = views_of(example, ["blocking"])[0]
+    files = view.source.runs[0].files
+    assert all(f.md5_state is State.NOT_VERIFIED and "decompressed copy" in f.md5_check for f in files)
+    html = render.source_section(view)
+    assert "– not compared" in html and "✓ matched" not in html
+    assert any(n.what.startswith("MD5 and size of DRR021374_1.fastq.gz") for n in view.not_checked)
+
+
+def test_an_exact_name_that_passed_the_md5_comparison_is_matched(example):
+    doc = example("source-verified")
+    for raw in doc["files"]:
+        raw["assertions"].append({"id": "checksum_mismatch", "severity": "fatal", "passed": True, "declared": "x", "observed": "x"})
+    for f in doc["source"]["runs"][0]["files"]:
+        f["local"] = f["local"][: -len(".fastq")] + ".fastq.gz"
+    for raw, f in zip(doc["files"], doc["source"]["runs"][0]["files"]):
+        raw["path"] = f["local"]
+    view = parse("exact", json.dumps(doc)).view
+    assert all(f.md5_state is State.VERIFIED and f.md5_check == "matched" for f in view.source.runs[0].files)
+    assert not any(n.what.startswith("MD5 and size") for n in view.not_checked)
+
+
+def test_a_failed_md5_comparison_differs(example):
+    doc = example("source-verified")
+    for f in doc["source"]["runs"][0]["files"]:
+        f["local"] = f["local"][: -len(".fastq")] + ".fastq.gz"
+    for raw, f in zip(doc["files"], doc["source"]["runs"][0]["files"]):
+        raw["path"] = f["local"]
+        raw["assertions"].append({"id": "checksum_mismatch", "severity": "fatal", "passed": False, "declared": "x", "observed": "y"})
+    view = parse("differs", json.dumps(doc)).view
+    assert all(f.md5_state is State.FAILED and f.md5_check == "differs" for f in view.source.runs[0].files)
+
+
+def test_a_file_linked_by_md5_is_matched(example):
+    doc = example("source-verified")
+    for f in doc["source"]["runs"][0]["files"]:
+        f["linked_by"] = "md5"
+    view = parse("by-md5", json.dumps(doc)).view
+    assert all(f.md5_state is State.VERIFIED for f in view.source.runs[0].files)
+
+
+def test_data_files_are_flat(example):
+    views = views_of(example, ALL)
+    for table in (render.raw_data(views), render.raw_files(views)):
+        for row in table.values():
+            assert all(not isinstance(v, (dict, list)) for v in row.values()), row

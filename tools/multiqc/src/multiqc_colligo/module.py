@@ -60,6 +60,7 @@ class MultiqcModule(BaseMultiqcModule):
 
         if views:
             self.write_data_file(render.raw_data(views), "multiqc_colligo")
+            self.write_data_file(render.raw_files(views), "multiqc_colligo_files")
             data, headers = render.general_stats(views)
             self.general_stats_addcols(data, headers)
 

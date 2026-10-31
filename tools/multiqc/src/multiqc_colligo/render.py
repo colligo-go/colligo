@@ -223,10 +223,15 @@ def run_block(run):
             esc(f.linked_by),
             number(f.size),
             f'<code>{esc(f.md5)}</code>',
+            (f'<span class="{CSS_CLASS[f.md5_state]}">{esc(SYMBOLS[f.md5_state])} {esc(f.md5_check)}</span>' if f.md5_check else ""),
         ]
         for f in run.files
     ]
-    files = table(["File at the source", "Local file", "Linked by", "Size", "MD5"], file_rows, numeric=(3,))
+    files = table(
+        ["File at the source", "Local file", "Linked by", "Size at the source", "MD5 at the source", "MD5 check"],
+        file_rows,
+        numeric=(3,),
+    )
     return head + comparisons + files
 
 
@@ -253,6 +258,7 @@ def general_stats(views):
     for view in views:
         data[view.name] = {
             "colligo_status": GENERAL_STATS_LABELS[view.state],
+            "colligo_source": f"{view.source.id}:{view.source.accession}" if view.source else "– not compared",
             "colligo_failures": view.failures,
         }
     headers = {
@@ -266,6 +272,11 @@ def general_stats(views):
                 "fail": [{"s_eq": GENERAL_STATS_LABELS[State.FAILED]}],
             },
             "cond_formatting_colours": [{"pass": "#2e7d32"}, {"warn": "#e0a100"}, {"fail": "#c62828"}],
+        },
+        "colligo_source": {
+            "title": "Colligo source",
+            "description": "The source the files were compared with; “– not compared” means only the files themselves were checked",
+            "scale": False,
         },
         "colligo_failures": {
             "title": "Colligo failures",
@@ -283,9 +294,24 @@ def raw_data(views):
         view.name: {
             "state": WORDS[view.state],
             "exit_code": view.exit_code,
+            "source": f"{view.source.id}:{view.source.accession}" if view.source else "",
+            "files": len(view.files),
             "failures": view.failures,
             "advisories": view.advisories,
-            "files": {f.path: {"status": f.status, "state": WORDS[f.state], "reads": f.reads} for f in view.files},
         }
         for view in views
+    }
+
+
+def raw_files(views):
+    return {
+        f"{view.name} | {f.path}": {
+            "report": view.name,
+            "path": f.path,
+            "status": f.status,
+            "state": WORDS[f.state],
+            "reads": "" if f.reads is None else f.reads,
+        }
+        for view in views
+        for f in view.files
     }

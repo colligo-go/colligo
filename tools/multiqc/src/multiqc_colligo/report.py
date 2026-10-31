@@ -1,4 +1,5 @@
 import json
+import posixpath
 import re
 from dataclasses import dataclass
 from enum import Enum, IntEnum
@@ -137,6 +138,8 @@ class SourceFile:
     linked_by: str
     size: object
     md5: str
+    md5_state: State = State.NOT_VERIFIED
+    md5_check: str = ""
 
 
 @dataclass
@@ -361,6 +364,32 @@ def states_of_source(source):
     return states
 
 
+DECOMPRESSED = "a decompressed copy, which cannot match the MD5 published for the compressed file"
+
+
+def checksum_assertion(assertions):
+    for assertion in assertions:
+        if isinstance(assertion, dict) and assertion.get("id") == "checksum_mismatch" and not assertion.get("skipped"):
+            return assertion
+    return None
+
+
+def judge_md5(source_file, assertions_by_path):
+    if not source_file.local:
+        return State.NOT_VERIFIED, ""
+    if source_file.linked_by == "md5":
+        return State.VERIFIED, "matched (the file was linked by it)"
+    found = checksum_assertion(assertions_by_path.get(source_file.local, []))
+    if found is not None:
+        if outcome_of(found) is Outcome.PASSED:
+            return State.VERIFIED, "matched"
+        return State.FAILED, "differs"
+    local_name = posixpath.basename(source_file.local.replace("\\", "/"))
+    if source_file.name.endswith(".gz") and local_name == source_file.name[:-3]:
+        return State.NOT_VERIFIED, "not compared: " + DECOMPRESSED
+    return State.NOT_VERIFIED, "not compared"
+
+
 def failures_count(files, issues):
     blocking_issues = sum(1 for issue in issues if issue.severity in BLOCKING_SEVERITIES)
     unexplained = sum(
@@ -398,6 +427,18 @@ def view_of(name, doc):
     source = None
     if isinstance(doc.get("source"), dict):
         source = source_view(doc["source"], collector)
+        assertions_by_path = {text(raw.get("path")): assertions_of(raw) for raw in dicts(doc.get("files"))}
+        for run in source.runs:
+            for source_file in run.files:
+                source_file.md5_state, source_file.md5_check = judge_md5(source_file, assertions_by_path)
+                if source_file.md5_check.startswith("not compared: "):
+                    collector.not_checked.append(
+                        NotChecked(
+                            f"run {run.accession}",
+                            f"MD5 and size of {source_file.name}",
+                            "the local file is " + DECOMPRESSED,
+                        )
+                    )
     else:
         collector.not_checked.append(
             NotChecked("report", "comparison with a source", "not made: the report has no source section")
