@@ -263,6 +263,9 @@ type IdentifyReport struct {
 // instance of its format or its content contradicts what it declares, and 0
 // when every file was answered, identified or not.
 func (r IdentifyReport) ExitCode() int {
+	if len(r.Files) == 0 {
+		return ExitIncomplete
+	}
 	code := ExitOK
 	for _, f := range r.Files {
 		switch f.Status {

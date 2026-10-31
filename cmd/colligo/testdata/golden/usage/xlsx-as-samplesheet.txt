@@ -1,0 +1,1 @@
+colligo check: samplesheet: this is a spreadsheet (.xlsx, .xls or .ods), not a CSV file: in your spreadsheet program choose Save As, CSV, and give that file

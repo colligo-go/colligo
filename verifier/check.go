@@ -6,8 +6,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -140,7 +138,8 @@ func evaluatedIDs() []string {
 		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing,
 			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 			diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
-			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed:
+			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed,
+			diagnoses.InputSRA, diagnoses.InputAlignment, diagnoses.InputArchive:
 		default:
 			ids = append(ids, id)
 		}
@@ -226,7 +225,7 @@ func checkQuick(ctx context.Context, name secret.Name, opts Options) (*FileRepor
 		}
 		res.Facts = append(res.Facts, bgzfTailFact(tail))
 	}
-	if res.Container == format.ContainerNone && res.Content != format.ContentHTML && info.Size() > 0 {
+	if _, _, binaryInput := commonMistake(res.Content); res.Container == format.ContainerNone && res.Content != format.ContentHTML && !binaryInput && info.Size() > 0 {
 		last := make([]byte, 1)
 		if _, err := f.ReadAt(last, info.Size()-1); err != nil {
 			return unreadable(rep, err), nil
@@ -238,76 +237,4 @@ func checkQuick(ctx context.Context, name secret.Name, opts Options) (*FileRepor
 	rep.Assertions = Evaluate(rep.Name, res, Expected{}, opts.Format, false)
 	rep.finalize()
 	return rep, ctx.Err()
-}
-
-// Discover classifies the files of a directory by content. A file is a
-// candidate when its content is a known format or its name says it should
-// be one, so a web page saved as .gtf.gz is rejected instead of ignored. A
-// file named explicitly is always checked.
-func Discover(ctx context.Context, root secret.Name, recursive bool) (names []secret.Name, skipped, dirLinks []string, err error) {
-	isDir, err := fsaccess.IsDir(root.Raw)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	if !isDir {
-		return []secret.Name{root}, nil, nil, nil
-	}
-	entries, err := fsaccess.ReadDir(root.Raw)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	for _, e := range entries {
-		if err := ctx.Err(); err != nil {
-			return nil, nil, nil, err
-		}
-		name := secret.NewName(e.Path)
-		if e.Dir {
-			if !recursive || hidden(name) {
-				continue
-			}
-			sub, subSkipped, subLinks, err := Discover(ctx, name, recursive)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			names, skipped, dirLinks = append(names, sub...), append(skipped, subSkipped...), append(dirLinks, subLinks...)
-			continue
-		}
-		if e.DirLink {
-			if !hidden(name) {
-				dirLinks = append(dirLinks, name.String())
-			}
-			continue
-		}
-		if hidden(name) {
-			continue
-		}
-		if looksLikeData(name) {
-			names = append(names, name)
-		} else {
-			skipped = append(skipped, name.String())
-		}
-	}
-	sort.Strings(skipped)
-	sort.Strings(dirLinks)
-	return names, skipped, dirLinks, nil
-}
-
-func hidden(name secret.Name) bool {
-	return strings.HasPrefix(filepath.Base(name.String()), ".")
-}
-
-func looksLikeData(name secret.Name) bool {
-	f, err := fsaccess.Open(name.Raw)
-	if err != nil {
-		return true
-	}
-	defer f.Close()
-	head := make([]byte, quickSample)
-	n, _ := io.ReadFull(f, head)
-	container, content := format.Sniff(head[:n])
-	if container != format.ContainerNone || content == format.ContentFastq || content == format.ContentFasta || content == format.ContentGTF {
-		return true
-	}
-	nameContainer, nameContent := format.FromName(name)
-	return nameContainer != format.ContainerNone || nameContent != ""
 }

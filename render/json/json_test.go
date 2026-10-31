@@ -45,7 +45,7 @@ func TestIdentifyWithoutFilesIsAnEmptyListNotNull(t *testing.T) {
 	if err := renderjson.Identify(&out, verifier.IdentifyReport{}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `"files": []`) || !strings.Contains(out.String(), `"exit_code": 0`) {
+	if !strings.Contains(out.String(), `"files": []`) || !strings.Contains(out.String(), `"exit_code": 3`) {
 		t.Fatalf("%s", out.String())
 	}
 }

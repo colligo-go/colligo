@@ -1,0 +1,1 @@
+colligo check: no path given; to check the files of the current folder, run: colligo check .

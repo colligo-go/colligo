@@ -30,15 +30,22 @@ const (
 type Declaration struct {
 	Source    string
 	Accession string
-	Samples   []model.Sample
-	Issues    []model.ValidationIssue
+	// From says how the accession was obtained when the person did not type
+	// it as it is used: "link", "deduced" or "normalized". It is empty
+	// otherwise.
+	From    string
+	Samples []model.Sample
+	Issues  []model.ValidationIssue
 }
 
 type SourceReport struct {
-	ID         string            `json:"id"`
-	Accession  string            `json:"accession"`
-	Runs       []*RunReport      `json:"runs"`
-	Assertions []model.Assertion `json:"assertions"`
+	ID        string `json:"id"`
+	Accession string `json:"accession"`
+	// AccessionFrom is set only when the accession was read from what the
+	// person gave and not typed as is: "link", "deduced" or "normalized".
+	AccessionFrom string            `json:"accession_from,omitempty"`
+	Runs          []*RunReport      `json:"runs"`
+	Assertions    []model.Assertion `json:"assertions"`
 }
 
 type RunReport struct {
@@ -242,7 +249,7 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 	EvaluatePairs(reports)
 	linkByContent(reports, decl.Samples, claims, files, rivals)
 
-	src := &SourceReport{ID: decl.Source, Accession: decl.Accession, Assertions: issueAssertions(decl.Issues), Runs: []*RunReport{}}
+	src := &SourceReport{ID: decl.Source, Accession: decl.Accession, AccessionFrom: decl.From, Assertions: issueAssertions(decl.Issues), Runs: []*RunReport{}}
 	where := decl.Source + " " + decl.Accession
 	for k, r := range reports {
 		c, claimed := claims[k]

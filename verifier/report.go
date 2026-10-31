@@ -89,7 +89,15 @@ type Report struct {
 	Elapsed         time.Duration `json:"-"`
 }
 
+// ExitCode is the exit status of the report. A report in which nothing was
+// checked is blocking: the user asked for a check and nothing is verified.
 func (r Report) ExitCode(permissive bool) int {
+	if r.NothingChecked() {
+		if permissive {
+			return ExitOK
+		}
+		return ExitIncomplete
+	}
 	var worst model.Severity
 	for _, f := range r.Files {
 		if w := f.Worst(); w.Rank() > worst.Rank() {
@@ -111,6 +119,12 @@ func (r Report) ExitCode(permissive bool) int {
 		return ExitQuick
 	}
 	return ExitOK
+}
+
+// NothingChecked reports whether the report holds no file and no run of a
+// source.
+func (r Report) NothingChecked() bool {
+	return len(r.Files) == 0 && (r.Source == nil || len(r.Source.Runs) == 0)
 }
 
 func (r Report) WriteChecksums(sha256sum, b3sum io.Writer) error {

@@ -20,6 +20,9 @@ const (
 	StructureInvalid   = "structure_invalid"
 	FormatUnknown      = "format_unknown"
 	FormatDeclared     = "format_declared"
+	InputSRA           = "input_sra"
+	InputAlignment     = "input_alignment"
+	InputArchive       = "input_archive"
 	CountMismatch      = "count_mismatch"
 	PairCount          = "pair_count"
 	PairIDs            = "pair_ids"
@@ -117,6 +120,24 @@ var catalogue = []Entry{
 		Observation: "The content is not a format Colligo recognises.",
 		Cause:       "The file is not FASTQ, FASTA or GTF, or it is empty or damaged at the start.",
 		Action:      "Declare the format with --format if you know it, or check where the file came from.",
+	},
+	{
+		ID: InputSRA, Mode: "M3", Severity: model.Blocking,
+		Observation: "The file is an SRA archive (it starts with NCBI.sra), not FASTQ, so nothing about the reads was checked.",
+		Cause:       "The SRA Toolkit downloads reads in this compact archive; the FASTQ files exist only after a conversion.",
+		Action:      "Convert it with fasterq-dump, then check the FASTQ files it writes with --source ena:<accession> to compare them with the archive.",
+	},
+	{
+		ID: InputAlignment, Mode: "M3", Severity: model.Blocking,
+		Observation: "The file is a {observed} alignment, which Colligo does not check yet, so it is not called verified.",
+		Cause:       "BAM and CRAM files hold reads already aligned to a reference; their structure is not verified in this version.",
+		Action:      "Check the FASTQ files the alignment came from, and compare this file with the checksum its source published (md5sum or sha256sum).",
+	},
+	{
+		ID: InputArchive, Mode: "M3", Severity: model.Blocking,
+		Observation: "The file is a ZIP archive, not data, so nothing about its content was checked.",
+		Cause:       "A portal bundled the download, or the files were compressed together; spreadsheets and office documents are ZIP archives too.",
+		Action:      "Extract the archive into a folder, then run colligo check on that folder.",
 	},
 	{
 		ID: FormatDeclared, Mode: "M4", Severity: model.Blocking,

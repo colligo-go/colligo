@@ -47,6 +47,10 @@ const (
 	ContentFasta   = "fasta"
 	ContentGTF     = "gtf"
 	ContentHTML    = "html"
+	ContentSRA     = "sra"
+	ContentBAM     = "bam"
+	ContentCRAM    = "cram"
+	ContentZIP     = "zip"
 	ContentUnknown = "unknown"
 )
 

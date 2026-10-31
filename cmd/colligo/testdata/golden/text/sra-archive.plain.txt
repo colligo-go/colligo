@@ -1,0 +1,22 @@
+✗ FAILED  1 of 1 file failed a check  exit 3
+
+✗ input_sra · blocking · M3
+  Problem  The file is an SRA archive (it starts with NCBI.sra), not FASTQ, so nothing about the reads was checked.
+           in SRR10663037.sra
+  Likely   (hypothesis) The SRA Toolkit downloads reads in this compact archive; the FASTQ files exist only after a conversion.
+  Do       Convert it with fasterq-dump, then check the FASTQ files it writes with --source ena:<accession> to compare them with the archive.
+
+File             Reads  Bases  Bases/read  Result
+SRR10663037.sra      -      -           -  ✗ invalid
+
+Not checked
+  – comparison with a source: not made; Colligo queries the network only when asked
+  – the names look like an ENA run: add --source ena:SRR10663037 to compare the files with ENA
+
+What to do
+  1. Convert it with fasterq-dump, then check the FASTQ files it writes with --source ena:<accession> to compare them with the archive.
+
+1 file: 1 invalid · 72 B · <time>
+
+Explain
+  colligo explain input_sra

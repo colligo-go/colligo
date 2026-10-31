@@ -1,0 +1,1 @@
+colligo check: --source ena: the accession cannot be deduced because PRJDB0001_1.fastq carries no run accession (ERR, SRR or DRR followed by digits); write --source ena:<accession>

@@ -1,0 +1,1 @@
+colligo check: --source: no accession found in the address; open the record of a run or study and copy that address, or write ena:<accession>

@@ -1,0 +1,209 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/DRR021374_1.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 3744567,
+      "blake3_root": "60589759ffaf4fac47493db14fdb8757249375a441e7a0f66e9402d70c0abfc7",
+      "md5": "922b520ec4f9b12eb30489269bcfd423",
+      "sha256": "e9e283923640594d82b69c4d04ee46e5aa003f892944737c2abcf9a2558a8611",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "13767",
+          "observed": "13767"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=DRR021374.1 last=DRR021374.13767",
+          "observed": "first=DRR021374.1 last=DRR021374.13767"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/DRR021374_2.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 3719751,
+      "blake3_root": "aed8d4da606c1757fd71ff238021bf4d910b640936cb9da9b93c25ce57cda8a2",
+      "md5": "760933ff9d6a6d02115ebdde3d5ac5c7",
+      "sha256": "03707fb1806351b6a2e4c8a0b320f3a9fd5833bfa1514a9637a6ac8c67d2b4da",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "13767",
+          "observed": "13767"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=DRR021374.1 last=DRR021374.13767",
+          "observed": "first=DRR021374.1 last=DRR021374.13767"
+        }
+      ]
+    }
+  ],
+  "source": {
+    "id": "ena",
+    "accession": "DRR021374",
+    "accession_from": "deduced",
+    "runs": [
+      {
+        "accession": "DRR021374",
+        "layout": "PAIRED",
+        "status": "public",
+        "declared": {
+          "read_count": 13767,
+          "base_count": 3454158
+        },
+        "files": [
+          {
+            "name": "DRR021374_1.fastq.gz",
+            "local": "<dir>/DRR021374_1.fastq",
+            "linked_by": "name",
+            "md5": "8f8e57d7be5e2ad58b836563fe99457e",
+            "size": 730247
+          },
+          {
+            "name": "DRR021374_2.fastq.gz",
+            "local": "<dir>/DRR021374_2.fastq",
+            "linked_by": "name",
+            "md5": "670182accbd67c947b86a2d4d8b3aef3",
+            "size": 935734
+          }
+        ],
+        "assertions": [
+          {
+            "id": "source_status",
+            "mode": "M16",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "public",
+            "observed": "public"
+          },
+          {
+            "id": "count_mismatch",
+            "mode": "M15",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "3454158",
+            "observed": "3454158"
+          },
+          {
+            "id": "read_count_unexplained",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "13767",
+            "observed": "13767 in each file"
+          },
+          {
+            "id": "layout_mismatch",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "PAIRED",
+            "observed": "DRR021374_1.fastq.gz and DRR021374_2.fastq.gz"
+          }
+        ]
+      }
+    ],
+    "assertions": []
+  },
+  "exit_code": 0
+}

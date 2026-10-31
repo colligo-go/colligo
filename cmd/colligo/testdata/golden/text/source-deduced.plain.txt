@@ -1,0 +1,15 @@
+✓ VERIFIED  DRR021374 matches ENA  exit 0
+
+Input: accession DRR021374, deduced from the file names
+
+Checked
+  ✓ format and structure of 2 files
+  ✓ the mates among 2 files agree in read count and read names
+  ✓ ENA lists 1 run as public
+  ✓ the bases of 1 run match what ENA declares
+  ✓ the read count of 1 run matches a reading seen in real runs
+
+Not checked
+  – MD5 and size of 2 extracted files: not the published .gz, so they cannot match its MD5
+
+2 files: 2 verified · 1 run: 1 match · 7.5 MB · <time>

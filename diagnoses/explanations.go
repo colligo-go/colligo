@@ -69,6 +69,24 @@ var explanations = map[string]Explanation{
 		Do:      "If you know the format, say it with --format (fastq, fasta, gtf, gzip or bgzf). Otherwise check where the file came from.",
 		Confirm: "Read the first lines ('head file', or 'zcat file.gz | head'): FASTQ records start with @ and FASTA records start with >.",
 	},
+	InputSRA: {
+		Means:   "The file is an SRA archive, the compact format of the NCBI Sequence Read Archive. It is not a FASTQ file, and Colligo cannot count reads or compare mates inside it.",
+		Why:     "The SRA Toolkit command prefetch downloads this archive. The FASTQ files only exist after fasterq-dump or fastq-dump has converted it, and tools that expect FASTQ cannot read it directly.",
+		Do:      "Convert it with fasterq-dump, then check the FASTQ files it writes. Add --source ena:<accession> to compare them with what the European Nucleotide Archive declares for the same run.",
+		Confirm: "'head -c 8 file' prints NCBI.sra. 'vdb-validate file' from the SRA Toolkit checks the archive itself.",
+	},
+	InputAlignment: {
+		Means:   "The file is a BAM or CRAM alignment. Colligo recognises it but does not verify it yet, so it is never reported as verified.",
+		Why:     "Alignments hold reads placed on a reference genome. Their integrity needs checks that this version does not have, so the honest answer is that nothing was verified.",
+		Do:      "Check the FASTQ files the alignment came from. For this file, compare its checksum with the one its source published, and use samtools quickcheck for a quick structural test.",
+		Confirm: "'samtools quickcheck file' exits with 0 when the file has a header and ends properly. A BAM is a BGZF file whose content starts with BAM followed by the byte 1.",
+	},
+	InputArchive: {
+		Means:   "The file is a ZIP archive. Colligo does not look inside archives, so nothing about the data in it was checked.",
+		Why:     "A portal bundled several files into one download, or someone compressed a folder. Spreadsheets saved by Excel or LibreOffice are ZIP archives too, so a samplesheet saved that way ends here as well.",
+		Do:      "Extract the archive into a folder, then run colligo check on that folder. If it is a spreadsheet, save it as CSV instead.",
+		Confirm: "'unzip -l file' lists what is inside. A ZIP file starts with the two bytes PK.",
+	},
 	FormatDeclared: {
 		Means:   "A flag, a name or a samplesheet says the file is one format, but its content is another.",
 		Why:     "The declaration is wrong, or the file is the wrong one.",

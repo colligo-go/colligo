@@ -73,7 +73,7 @@ func TestVerdictIsTheFirstLineWithSymbolWordAndExitCode(t *testing.T) {
 	}{
 		{"verified", healthy, 0, "✓ VERIFIED  1 file passes every check run  exit 0"},
 		{"failed", broken, 3, "✗ FAILED  1 of 1 file failed a check  exit 3"},
-		{"nothing", verifier.Report{}, 0, "! NOTHING CHECKED  no data file was found  exit 0"},
+		{"nothing", verifier.Report{}, 3, "✗ NOTHING CHECKED  no data file was found, so nothing is verified  exit 3"},
 		{"quick", verifier.Report{Files: healthy.Files, Quick: true}, 5, "! QUICK  1 file read in part: a quick check is never verified  exit 5"},
 	}
 	for _, c := range cases {
@@ -276,5 +276,29 @@ func TestASamplesheetReportSaysSoInItsVerdict(t *testing.T) {
 	out := render(t, verifier.Report{Files: []*verifier.FileReport{remote}, FromSamplesheet: true}, options(3))
 	if !strings.Contains(out, "samplesheet: ") {
 		t.Errorf("a samplesheet report must say so:\n%s", out)
+	}
+}
+
+func TestTheInterpretationOfTheAccessionIsShownEvenWhenQuiet(t *testing.T) {
+	for from, want := range map[string]string{
+		"link":       "Input: accession PRJ1, taken from the link",
+		"deduced":    "Input: accession PRJ1, deduced from the file names",
+		"normalized": "Input: accession PRJ1, upper-cased from what was typed",
+	} {
+		r := studyReport()
+		r.Source.AccessionFrom = from
+		for _, quiet := range []bool{false, true} {
+			o := options(0)
+			o.Quiet = quiet
+			if out := render(t, r, o); !strings.Contains(out, want) {
+				t.Errorf("%s (quiet %v): the report lacks %q:\n%s", from, quiet, want, out)
+			}
+		}
+	}
+}
+
+func TestAnAccessionTypedAsIsIsNotExplained(t *testing.T) {
+	if out := render(t, studyReport(), options(0)); strings.Contains(out, "Input:") {
+		t.Errorf("an accession typed as is was explained:\n%s", out)
 	}
 }

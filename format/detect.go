@@ -9,8 +9,13 @@ import (
 )
 
 var (
-	gzipMagic = []byte{0x1f, 0x8b}
-	bgzfEOF   = []byte{
+	gzipMagic   = []byte{0x1f, 0x8b}
+	sraMagic    = []byte("NCBI.sra")
+	bamMagic    = []byte("BAM\x01")
+	cramMagic   = []byte("CRAM")
+	zipMagic    = []byte("PK\x03\x04")
+	zipEmptyEnd = []byte("PK\x05\x06")
+	bgzfEOF     = []byte{
 		0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x06, 0x00, 0x42, 0x43, 0x02, 0x00,
 		0x1b, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	}
@@ -42,7 +47,21 @@ func DetectContainer(head []byte) string {
 	return ContainerGzip
 }
 
+// DetectContent names the content that starts head. Besides the formats
+// Colligo checks, it recognises by magic bytes a few files people hand it by
+// mistake (an SRA archive, an alignment, a ZIP archive), so the report can
+// say what the file is instead of "unknown".
 func DetectContent(head []byte) string {
+	switch {
+	case bytes.HasPrefix(head, sraMagic):
+		return ContentSRA
+	case bytes.HasPrefix(head, bamMagic):
+		return ContentBAM
+	case bytes.HasPrefix(head, cramMagic):
+		return ContentCRAM
+	case bytes.HasPrefix(head, zipMagic), bytes.HasPrefix(head, zipEmptyEnd):
+		return ContentZIP
+	}
 	head = bytes.TrimPrefix(head, utf8BOM)
 	trimmed := bytes.TrimLeft(head, " \t\r\n")
 	if len(trimmed) == 0 {

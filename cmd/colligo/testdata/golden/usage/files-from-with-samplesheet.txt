@@ -1,0 +1,1 @@
+colligo check: --samplesheet and --files-from cannot be combined: each one says which files to read

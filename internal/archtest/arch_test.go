@@ -65,7 +65,7 @@ func reaches(all map[string]*packages.Package, from, targetPrefix string) []stri
 
 func TestCoreDoesNotImportSources(t *testing.T) {
 	all := load(t)
-	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum", "identity", "samplesheet"} {
+	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum", "identity", "samplesheet", "request"} {
 		if hits := reaches(all, module+"/"+core, module+"/source"); len(hits) > 0 {
 			t.Errorf("%s imports %v", core, hits)
 		}
@@ -74,9 +74,18 @@ func TestCoreDoesNotImportSources(t *testing.T) {
 
 func TestLightDoorDoesNotImportStore(t *testing.T) {
 	all := load(t)
-	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "identity", "samplesheet", "source/ena", "transport"} {
+	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "identity", "samplesheet", "request", "source/ena", "transport"} {
 		if hits := reaches(all, module+"/"+light, module+"/store"); len(hits) > 0 {
 			t.Errorf("%s imports %v", light, hits)
+		}
+	}
+}
+
+func TestRequestKnowsNothingOfTheChecksTheStoreOrTheNetwork(t *testing.T) {
+	all := load(t)
+	for _, forbidden := range []string{"verifier", "facts", "store", "transport", "source", "render"} {
+		if hits := reaches(all, module+"/request", module+"/"+forbidden); len(hits) > 0 {
+			t.Errorf("request imports %v", hits)
 		}
 	}
 }

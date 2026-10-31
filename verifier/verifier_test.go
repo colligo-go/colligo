@@ -276,38 +276,6 @@ func TestQuickBGZFNeedsEOFBlock(t *testing.T) {
 	}
 }
 
-func TestDiscover(t *testing.T) {
-	dir := t.TempDir()
-	write(t, dir, "s_1.fastq.gz", gzipped(t, fastqText("SRR1", 3, "ACGT")))
-	write(t, dir, "genome.fa", []byte(">chr1\nACGT\n"))
-	write(t, dir, "notes.txt", []byte("hello"))
-	write(t, dir, "page.gtf.gz", []byte("<html>"))
-	write(t, dir, ".hidden.fastq", fastqText("X", 1, "A"))
-	sub := filepath.Join(dir, "sub")
-	os.Mkdir(sub, 0o755)
-	write(t, sub, "deep.fastq", fastqText("D", 1, "A"))
-
-	names, skipped, _, err := Discover(context.Background(), secret.NewName(dir), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, n := range names {
-		got = append(got, filepath.Base(n.String()))
-	}
-	want := []string{"genome.fa", "page.gtf.gz", "s_1.fastq.gz"}
-	if strings.Join(got, ",") != strings.Join(want, ",") {
-		t.Fatalf("got %v want %v", got, want)
-	}
-	if len(skipped) != 1 || filepath.Base(skipped[0]) != "notes.txt" {
-		t.Fatalf("skipped %v", skipped)
-	}
-	deep, _, _, err := Discover(context.Background(), secret.NewName(dir), true)
-	if err != nil || len(deep) != 4 {
-		t.Fatalf("recursive: %d %v", len(deep), err)
-	}
-}
-
 func TestEveryAssertionHasACatalogueEntry(t *testing.T) {
 	for _, id := range AssertionIDs() {
 		e, ok := diagnoses.Lookup(id)

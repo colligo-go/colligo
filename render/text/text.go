@@ -14,7 +14,7 @@ type block func(v *view) []string
 
 func Check(w io.Writer, r verifier.Report, o Options) error {
 	v := newView(r, o)
-	blocks := []block{verdictBlock}
+	blocks := []block{verdictBlock, inputBlock}
 	if !o.Quiet {
 		blocks = append(blocks, summaryBlock, detailsBlock, passedBlock, checkedBlock, todoBlock, skippedBlock, footerBlock, explainBlock)
 	}
