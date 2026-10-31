@@ -1,0 +1,14 @@
+✓ VERIFIED  2 files pass every check run  exit 0
+
+File             Reads  Bases  Bases/read  Result
+sample_R1.fastq     20    200        10.0  ✓ verified
+sample_R2.fastq     20    200        10.0  ✓ verified
+
+Checked
+  ✓ format and structure of 2 files
+  ✓ the mates among 2 files agree in read count and read names
+
+Not checked
+  – comparison with a source: not made; Colligo queries the network only when asked
+
+2 files: 2 verified · 1.3 kB · <time>

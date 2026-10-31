@@ -330,34 +330,34 @@ func TestEveryAssertionHasACatalogueEntry(t *testing.T) {
 	}
 }
 
-func TestReportRendering(t *testing.T) {
+func TestReportEncodesTheFailedAssertionWithItsDiagnosis(t *testing.T) {
 	dir := t.TempDir()
 	n := write(t, dir, "s.fastq", fastqText("SRR1", 5, "ACGT")[:40])
 	rep := run(t, Options{}, n)
-	var text bytes.Buffer
-	rep.WriteText(&text)
-	for _, want := range []string{"BLOCKING", "structure_invalid", "probable cause:", "suggested action:"} {
-		if !strings.Contains(text.String(), want) {
-			t.Errorf("text report lacks %q:\n%s", want, text.String())
-		}
-	}
-	var js bytes.Buffer
-	if err := rep.WriteJSON(&js, rep.ExitCode(false)); err != nil {
+	encoded, err := json.Marshal(rep)
+	if err != nil {
 		t.Fatal(err)
 	}
 	var decoded struct {
-		SchemaVersion int `json:"schema_version"`
-		ExitCode      int `json:"exit_code"`
-		Files         []struct {
+		Files []struct {
 			Path       string            `json:"path"`
 			Assertions []model.Assertion `json:"assertions"`
 		} `json:"files"`
 	}
-	if err := json.Unmarshal(js.Bytes(), &decoded); err != nil {
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.SchemaVersion != SchemaVersion || decoded.ExitCode != ExitIncomplete || decoded.Files[0].Path != n.String() {
+	if rep.ExitCode(false) != ExitIncomplete || decoded.Files[0].Path != n.String() {
 		t.Fatalf("%+v", decoded)
+	}
+	var diagnosed bool
+	for _, a := range decoded.Files[0].Assertions {
+		if a.ID == "structure_invalid" && !a.Passed && a.Cause != "" && a.Action != "" {
+			diagnosed = true
+		}
+	}
+	if !diagnosed {
+		t.Fatalf("the failed assertion carries no cause or action: %+v", decoded.Files[0].Assertions)
 	}
 }
 

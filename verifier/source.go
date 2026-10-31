@@ -3,9 +3,9 @@ package verifier
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/colligo-go/colligo/diagnoses"
 	"github.com/colligo-go/colligo/format"
@@ -48,6 +48,15 @@ type RunReport struct {
 	Declared   model.RunCounts   `json:"declared"`
 	Files      []RunFile         `json:"files"`
 	Assertions []model.Assertion `json:"assertions"`
+	Measured   *RunTotals        `json:"-"`
+}
+
+// RunTotals are the reads and bases counted over every file of a run. It is
+// nil on a RunReport when the totals could not be counted: a file failed
+// before the comparison, or one of them held no FASTQ records.
+type RunTotals struct {
+	Reads int64
+	Bases int64
 }
 
 // RunFile is one file the source lists for a run. Local is nil when no
@@ -210,7 +219,9 @@ func linkByContent(reports []*FileReport, samples []model.Sample, claims map[int
 // declared file are ambiguous. The files of a run
 // that fails get source_run_failed rather than a copy of the run assertion,
 // whose observed count is not the count of any one file.
-func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declaration, opts Options) (Report, error) {
+func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declaration, opts Options) (report Report, err error) {
+	start := time.Now()
+	defer func() { report.Elapsed = time.Since(start) }()
 	claims, files, rivals := link(names, decl.Samples)
 	expected := make([]Expected, len(names))
 	for k, c := range claims {
@@ -280,7 +291,9 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 			}
 		}
 		run.Assertions = append([]model.Assertion{statusAssertion(s)}, run.Assertions...)
-		run.Assertions = append(run.Assertions, contentAssertions(s, linked, blocker)...)
+		content, totals := contentAssertions(s, linked, blocker)
+		run.Assertions = append(run.Assertions, content...)
+		run.Measured = totals
 		condemn(s.Accession, run.Assertions, linked)
 		src.Runs = append(src.Runs, run)
 	}
@@ -350,14 +363,18 @@ type runContent struct {
 	unreadable string
 }
 
-func contentAssertions(s model.Sample, linked []*FileReport, blocker string) []model.Assertion {
+func contentAssertions(s model.Sample, linked []*FileReport, blocker string) ([]model.Assertion, *RunTotals) {
 	if len(s.Artifacts) == 0 {
-		return skipped(contentIDs, NoFilesListed)
+		return skipped(contentIDs, NoFilesListed), nil
 	}
 	if blocker != "" {
-		return skipped(contentIDs, blocker)
+		return skipped(contentIDs, blocker), nil
 	}
 	c := measure(s, linked)
+	var totals *RunTotals
+	if c.unreadable == "" {
+		totals = &RunTotals{Reads: sumOf(c.records), Bases: c.bases}
+	}
 	var out []model.Assertion
 	baseHolds := true
 	if s.Declared.BaseCount == nil {
@@ -383,7 +400,15 @@ func contentAssertions(s model.Sample, linked []*FileReport, blocker string) []m
 	if a, judged := layoutAssertion(s, c); judged {
 		out = append(out, a)
 	}
-	return out
+	return out, totals
+}
+
+func sumOf(counts []int64) int64 {
+	var total int64
+	for _, n := range counts {
+		total += n
+	}
+	return total
 }
 
 func measure(s model.Sample, linked []*FileReport) runContent {
@@ -482,40 +507,4 @@ func layoutAssertion(s model.Sample, c runContent) (model.Assertion, bool) {
 		return newAssertion(diagnoses.LayoutMismatch, true, values), true
 	}
 	return model.Assertion{}, false
-}
-
-func (s *SourceReport) writeText(w io.Writer) {
-	if s == nil {
-		return
-	}
-	fmt.Fprintf(w, "\nsource %s, accession %s: %d run(s)\n", s.ID, s.Accession, len(s.Runs))
-	writeAssertions(w, s.Assertions)
-	for _, r := range s.Runs {
-		present := 0
-		for _, f := range r.Files {
-			if f.Local != nil {
-				present++
-			}
-		}
-		fmt.Fprintf(w, "run %s (%s, %s)\n  %d of %d listed file(s) present\n",
-			r.Accession, orUnknown(r.Layout), orUnknown(r.Status), present, len(r.Files))
-		for _, f := range r.Files {
-			if f.LinkedBy == LinkedByMD5 {
-				fmt.Fprintf(w, "  %s stands for %s (same MD5 and size, not the same name)\n", *f.Local, f.Name)
-			}
-		}
-		writeAssertions(w, r.Assertions)
-		for _, a := range r.Assertions {
-			if a.ID == diagnoses.ReadCountUnexplained && a.Passed {
-				fmt.Fprintf(w, "  read_count %s\n", a.Observed)
-			}
-		}
-	}
-}
-
-func orUnknown(v string) string {
-	if v == "" {
-		return "not declared"
-	}
-	return v
 }

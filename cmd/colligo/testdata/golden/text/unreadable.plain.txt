@@ -1,0 +1,25 @@
+✗ FAILED  1 file could not be read: nothing is verified for it  exit 2
+
+✗ read_failed · fatal · M10
+  Problem  The file could not be read: open: permission denied.
+           in locked.fastq
+  Likely   (hypothesis) The disk, the network filesystem or the permissions failed while reading.
+  Do       Check the path, the permissions and the health of the storage, then run the check again.
+
+File          Reads  Bases  Bases/read  Result
+good.fastq       10    100        10.0  ✓ verified
+locked.fastq      -      -           -  ✗ unreadable
+
+Checked
+  ✓ format and structure of 1 file
+
+Not checked
+  – comparison with a source: not made; Colligo queries the network only when asked
+
+What to do
+  1. Check the path, the permissions and the health of the storage, then run the check again.
+
+2 files: 1 verified, 1 unreadable · 311 B · <time>
+
+Explain
+  colligo explain read_failed

@@ -42,7 +42,7 @@ func TestSamplesheetWithSwappedMateIsExit3AndNamesTheLines(t *testing.T) {
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d, want 3\n%s", code, out)
 	}
-	for _, want := range []string{"BLOCKING", "sheet_mates_swapped", "lines 2 and 3", "pair_ids"} {
+	for _, want := range []string{"✗ FAILED", "sheet_mates_swapped · blocking", "lines 2 and 3", "pair_ids"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the report lacks %q:\n%s", want, out)
 		}
@@ -61,7 +61,7 @@ func TestSamplesheetWithRepeatedLanesIsExit0AndRelativePathsFollowTheSheet(t *te
 	if code != verifier.ExitOK {
 		t.Fatalf("exit %d\n%s%s", code, out, errText)
 	}
-	if !strings.Contains(out, "6 file(s): 6 verified") {
+	if !strings.Contains(out, "6 files: 6 verified") || !strings.Contains(out, "samplesheet: 6 files pass every check run") {
 		t.Fatalf("every file must be verified once:\n%s", out)
 	}
 }

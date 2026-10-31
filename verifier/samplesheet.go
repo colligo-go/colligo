@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/colligo-go/colligo/diagnoses"
 	"github.com/colligo-go/colligo/internal/fsaccess"
@@ -48,7 +49,9 @@ func (s *sheetRun) attach(a model.Assertion, reports ...*FileReport) {
 // about them: which files are mates and which lines are the same data. Mates
 // are the ones the samplesheet declares, not the ones the names suggest. A
 // remote location is blocking, because nothing about it is checked.
-func CheckSamplesheet(ctx context.Context, sheet samplesheet.Sheet, opts Options) (Report, error) {
+func CheckSamplesheet(ctx context.Context, sheet samplesheet.Sheet, opts Options) (report Report, err error) {
+	start := time.Now()
+	defer func() { report.Elapsed = time.Since(start) }()
 	names := localNames(sheet)
 	reports, err := checkFiles(ctx, names, opts, nil)
 	if err != nil {
@@ -82,7 +85,7 @@ func CheckSamplesheet(ctx context.Context, sheet samplesheet.Sheet, opts Options
 	for _, r := range run.touched {
 		r.finalize()
 	}
-	return Report{Files: files}, nil
+	return Report{Files: files, FromSamplesheet: true}, nil
 }
 
 func indexOf(names []secret.Name, name secret.Name) int {

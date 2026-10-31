@@ -1,10 +1,10 @@
 package verifier
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/colligo-go/colligo/facts"
 	"github.com/colligo-go/colligo/model"
@@ -49,6 +49,13 @@ func (r *FileReport) String() string { return fmt.Sprintf("%s: %s", r.Name, r.St
 
 func (r *FileReport) Worst() model.Severity { return worstOf(r.Assertions) }
 
+// Records returns the reads and bases counted in the single read of the
+// file. ok is false when the file has no FASTQ records to count.
+func (r *FileReport) Records() (reads, bases int64, ok bool) {
+	rec, ok := recordsOf(r.Result)
+	return rec.Records, rec.Bases, ok
+}
+
 func worstOf(as []model.Assertion) model.Severity {
 	var worst model.Severity
 	for _, a := range as {
@@ -70,12 +77,16 @@ func (r *FileReport) finalize() {
 	r.Status = r.passStatus
 }
 
+// Report is what a check found, with no presentation in it. The fields
+// tagged "-" never reach the JSON document: they exist for the renderers.
 type Report struct {
-	Files        []*FileReport `json:"files"`
-	Skipped      []string      `json:"skipped,omitempty"`
-	SkippedLinks []string      `json:"skipped_directory_links,omitempty"`
-	Source       *SourceReport `json:"source,omitempty"`
-	Quick        bool          `json:"-"`
+	Files           []*FileReport `json:"files"`
+	Skipped         []string      `json:"skipped,omitempty"`
+	SkippedLinks    []string      `json:"skipped_directory_links,omitempty"`
+	Source          *SourceReport `json:"source,omitempty"`
+	Quick           bool          `json:"-"`
+	FromSamplesheet bool          `json:"-"`
+	Elapsed         time.Duration `json:"-"`
 }
 
 func (r Report) ExitCode(permissive bool) int {
@@ -100,87 +111,6 @@ func (r Report) ExitCode(permissive bool) int {
 		return ExitQuick
 	}
 	return ExitOK
-}
-
-type jsonReport struct {
-	SchemaVersion int           `json:"schema_version"`
-	Files         []*FileReport `json:"files"`
-	Skipped       []string      `json:"skipped,omitempty"`
-	SkippedLinks  []string      `json:"skipped_directory_links,omitempty"`
-	Source        *SourceReport `json:"source,omitempty"`
-	ExitCode      int           `json:"exit_code"`
-}
-
-func (r Report) WriteJSON(w io.Writer, exitCode int) error {
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(jsonReport{SchemaVersion: SchemaVersion, Files: r.Files, Skipped: r.Skipped, SkippedLinks: r.SkippedLinks, Source: r.Source, ExitCode: exitCode})
-}
-
-func (r Report) WriteText(w io.Writer) {
-	counts := map[string]int{}
-	for _, f := range r.Files {
-		counts[f.Status]++
-		fmt.Fprintf(w, "%s\n  %s\n", f.Name, summaryLine(f))
-		writeAssertions(w, f.Assertions)
-	}
-	for _, s := range r.Skipped {
-		fmt.Fprintf(w, "%s\n  skipped: not a recognised data file\n", s)
-	}
-	for _, s := range r.SkippedLinks {
-		fmt.Fprintf(w, "%s\n  skipped: symbolic link to a directory, not followed\n", s)
-	}
-	r.Source.writeText(w)
-	fmt.Fprintf(w, "\n%d file(s): %d verified, %d valid, %d quick, %d invalid, %d unreadable\n",
-		len(r.Files), counts[StatusVerified], counts[StatusValid], counts[StatusQuick], counts[StatusInvalid], counts[StatusUnreadable])
-}
-
-func writeAssertions(w io.Writer, as []model.Assertion) {
-	for _, a := range as {
-		if a.Passed || a.Skipped {
-			continue
-		}
-		fmt.Fprintf(w, "  [%s] %s (%s): %s\n", upper(a.Severity), a.ID, a.Mode, a.Observation)
-		fmt.Fprintf(w, "      probable cause: %s\n      suggested action: %s\n", a.Cause, a.Action)
-	}
-	for _, a := range as {
-		if !a.Skipped {
-			continue
-		}
-		switch a.SkippedBy {
-		case NotDeclared:
-			fmt.Fprintf(w, "  (%s not evaluated: the source does not declare the value)\n", a.ID)
-		case NoFilesListed:
-			fmt.Fprintf(w, "  (%s not evaluated: the source lists no file for the run)\n", a.ID)
-		default:
-			fmt.Fprintf(w, "  (%s not evaluated: %s failed, and everything below it depends on it)\n", a.ID, a.SkippedBy)
-		}
-	}
-}
-
-func upper(s model.Severity) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'a' && c <= 'z' {
-			b[i] = c - 32
-		}
-	}
-	return string(b)
-}
-
-func summaryLine(f *FileReport) string {
-	kind := f.Content
-	if kind == "" {
-		kind = "unknown"
-	}
-	if f.Container != "" && f.Container != "none" {
-		kind += " in " + f.Container
-	}
-	line := fmt.Sprintf("%s: %s, %d bytes", f.Status, kind, f.Size)
-	if f.Status == StatusQuick {
-		line += " (content was not read in full)"
-	}
-	return line
 }
 
 func (r Report) WriteChecksums(sha256sum, b3sum io.Writer) error {

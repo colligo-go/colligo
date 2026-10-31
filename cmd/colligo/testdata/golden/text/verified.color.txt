@@ -1,0 +1,14 @@
+[32m✓ VERIFIED[0m  2 files pass every check run  [2mexit 0[0m
+
+[2mFile[0m             [2mReads[0m  [2mBases[0m  [2mBases/read[0m  [2mResult[0m
+sample_R1.fastq     20    200        10.0  [32m✓ verified[0m
+sample_R2.fastq     20    200        10.0  [32m✓ verified[0m
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 2 files
+  [32m✓[0m the mates among 2 files agree in read count and read names
+
+[1mNot checked[0m
+  [2m–[0m comparison with a source: not made; Colligo queries the network only when asked
+
+[2m2 files: 2 verified · 1.3 kB · <time>[0m

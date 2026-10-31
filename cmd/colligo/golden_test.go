@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -151,5 +152,25 @@ func TestJSONGolden(t *testing.T) {
 			goldenFile(t, filepath.Join("json", c.name+".json"), normalized(out, dir))
 			goldenFile(t, filepath.Join("json", c.name+".exit"), strconv.Itoa(code)+"\n")
 		})
+	}
+}
+
+var elapsedPattern = regexp.MustCompile(`(?m)( · )(\d+ ms|\d+\.\d s|\d+ m \d{2} s|\d+ h \d{2} m)(\x1b\[0m)?$`)
+
+func normalizedText(out, dir string) string {
+	return elapsedPattern.ReplaceAllString(normalized(out, dir), "${1}<time>${3}")
+}
+
+func TestTextGolden(t *testing.T) {
+	for _, c := range goldenCases() {
+		for _, mode := range []string{"never", "always"} {
+			t.Run(c.name+"/"+mode, func(t *testing.T) {
+				dir := t.TempDir()
+				code, out := c.prepare(t, dir)("--color=" + mode)
+				suffix := map[string]string{"never": "plain", "always": "color"}[mode]
+				goldenFile(t, filepath.Join("text", c.name+"."+suffix+".txt"), normalizedText(out, dir))
+				goldenFile(t, filepath.Join("text", c.name+".exit"), strconv.Itoa(code)+"\n")
+			})
+		}
 	}
 }

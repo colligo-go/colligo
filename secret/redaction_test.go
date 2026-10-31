@@ -51,6 +51,7 @@ var domainTypes = map[string]reflect.Type{
 	"verifier.SourceReport":   reflect.TypeOf(verifier.SourceReport{}),
 	"verifier.RunReport":      reflect.TypeOf(verifier.RunReport{}),
 	"verifier.RunFile":        reflect.TypeOf(verifier.RunFile{}),
+	"verifier.RunTotals":      reflect.TypeOf(verifier.RunTotals{}),
 	"manifest.Tool":           reflect.TypeOf(manifest.Tool{}),
 	"manifest.Certificate":    reflect.TypeOf(manifest.Certificate{}),
 	"diagnoses.Entry":         reflect.TypeOf(diagnoses.Entry{}),

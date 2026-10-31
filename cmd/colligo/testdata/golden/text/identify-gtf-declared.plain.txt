@@ -1,0 +1,17 @@
+! NOT CONFIRMED  declared.gtf says it is GENCODE 44, and nothing official confirms it  exit 0
+
+! declared.gtf  declared
+  header says  GENCODE 44
+  release      44
+  organism     human
+  assembly     GRCh38
+  ensembl      110
+  note         the header declares GENCODE 44, and a header can be edited: no official checksum matches this file
+
+Checked
+  ✓ MD5 of 1 file against the official checksums Colligo carries
+
+Not checked
+  – that the header of 1 GTF is true: only a matching official checksum proves it
+
+1 file: 1 declared · 297 B · <time>

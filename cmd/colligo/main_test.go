@@ -97,7 +97,7 @@ func TestCheckDirectoryWithPairAndTruncatedFileNeedsNoConfiguration(t *testing.T
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
-	for _, want := range []string{"The gzip structure is broken", "probable cause:", "suggested action:", "skipped: not a recognised data file"} {
+	for _, want := range []string{"The gzip structure is broken", "Likely", "Do ", "1 other file skipped"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
 		}
@@ -153,7 +153,7 @@ func TestValidateOnlyChecksStructure(t *testing.T) {
 func TestQuickIsNeverReportedAsVerified(t *testing.T) {
 	p := put(t, t.TempDir(), "s.fastq", fastq("S", 20))
 	code, out, _ := invoke("check", "--quick", p)
-	if code != verifier.ExitQuick || strings.Contains(out, "\n  verified:") || !strings.Contains(out, "quick: fastq") || !strings.Contains(out, "content was not read in full") {
+	if code != verifier.ExitQuick || strings.Contains(out, "✓") || !strings.Contains(out, "! QUICK") || !strings.Contains(out, "! quick (not read in full)") || !strings.Contains(out, "exit 5") {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 }
@@ -245,7 +245,7 @@ func TestFatalInOneFileStillChecksTheOthers(t *testing.T) {
 	if code != verifier.ExitFatal {
 		t.Fatalf("exit %d, want 2\n%s", code, out)
 	}
-	if !strings.Contains(out, "html_body") || !strings.Contains(out, "verified: fastq") {
+	if !strings.Contains(out, "html_body") || !strings.Contains(out, "✓ verified") {
 		t.Fatalf("the healthy file must still be checked and reported:\n%s", out)
 	}
 }

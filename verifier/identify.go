@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
+	"time"
 
 	"github.com/colligo-go/colligo/facts"
 	"github.com/colligo-go/colligo/format"
@@ -219,6 +219,7 @@ func unreadableIdentity(answer *Identification, err error) *Identification {
 
 // IdentifyAll identifies each file in order, one at a time.
 func IdentifyAll(ctx context.Context, names []secret.Name, table identity.Table) (IdentifyReport, error) {
+	start := time.Now()
 	report := IdentifyReport{}
 	for _, name := range names {
 		answer, err := IdentifyFile(ctx, name, table)
@@ -227,11 +228,13 @@ func IdentifyAll(ctx context.Context, names []secret.Name, table identity.Table)
 		}
 		report.Files = append(report.Files, answer)
 	}
+	report.Elapsed = time.Since(start)
 	return report, nil
 }
 
 type IdentifyReport struct {
-	Files []*Identification `json:"files"`
+	Files   []*Identification `json:"files"`
+	Elapsed time.Duration     `json:"-"`
 }
 
 // ExitCode is 2 when a file could not be read, 3 when a file is not a valid
@@ -248,69 +251,4 @@ func (r IdentifyReport) ExitCode() int {
 		}
 	}
 	return code
-}
-
-type jsonIdentify struct {
-	SchemaVersion int               `json:"schema_version"`
-	Files         []*Identification `json:"files"`
-	ExitCode      int               `json:"exit_code"`
-}
-
-func (r IdentifyReport) WriteJSON(w io.Writer) error {
-	files := r.Files
-	if files == nil {
-		files = []*Identification{}
-	}
-	enc := json.NewEncoder(w)
-	enc.SetIndent("", "  ")
-	return enc.Encode(jsonIdentify{SchemaVersion: IdentifySchemaVersion, Files: files, ExitCode: r.ExitCode()})
-}
-
-func (r IdentifyReport) WriteText(w io.Writer) {
-	for _, f := range r.Files {
-		fmt.Fprintf(w, "%s\n", f.Name)
-		switch f.Status {
-		case IdentityIdentified:
-			writeIdentified(w, f)
-		case IdentityDeclared:
-			fmt.Fprintf(w, "  declared: %s\n", f.Gencode.Label)
-			writeGencode(w, f.Gencode)
-			fmt.Fprintf(w, "  note: %s\n", f.Reason)
-		case IdentityConflict:
-			fmt.Fprintf(w, "  conflict: %s\n", f.Reason)
-			writeGencode(w, f.Gencode)
-		case IdentityNotIdentified:
-			fmt.Fprintf(w, "  not identified: %s\n", f.Reason)
-			if f.Seqcol != nil {
-				fmt.Fprintf(w, "  seqcol: %s (%d sequences)\n", f.Seqcol.Digest, f.Seqcol.Sequences)
-			}
-		default:
-			fmt.Fprintf(w, "  %s: %s\n", f.Status, f.Reason)
-		}
-	}
-}
-
-func writeIdentified(w io.Writer, f *Identification) {
-	if f.Checksum != nil {
-		fmt.Fprintf(w, "  identified: %s (%s)\n  md5: %s\n  source: %s, read on %s\n", f.Checksum.Label, f.Checksum.Asset, f.Checksum.MD5, f.Checksum.Origin, f.Checksum.Retrieved)
-	}
-	if f.Reference != nil {
-		if f.Checksum == nil {
-			fmt.Fprintf(w, "  identified: %s\n", f.Reference.Label)
-		}
-		fmt.Fprintf(w, "  seqcol: %s (%d sequences)\n  source: %s\n", f.Seqcol.Digest, f.Seqcol.Sequences, f.Reference.Source)
-	}
-}
-
-func writeGencode(w io.Writer, g *identity.Gencode) {
-	if g == nil {
-		return
-	}
-	fmt.Fprintf(w, "  release: %s\n  organism: %s\n", g.Release, g.Organism)
-	if g.Assembly != "" {
-		fmt.Fprintf(w, "  assembly: %s\n", g.Assembly)
-	}
-	if g.Ensembl != "" {
-		fmt.Fprintf(w, "  ensembl: %s\n", g.Ensembl)
-	}
 }

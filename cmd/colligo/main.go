@@ -17,6 +17,8 @@ import (
 	"github.com/colligo-go/colligo/identity"
 	"github.com/colligo-go/colligo/internal/buildinfo"
 	"github.com/colligo-go/colligo/manifest"
+	jsonout "github.com/colligo-go/colligo/render/json"
+	"github.com/colligo-go/colligo/render/text"
 	"github.com/colligo-go/colligo/samplesheet"
 	"github.com/colligo-go/colligo/secret"
 	"github.com/colligo-go/colligo/transport"
@@ -74,6 +76,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 type settings struct {
+	presentation
 	jsonOut     bool
 	permissive  bool
 	recursive   bool
@@ -92,6 +95,7 @@ func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.Fla
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.BoolVar(&s.jsonOut, "json", false, "write the report as JSON")
+	s.presentation.bind(fs)
 	fs.BoolVar(&s.permissive, "permissive", false, "exit 0 on blocking failures; nothing is hidden")
 	fs.BoolVar(&s.recursive, "recursive", false, "descend into subdirectories")
 	fs.StringVar(&s.format, "format", "", "declare the format: fastq, fasta, gtf, gzip or bgzf")
@@ -151,6 +155,10 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 		if errors.Is(err, flag.ErrHelp) {
 			return verifier.ExitOK
 		}
+		return verifier.ExitUsage
+	}
+	if err := s.presentation.validate(); err != nil {
+		fmt.Fprintf(stderr, "colligo %s: %v\n", command, err)
 		return verifier.ExitUsage
 	}
 	if s.samplesheet != "" && s.source != "" {
@@ -223,13 +231,15 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 }
 
 func emit(report verifier.Report, code int, s *settings, stdout, stderr io.Writer) int {
+	var err error
 	if s.jsonOut {
-		if err := report.WriteJSON(stdout, code); err != nil {
-			fmt.Fprintf(stderr, "colligo: %v\n", err)
-			return verifier.ExitFatal
-		}
+		err = jsonout.Check(stdout, report, code)
 	} else {
-		report.WriteText(stdout)
+		err = text.Check(stdout, report, s.presentation.options(stdout, code, s.permissive))
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "colligo: %v\n", err)
+		return verifier.ExitFatal
 	}
 	if s.crossCheck {
 		if err := writeCrossCheck(report); err != nil {

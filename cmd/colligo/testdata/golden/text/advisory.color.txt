@@ -1,0 +1,29 @@
+[33m! ADVISORY[0m  ERR5060520 matches ENA, with 1 note  [2mexit 0[0m
+
+[1mRun ERR5060520[0m[2m  SINGLE · ENA status public[0m
+  [2mBases  [0m  1,862,354 declared by ENA, 1,862,354 observed (0%)
+  [33m! layout_mismatch[0m[2m · advisory · M15[0m
+    [2mProblem[0m  Run ERR5060520 is labelled SINGLE, but its files form a pair (ERR5060520_1.fastq.gz and ERR5060520_2.fastq.gz).
+    [2mLikely [0m  (hypothesis) The library layout recorded at the source is wrong; the data itself is intact.
+    [2mDo     [0m  Treat the files as mates of one sample; a pipeline that trusts the label would treat them as two single-end samples.
+  [2mFile[0m                [2mReads[0m    [2mBases[0m  [2mBases/read[0m  [2mResult[0m
+  ERR5060520_1.fastq  4,007  932,730       232.8  [32m✓ verified[0m
+  ERR5060520_2.fastq  4,007  929,624       232.0  [32m✓ verified[0m
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 2 files
+  [32m✓[0m the mates among 2 files agree in read count and read names
+  [32m✓[0m ENA lists 1 run as public
+  [32m✓[0m the bases of 1 run match what ENA declares
+  [32m✓[0m the read count of 1 run matches a reading seen in real runs
+
+[1mNot checked[0m
+  [2m–[0m MD5 and size of 2 extracted files: not the published .gz, so they cannot match its MD5
+
+[1mWhat to do[0m
+  1. Treat the files as mates of one sample; a pipeline that trusts the label would treat them as two single-end samples.
+
+[2m2 files: 2 verified · 1 run: 1 with a note · 3.9 MB · <time>[0m
+
+[1mExplain[0m
+  colligo explain layout_mismatch

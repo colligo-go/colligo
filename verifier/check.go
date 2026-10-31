@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -172,7 +173,9 @@ func checkFiles(ctx context.Context, names []secret.Name, opts Options, expected
 	return reports, nil
 }
 
-func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, error) {
+func CheckAll(ctx context.Context, names []secret.Name, opts Options) (report Report, err error) {
+	start := time.Now()
+	defer func() { report.Elapsed = time.Since(start) }()
 	reports, err := checkFiles(ctx, names, opts, nil)
 	if err != nil {
 		return Report{}, err

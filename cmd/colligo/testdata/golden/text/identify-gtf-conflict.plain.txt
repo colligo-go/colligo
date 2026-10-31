@@ -1,0 +1,14 @@
+✗ FAILED  conflict.gtf says it is GENCODE 44, but its content says otherwise  exit 3
+
+✗ conflict.gtf  conflict
+  header says  GENCODE 44
+  release      44
+  organism     human
+  assembly     GRCh38
+  ensembl      110
+  problem      the header says GENCODE 44, but the sequence names follow the Ensembl convention (1, X, MT), and GENCODE names start with chr
+
+Checked
+  ✓ MD5 of 1 file against the official checksums Colligo carries
+
+1 file: 1 conflict · 294 B · <time>

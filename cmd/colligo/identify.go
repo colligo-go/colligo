@@ -11,6 +11,8 @@ import (
 	"syscall"
 
 	"github.com/colligo-go/colligo/identity"
+	jsonout "github.com/colligo-go/colligo/render/json"
+	"github.com/colligo-go/colligo/render/text"
 	"github.com/colligo-go/colligo/verifier"
 )
 
@@ -18,11 +20,17 @@ func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) 
 	fs := flag.NewFlagSet("identify", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	jsonOut := fs.Bool("json", false, "write the answer as JSON")
+	var present presentation
+	present.bind(fs)
 	paths, err := parseInterleaved(fs, args)
 	if err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return verifier.ExitOK
 		}
+		return verifier.ExitUsage
+	}
+	if err := present.validate(); err != nil {
+		fmt.Fprintf(stderr, "colligo identify: %v\n", err)
 		return verifier.ExitUsage
 	}
 	if len(paths) == 0 {
@@ -45,13 +53,15 @@ func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) 
 	if err != nil {
 		return failed(err, stderr)
 	}
+	code := report.ExitCode()
 	if *jsonOut {
-		if err := report.WriteJSON(stdout); err != nil {
-			fmt.Fprintf(stderr, "colligo: %v\n", err)
-			return verifier.ExitFatal
-		}
+		err = jsonout.Identify(stdout, report)
 	} else {
-		report.WriteText(stdout)
+		err = text.Identify(stdout, report, present.options(stdout, code, false))
 	}
-	return report.ExitCode()
+	if err != nil {
+		fmt.Fprintf(stderr, "colligo: %v\n", err)
+		return verifier.ExitFatal
+	}
+	return code
 }

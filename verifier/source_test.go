@@ -227,12 +227,8 @@ func TestSourceSuppressedRunWithoutFilesIsReported(t *testing.T) {
 	if code := rep.ExitCode(false); code != ExitIncomplete {
 		t.Fatalf("exit %d", code)
 	}
-	var text bytes.Buffer
-	rep.WriteText(&text)
-	for _, want := range []string{"run ERR1 (PAIRED, suppressed)", "0 of 0 listed file(s) present", "source_status", "the source lists no file"} {
-		if !strings.Contains(text.String(), want) {
-			t.Errorf("text lacks %q:\n%s", want, text.String())
-		}
+	if run := rep.Source.Runs[0]; run.Accession != "ERR1" || run.Layout != "PAIRED" || run.Status != "suppressed" || len(run.Files) != 0 {
+		t.Errorf("run %+v", run)
 	}
 }
 
@@ -339,13 +335,13 @@ func TestSourceReportJSON(t *testing.T) {
 	dir := t.TempDir()
 	r1 := write(t, dir, "R_1.fastq", reads("R", 5, 4))
 	rep := against(t, Declaration{Samples: []model.Sample{sample("R", "PAIRED", "public", nil, count(40), "R_1.fastq.gz", "R_2.fastq.gz")}}, r1)
-	var out bytes.Buffer
-	if err := rep.WriteJSON(&out, rep.ExitCode(false)); err != nil {
+	encoded, err := json.Marshal(rep)
+	if err != nil {
 		t.Fatal(err)
 	}
+	out := bytes.NewBuffer(encoded)
 	var doc struct {
-		SchemaVersion int `json:"schema_version"`
-		Source        struct {
+		Source struct {
 			ID        string `json:"id"`
 			Accession string `json:"accession"`
 			Runs      []struct {
@@ -366,7 +362,7 @@ func TestSourceReportJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	run := doc.Source.Runs[0]
-	if doc.SchemaVersion != 2 || doc.Source.ID != "ena" || run.Accession != "R" || run.Declared.ReadCount != nil || *run.Declared.BaseCount != 40 {
+	if doc.Source.ID != "ena" || run.Accession != "R" || run.Declared.ReadCount != nil || *run.Declared.BaseCount != 40 {
 		t.Fatalf("doc %+v", doc)
 	}
 	if run.Files[0].Local == nil || run.Files[1].Local != nil || run.Files[1].Name != "R_2.fastq.gz" {
@@ -416,16 +412,13 @@ func TestSourceRenamedFilesAreLinkedByMD5(t *testing.T) {
 	if a := runAssertion(t, rep, 0, diagnoses.CountMismatch); !a.Passed {
 		t.Fatalf("the linked files must enter the comparison: %+v", a)
 	}
-	var text bytes.Buffer
-	rep.WriteText(&text)
-	for _, want := range []string{"sample1_R1.fastq.gz stands for SRR1_1.fastq.gz", "same MD5 and size"} {
-		if !strings.Contains(text.String(), want) {
-			t.Errorf("text lacks %q:\n%s", want, text.String())
-		}
+	linked := rep.Source.Runs[0].Files[0]
+	if linked.LinkedBy != LinkedByMD5 || linked.Local == nil || filepath.Base(linked.Local.String()) != "sample1_R1.fastq.gz" || linked.Name.String() != "SRR1_1.fastq.gz" {
+		t.Errorf("the renamed file must be linked by content: %+v", linked)
 	}
-	var out bytes.Buffer
-	if err := rep.WriteJSON(&out, rep.ExitCode(false)); err != nil || !strings.Contains(out.String(), `"linked_by": "md5"`) && !strings.Contains(out.String(), `"linked_by":"md5"`) {
-		t.Fatalf("json lacks linked_by: %v\n%s", err, out.String())
+	encoded, err := json.Marshal(rep)
+	if err != nil || !strings.Contains(string(encoded), `"linked_by":"md5"`) {
+		t.Fatalf("json lacks linked_by: %v\n%s", err, encoded)
 	}
 }
 

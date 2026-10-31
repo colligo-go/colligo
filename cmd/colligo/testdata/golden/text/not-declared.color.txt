@@ -1,0 +1,24 @@
+[33m! ADVISORY[0m  DRR021374 matches ENA, with 1 note  [2mexit 0[0m
+
+[33m! source_field_empty[0m[2m · advisory · M15[0m
+  [2mProblem[0m  The source record for DRR021374 is incomplete: read_count is empty.
+  [2mLikely [0m  (hypothesis) The archive left a field of the run empty; the comparison that needs it is skipped, not failed.
+  [2mDo     [0m  No action is needed for the data; the report says which comparison was not made.
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 2 files
+  [32m✓[0m the mates among 2 files agree in read count and read names
+  [32m✓[0m ENA lists 1 run as public
+  [32m✓[0m the bases of 1 run match what ENA declares
+
+[1mNot checked[0m
+  [2m–[0m MD5 and size of 2 extracted files: not the published .gz, so they cannot match its MD5
+  [2m–[0m read count of run DRR021374: ENA does not declare it
+
+[1mWhat to do[0m
+  1. No action is needed for the data; the report says which comparison was not made.
+
+[2m2 files: 2 verified · 1 run: 1 match · 7.5 MB · <time>[0m
+
+[1mExplain[0m
+  colligo explain source_field_empty

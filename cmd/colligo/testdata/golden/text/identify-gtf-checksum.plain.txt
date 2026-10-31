@@ -1,0 +1,11 @@
+✓ IDENTIFIED  annotation.gtf is GENCODE human 44  exit 0
+
+✓ annotation.gtf  identified
+  identified  GENCODE human 44 (gencode.v44.annotation.gtf)
+  md5         b003c2c204d25bd8752b2e89c8fd5d83
+  source      https://example.org/MD5SUMS, read on 2026-10-31
+
+Checked
+  ✓ MD5 of 1 file against the official checksums Colligo carries
+
+1 file: 1 identified · 297 B · <time>
