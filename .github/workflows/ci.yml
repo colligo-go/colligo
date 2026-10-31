@@ -71,6 +71,33 @@ jobs:
       - name: Tests
         run: go test -race -count=2 ./...
 
+  multiqc:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        multiqc: ["1.30", "latest"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      - name: Install the module and MultiQC ${{ matrix.multiqc }}
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          if [ "${{ matrix.multiqc }}" = latest ]; then
+            "$RUNNER_TEMP/venv/bin/pip" install './tools/multiqc[test]'
+          else
+            "$RUNNER_TEMP/venv/bin/pip" install './tools/multiqc[test]' 'multiqc==${{ matrix.multiqc }}'
+          fi
+          "$RUNNER_TEMP/venv/bin/pip" list | grep -i '^multiqc'
+
+      - name: Tests
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" -m pytest tools/multiqc
+
   fuzz:
     runs-on: ubuntu-24.04
     strategy:

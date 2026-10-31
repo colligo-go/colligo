@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "testdata/synthetic/truncated.fastq.gz",
+      "status": "invalid",
+      "container": "gzip",
+      "content": "fastq",
+      "size": 59641,
+      "blake3_root": "f86b07ad7c4576b657af5811582e70b05da8aa7a7b2ae5eee41f3ee1244c519f",
+      "md5": "6c7f2856c98bfe845ba40a76c1acaee3",
+      "sha256": "a097f3ae07daf1c3e269e2137d22a5792af28eb57d4b77edff1cef69617f398d",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "magic_mismatch",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "gzip",
+          "observed": "gzip"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "valid",
+          "observed": "unexpected EOF (at byte 59641)",
+          "observation": "The gzip structure is broken: unexpected EOF (at byte 59641).",
+          "probable_cause": "The file ends before it should or contains damaged data, as a cut-off download or a failed write does.",
+          "suggested_action": "Download the file again; tools downstream may accept it silently and produce plausible but wrong numbers."
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "structure_invalid",
+          "declared": "",
+          "observed": ""
+        },
+        {
+          "id": "format_declared",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "structure_invalid",
+          "declared": "",
+          "observed": ""
+        },
+        {
+          "id": "count_mismatch",
+          "mode": "M15",
+          "severity": "blocking",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "structure_invalid",
+          "declared": "",
+          "observed": ""
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "structure_invalid",
+          "declared": "",
+          "observed": ""
+        }
+      ]
+    }
+  ],
+  "exit_code": 0
+}

@@ -36,6 +36,10 @@ Tested on 2026-10-31 with Nextflow 26.10.4 and nf-core/tools 4.2.1:
 
 Spec consulted on 2026-10-31: [nf-core modules specifications](https://nf-co.re/docs/specifications/components/modules/) and the live `modules/nf-core/fastqc` module as the template.
 
+## MultiQC module
+
+`tools/multiqc/` is a MultiQC plugin that shows the `*.colligo.json` files this module emits (install and use: `tools/multiqc/README.md`). It is not part of either draft and is not submitted anywhere.
+
 ## What is missing to submit
 
 1. Tag `v0.2.0`, then fill `sha256` and `commit` in `meta.yaml`.

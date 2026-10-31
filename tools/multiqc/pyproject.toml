@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multiqc-colligo"
+version = "0.1.0"
+description = "A MultiQC module that shows the report of colligo check --json"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["multiqc>=1.30,<2"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.entry-points."multiqc.modules.v1"]
+colligo = "multiqc_colligo.module:MultiqcModule"
+
+[project.entry-points."multiqc.hooks.v1"]
+config_loaded = "multiqc_colligo.hooks:register_search_pattern"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

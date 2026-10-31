@@ -1,0 +1,76 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/good.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 311,
+      "blake3_root": "a13dcf5c6ba7506c88cccba480d2c2172bb13a7b13f566ec8033701171fa85c4",
+      "md5": "e5f5d80af92306d25038970f55691170",
+      "sha256": "0c4230c48ae0e0f7eba1edce4d5e77ad9a4a4cd915d01c837d7c30e90a4ffb31",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/locked.fastq",
+      "status": "unreadable",
+      "size": 0,
+      "assertions": [
+        {
+          "id": "read_failed",
+          "mode": "M10",
+          "severity": "fatal",
+          "passed": false,
+          "declared": "",
+          "observed": "",
+          "observation": "The file could not be read: open: permission denied.",
+          "probable_cause": "The disk, the network filesystem or the permissions failed while reading.",
+          "suggested_action": "Check the path, the permissions and the health of the storage, then run the check again."
+        }
+      ]
+    }
+  ],
+  "exit_code": 2
+}
