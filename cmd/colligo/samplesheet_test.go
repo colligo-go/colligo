@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -141,6 +144,46 @@ func TestSamplesheetOtherUsageErrors(t *testing.T) {
 	} {
 		if code, _, _ := invoke(args...); code != verifier.ExitUsage {
 			t.Errorf("%v: exit %d, want 1", args[1:], code)
+		}
+	}
+}
+
+func TestSamplesheetCrossCheckAndCertificatesCoverFilesInSeveralDirectories(t *testing.T) {
+	work := t.TempDir()
+	for _, sub := range []string{"sheet", "runA", "runB"} {
+		if err := os.Mkdir(filepath.Join(work, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	putMates(t, filepath.Join(work, "runA"), "a", "AAA", 8, ".fastq.gz", true)
+	putMates(t, filepath.Join(work, "runB"), "b", "BBB", 8, ".fastq", false)
+	runB := filepath.Join(work, "runB")
+	put(t, filepath.Join(work, "sheet"), "samples.csv", []byte("sample,fastq_1,fastq_2\n"+
+		"A,../runA/a_R1.fastq.gz,../runA/a_R2.fastq.gz\n"+
+		"B,"+filepath.Join(runB, "b_R1.fastq")+","+filepath.Join(runB, "b_R2.fastq")+"\n"+
+		"C,s3://bucket/c_R1.fq.gz,s3://bucket/c_R2.fq.gz\n"))
+	t.Chdir(work)
+
+	code, out, errText := invoke("check", "--samplesheet", filepath.Join("sheet", "samples.csv"), "--cross-check", "--certificate")
+	if code != verifier.ExitIncomplete || !strings.Contains(out, "sheet_remote_path") {
+		t.Fatalf("exit %d, want 3 for the remote row\n%s%s", code, out, errText)
+	}
+	for _, f := range []string{"colligo.sha256", "colligo.b3"} {
+		raw, err := os.ReadFile(filepath.Join(work, f))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(raw)), "\n")
+		if len(lines) != 4 || strings.Contains(string(raw), "s3://") || !strings.Contains(string(raw), filepath.Join("runA", "a_R1.fastq.gz")) {
+			t.Fatalf("%s must list the four local files and no remote one:\n%s", f, raw)
+		}
+	}
+	if out, err := exec.Command("sha256sum", "-c", "colligo.sha256").CombinedOutput(); err != nil {
+		t.Fatalf("sha256sum -c from the working directory: %v\n%s", err, out)
+	}
+	for _, p := range []string{"runA/a_R1.fastq.gz", "runA/a_R2.fastq.gz", "runB/b_R1.fastq", "runB/b_R2.fastq"} {
+		if _, err := os.Stat(filepath.Join(work, p+".colligo-cert.json")); err != nil {
+			t.Errorf("no certificate next to %s: %v", p, err)
 		}
 	}
 }
