@@ -30,6 +30,16 @@ const (
 	SheetSharedFile    = "sheet_shared_file"
 	SheetDuplicateRow  = "sheet_duplicate_row"
 	SheetMatesSwapped  = "sheet_mates_swapped"
+
+	SourceStatus         = "source_status"
+	SourceFileMissing    = "source_file_missing"
+	SourceFileUnlisted   = "source_file_unlisted"
+	SourceFileAmbiguous  = "source_file_ambiguous"
+	ReadCountUnexplained = "read_count_unexplained"
+	LayoutMismatch       = "layout_mismatch"
+	SourceRowRejected    = "source_row_rejected"
+	SourceFieldEmpty     = "source_field_empty"
+	SourceRunFailed      = "source_run_failed"
 )
 
 type Entry struct {
@@ -116,7 +126,7 @@ var catalogue = []Entry{
 	},
 	{
 		ID: CountMismatch, Mode: "M15", Severity: model.Blocking,
-		Observation: "The file has {observed} {detail}, but {declared} were expected.",
+		Observation: "The content has {observed} {detail}, but {declared} were expected.",
 		Cause:       "The content is valid but shorter or longer than the source declared, as with an extraction that shortened the reads.",
 		Action:      "Extract or download the file again and compare the counts with the source record.",
 	},
@@ -167,6 +177,60 @@ var catalogue = []Entry{
 		Observation: "The fastq_2 files of samplesheet lines {declared} and {observed} look swapped: each one fits the fastq_1 of the other line.",
 		Cause:       "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
 		Action:      "Exchange the fastq_2 values of those two lines.",
+	},
+	{
+		ID: SourceStatus, Mode: "M16", Severity: model.Blocking,
+		Observation: "The source marks run {detail} as {observed}, not {declared}.",
+		Cause:       "The archive suppressed, withdrew or restricted the run, usually because the data was found to be wrong; nothing on the disk changes when that happens.",
+		Action:      "Read the archive record of the run to learn why, and do not use the data until you know.",
+	},
+	{
+		ID: SourceFileMissing, Mode: "M6", Severity: model.Blocking,
+		Observation: "Run {detail} lists {declared}, but no file checked stands for it.",
+		Cause:       "The file was not downloaded, was left out of the command, or was renamed.",
+		Action:      "Download the missing file or add it to the command; the run is incomplete without it.",
+	},
+	{
+		ID: SourceFileUnlisted, Mode: "M1", Severity: model.Advisory,
+		Observation: "The file {observed} is not one the source lists for {declared}.",
+		Cause:       "The file belongs to another run, was renamed after download, or is a second copy of a listed file.",
+		Action:      "Check that the file belongs here; if it is a renamed download, restore the name the source uses.",
+	},
+	{
+		ID: SourceFileAmbiguous, Mode: "M1", Severity: model.Blocking,
+		Observation: "{observed} files stand for {declared} of run {detail}, so none of them was compared with the source.",
+		Cause:       "The same file name appears in more than one directory checked, and Colligo cannot tell which copy the run should be judged on.",
+		Action:      "Check only one copy, by naming its directory or the files themselves.",
+	},
+	{
+		ID: ReadCountUnexplained, Mode: "M15", Severity: model.Advisory,
+		Observation: "Run {detail} declares {declared} reads, which matches no known reading of the files ({observed}).",
+		Cause:       "The bases agree with the source, so the content is intact; the read_count field of the record means something not yet seen.",
+		Action:      "No action is needed for the data. Report the accession so the reading can be added as a fixture.",
+	},
+	{
+		ID: LayoutMismatch, Mode: "M15", Severity: model.Advisory,
+		Observation: "Run {detail} is labelled {declared}, but its files form a pair ({observed}).",
+		Cause:       "The library layout recorded at the source is wrong; the data itself is intact.",
+		Action:      "Treat the files as mates of one sample; a pipeline that trusts the label would treat them as two single-end samples.",
+	},
+	{
+		ID: SourceRowRejected, Mode: "M15", Severity: model.Blocking,
+		Observation: "The source record for {detail} could not be used: {observed}.",
+		Cause:       "The source returned a malformed row, so what it declares about that run could not be compared with the files.",
+		Action:      "Query the source again later; if the row stays malformed, report it to the archive.",
+	},
+	{
+		ID: SourceRunFailed, Mode: "M15", Severity: model.Blocking,
+		Observation: "The file belongs to run {detail}, which failed {observed} against the source.",
+		Cause:       "The file may be valid on its own, but the run it is part of does not match what the source declares, so none of its files can be trusted alone.",
+		Action:      "Read the report of the run, fix what it names, and check again.",
+	},
+	{
+		ID: SourceFieldEmpty, Mode: "M15", Severity: model.Advisory,
+		Observation: "The source record for {detail} is incomplete: {observed}.",
+		Cause:       "The archive left a field of the run empty; the comparison that needs it is skipped, not failed.",
+		Action:      "No action is needed for the data; the report says which comparison was not made.",
 	},
 }
 

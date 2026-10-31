@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/colligo-go/colligo/diagnoses"
+	"github.com/colligo-go/colligo/model"
 	"github.com/colligo-go/colligo/secret"
 )
 
@@ -90,13 +91,58 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 			writeMates(t, dir, "swap_b", "SWB", 5)
 			return checkSheet(t, dir, "sample,fastq_1,fastq_2\nA,swap_a_R1.fastq,swap_b_R2.fastq\nB,swap_b_R1.fastq,swap_a_R2.fastq\n")
 		},
+		diagnoses.SourceStatus: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR1", "PAIRED", "suppressed", nil, nil)}})
+		},
+		diagnoses.SourceFileMissing: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR2", "SINGLE", "public", nil, nil, "ERR2.fastq.gz")}})
+		},
+		diagnoses.SourceFileUnlisted: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR3", "SINGLE", "public", nil, nil)}},
+				write(t, dir, "stray.fastq", reads(5)))
+		},
+		diagnoses.SourceFileAmbiguous: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR4", "SINGLE", "public", nil, nil, "ERR4.fastq.gz")}},
+				write(t, mkdir(t, filepath.Join(dir, "copy_a")), "ERR4.fastq", reads(5)),
+				write(t, mkdir(t, filepath.Join(dir, "copy_b")), "ERR4.fastq", reads(5)))
+		},
+		diagnoses.ReadCountUnexplained: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR5", "SINGLE", "public", count(6), count(40), "ERR5.fastq.gz")}},
+				write(t, dir, "ERR5.fastq", reads(5)))
+		},
+		diagnoses.LayoutMismatch: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR6", "SINGLE", "public", count(10), count(80), "ERR6_1.fastq.gz", "ERR6_2.fastq.gz")}},
+				write(t, dir, "ERR6_1.fastq", reads(5)),
+				write(t, dir, "ERR6_2.fastq", reads(5)))
+		},
+		diagnoses.SourceRunFailed: func() Report {
+			return against(t, Declaration{Samples: []model.Sample{sample("ERR9", "SINGLE", "public", nil, count(1), "ERR9.fastq.gz")}},
+				write(t, dir, "ERR9.fastq", reads(5)))
+		},
+		diagnoses.SourceRowRejected: func() Report {
+			return against(t, Declaration{Issues: []model.ValidationIssue{{Severity: model.Blocking, Code: "bad_md5", Subject: "ERR7", Message: "fastq_md5 is malformed"}}})
+		},
+		diagnoses.SourceFieldEmpty: func() Report {
+			return against(t, Declaration{Issues: []model.ValidationIssue{{Severity: model.Advisory, Code: "empty_field", Subject: "ERR8", Message: "read_count is empty"}}})
+		},
 	}
 
 	fired := map[string]bool{}
 	for id, build := range scenarios {
 		hit := false
-		for _, f := range build().Files {
-			for _, a := range f.Assertions {
+		rep := build()
+		groups := [][]model.Assertion{}
+		for _, f := range rep.Files {
+			groups = append(groups, f.Assertions)
+		}
+		if rep.Source != nil {
+			groups = append(groups, rep.Source.Assertions)
+			for _, r := range rep.Source.Runs {
+				groups = append(groups, r.Assertions)
+			}
+		}
+		for _, as := range groups {
+			for _, a := range as {
 				if a.ID == id && !a.Passed && !a.Skipped {
 					hit = true
 				}

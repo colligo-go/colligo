@@ -8,6 +8,7 @@ Downloading with an MD5 is a solved problem; knowing what the file *means* is no
 ```
 colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz
 colligo check . --certificate
+colligo check --source ena:SRR10663037 downloads/
 colligo identify genome.fa.gz
 ```
 

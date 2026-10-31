@@ -19,6 +19,7 @@ import (
 	"github.com/colligo-go/colligo/manifest"
 	"github.com/colligo-go/colligo/samplesheet"
 	"github.com/colligo-go/colligo/secret"
+	"github.com/colligo-go/colligo/transport"
 	"github.com/colligo-go/colligo/verifier"
 )
 
@@ -26,7 +27,8 @@ const usage = `usage: colligo <command> [flags] <path>...
 
 commands:
   check      facts and assertions of loose files or a directory;
-             --samplesheet checks an nf-core samplesheet against the content
+             --samplesheet checks an nf-core samplesheet against the content;
+             --source ena:<accession> compares them with what ENA declares
   validate   structural validation of the format only
   identify   name a FASTA by its sequence collection digest
   version    print the version
@@ -50,9 +52,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	switch args[0] {
 	case "check":
-		return runCheck(args[1:], stdout, stderr, false)
+		return runCheck(args[1:], stdout, stderr, false, nil)
 	case "validate":
-		return runCheck(args[1:], stdout, stderr, true)
+		return runCheck(args[1:], stdout, stderr, true, nil)
 	case "identify":
 		return runIdentify(args[1:], stdout, stderr, identity.Known())
 	case "version", "--version":
@@ -77,6 +79,7 @@ type settings struct {
 	jobs        int
 	expected    multiFlag
 	samplesheet string
+	source      string
 }
 
 func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.FlagSet, *settings) {
@@ -94,6 +97,7 @@ func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.Fla
 		fs.BoolVar(&s.certificate, "certificate", false, "write <file>.colligo-cert.json next to each file")
 		fs.Var(&s.expected, "expected", "key=value declaration: md5, sha256, blake3, size, reads, bases (one file only)")
 		fs.StringVar(&s.samplesheet, "samplesheet", "", "check an nf-core samplesheet (CSV) against the content of the files it lists")
+		fs.StringVar(&s.source, "source", "", "compare the files with what a source declares: ena:<accession> (a run, experiment, sample or study)")
 	}
 	return fs, s
 }
@@ -131,7 +135,7 @@ func endedByTerminator(fs *flag.FlagSet, args []string, consumed int) bool {
 	return ok && boolean.IsBoolFlag()
 }
 
-func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
+func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net transport.Transport) int {
 	command := "check"
 	if structureOnly {
 		command = "validate"
@@ -144,8 +148,27 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 		}
 		return verifier.ExitUsage
 	}
+	if s.samplesheet != "" && s.source != "" {
+		fmt.Fprintf(stderr, "colligo %s: --source and --samplesheet cannot be combined yet\n", command)
+		return verifier.ExitUsage
+	}
 	if s.samplesheet != "" {
 		return runSamplesheet(s, paths, stdout, stderr)
+	}
+	var ref sourceRef
+	if s.source != "" {
+		if ref, err = parseSourceRef(s.source); err != nil {
+			fmt.Fprintf(stderr, "colligo %s: %v\n", command, err)
+			return verifier.ExitUsage
+		}
+		switch {
+		case s.quick:
+			fmt.Fprintf(stderr, "colligo %s: --quick does not apply to --source: the counts need every file read in full\n", command)
+			return verifier.ExitUsage
+		case len(s.expected) > 0:
+			fmt.Fprintf(stderr, "colligo %s: --expected does not apply to --source: the source declares the values\n", command)
+			return verifier.ExitUsage
+		}
 	}
 	if len(paths) == 0 {
 		fmt.Fprintf(stderr, "colligo %s: no path given\n", command)
@@ -176,9 +199,17 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool) int {
 	if err != nil {
 		return failed(err, stderr)
 	}
-	report, err := verifier.CheckAll(ctx, names, verifier.Options{
-		Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs,
-	})
+	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs}
+	var report verifier.Report
+	if s.source != "" {
+		decl, fetchErr := fetchDeclaration(ctx, ref, net)
+		if fetchErr != nil {
+			return sourceFailed(fetchErr, ref, stderr)
+		}
+		report, err = verifier.CheckAgainstSource(ctx, names, decl, opts)
+	} else {
+		report, err = verifier.CheckAll(ctx, names, opts)
+	}
 	if err != nil {
 		return failed(err, stderr)
 	}

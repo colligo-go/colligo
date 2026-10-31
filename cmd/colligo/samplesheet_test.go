@@ -66,7 +66,7 @@ func TestSamplesheetWithRepeatedLanesIsExit0AndRelativePathsFollowTheSheet(t *te
 	}
 }
 
-func TestSamplesheetJSONKeepsSchemaVersion1(t *testing.T) {
+func TestSamplesheetJSONUsesTheCheckSchema(t *testing.T) {
 	dir := t.TempDir()
 	putMates(t, dir, "a", "AAA", 5, ".fastq", false)
 	putMates(t, dir, "b", "BBB", 5, ".fastq", false)
@@ -83,7 +83,7 @@ func TestSamplesheetJSONKeepsSchemaVersion1(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &doc); err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if code != verifier.ExitIncomplete || doc.SchemaVersion != 1 || doc.ExitCode != verifier.ExitIncomplete || len(doc.Files) != 4 {
+	if code != verifier.ExitIncomplete || doc.SchemaVersion != verifier.SchemaVersion || doc.ExitCode != verifier.ExitIncomplete || len(doc.Files) != 4 {
 		t.Fatalf("exit %d, schema %d, exit_code %d, %d files", code, doc.SchemaVersion, doc.ExitCode, len(doc.Files))
 	}
 }

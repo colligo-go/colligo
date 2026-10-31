@@ -229,7 +229,9 @@ So the rule is not "R1 plus R2 equals `read_count`": that raises a false `blocki
 
 1. `base_count` is the blocking comparison, against the bases of every file listed for the run. Divergence → `blocking` `count_mismatch`. This is what catches the shortened read 2.
 2. `read_count` is checked against the three readings seen above: each file, the sum of the files, the pair count plus the unpaired files. A match passes. When `base_count` holds and no reading matches, the content agrees with the declared bases and the MD5 and only the metadata field is unexplained: `advisory`, never `blocking`. When `base_count` fails, the run is `blocking` whatever `read_count` says.
-3. `layout_mismatch`, `advisory`, when the label says single and the files form a pair (`pair_count` and `pair_ids`): the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples. A label that says paired for one file is not judged, because Colligo does not check for interleaved files.
+3. `layout_mismatch`, `advisory`, when the label says single and the files form a pair (`pair_count` and `pair_ids`): the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples. A label that says paired for one file is not judged, because Colligo does not check for interleaved files. In the table, ERR5060520 and ERR5514981 (whose `_1` and `_2` are a pair next to an unpaired file) both get it.
+
+`colligo check --source ena:<accession>` applies this rule at the light door (SPEC §16). The bases are compared once per run, when every file of the run was read; a file of a run that fails gets `source_run_failed`, so it never reads `verified`. A count the source left empty is reported as not declared and skipped, never compared as zero.
 
 Trying several readings of `read_count` is safe only because it is not the blocking comparison: with `base_count` independent and blocking, a coincidental match cannot let a shortened run through.
 
@@ -244,6 +246,8 @@ It is the cheapest defence per real failure caught in this catalogue: zero extra
 A run can be suppressed at ENA after the download. Suppressed disappears from the search, but remains retrievable by accession — the pipeline keeps working. Permanent suppression is for data considered incorrect with no prospect of correction. Nothing on the disk changes, so no local verification detects it.
 
 **Defence.** `colligo recheck --upstream` re-runs the metadata part of the adapters and compares with `raw_responses`: record status, set of files, published checksums. Suppressed run → `blocking`. Published checksum different from the stored one → `blocking`, with the same `supersedes` logic as M2. A study with a `recheck` older than `recheck_window` → `advisory` on opening.
+
+At the light door, `colligo check --source` applies the status part at the moment of the check: a run whose status is not `public` is `source_status`, `blocking`, including a run that lists no files.
 
 
 ### M17 — Single-cell chemistry declared wrong
