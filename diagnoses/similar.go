@@ -3,6 +3,8 @@ package diagnoses
 import (
 	"sort"
 	"strings"
+
+	"github.com/colligo-go/colligo/internal/suggest"
 )
 
 // Similar returns catalogue ids close to id, nearest first: ids that contain
@@ -43,28 +45,8 @@ func closeness(id, candidate string) (int, bool) {
 			return 1, true
 		}
 	}
-	if d := distance(id, candidate); d <= max(3, len(candidate)/4) {
+	if d := suggest.Distance(id, candidate); d <= max(3, len(candidate)/4) {
 		return 2 + d, true
 	}
 	return 0, false
-}
-
-func distance(a, b string) int {
-	previous := make([]int, len(b)+1)
-	for j := range previous {
-		previous[j] = j
-	}
-	for i := 1; i <= len(a); i++ {
-		current := make([]int, len(b)+1)
-		current[0] = i
-		for j := 1; j <= len(b); j++ {
-			cost := 1
-			if a[i-1] == b[j-1] {
-				cost = 0
-			}
-			current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+cost)
-		}
-		previous = current
-	}
-	return previous[len(b)]
 }
