@@ -4,6 +4,10 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added
+
+- `transport`: an HTTP client for metadata with a per-domain rate limit, retry with exponential backoff and jitter, `Retry-After`, a per-attempt timeout, a bound on the response size and a typed error for an unexpected content type. Byte ranges are refused until the resume slice.
+
 ## [0.1.0] - 2026-10-30
 
 First release: slices 0 and 1, the light door. One command, no database, no configuration.
