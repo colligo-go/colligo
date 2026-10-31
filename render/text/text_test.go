@@ -278,3 +278,27 @@ func TestASamplesheetReportSaysSoInItsVerdict(t *testing.T) {
 		t.Errorf("a samplesheet report must say so:\n%s", out)
 	}
 }
+
+func TestTheInterpretationOfTheAccessionIsShownEvenWhenQuiet(t *testing.T) {
+	for from, want := range map[string]string{
+		"link":       "Input: accession PRJ1, taken from the link",
+		"deduced":    "Input: accession PRJ1, deduced from the file names",
+		"normalized": "Input: accession PRJ1, upper-cased from what was typed",
+	} {
+		r := studyReport()
+		r.Source.AccessionFrom = from
+		for _, quiet := range []bool{false, true} {
+			o := options(0)
+			o.Quiet = quiet
+			if out := render(t, r, o); !strings.Contains(out, want) {
+				t.Errorf("%s (quiet %v): the report lacks %q:\n%s", from, quiet, want, out)
+			}
+		}
+	}
+}
+
+func TestAnAccessionTypedAsIsIsNotExplained(t *testing.T) {
+	if out := render(t, studyReport(), options(0)); strings.Contains(out, "Input:") {
+		t.Errorf("an accession typed as is was explained:\n%s", out)
+	}
+}
