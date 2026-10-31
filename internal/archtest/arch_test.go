@@ -81,6 +81,15 @@ func TestLightDoorDoesNotImportStore(t *testing.T) {
 	}
 }
 
+func TestTransportDoesNotImportStoreOrSources(t *testing.T) {
+	all := load(t)
+	for _, forbidden := range []string{module + "/store", module + "/source"} {
+		if hits := reaches(all, module+"/transport", forbidden); len(hits) > 0 {
+			t.Errorf("transport imports %v", hits)
+		}
+	}
+}
+
 func TestNoInitFunctions(t *testing.T) {
 	root := filepath.Join("..", "..")
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -128,6 +137,22 @@ func TestIdentityIsPure(t *testing.T) {
 		}
 		if strings.HasPrefix(path, module+"/") && path != module+"/model" {
 			t.Errorf("identity imports %s: only model is allowed", path)
+		}
+	}
+}
+
+func TestENAAdapterStaysPure(t *testing.T) {
+	all := load(t)
+	ena, ok := all[module+"/source/ena"]
+	if !ok {
+		t.Fatal("source/ena was not loaded")
+	}
+	if hits := reaches(all, module+"/source/ena", module+"/store"); len(hits) > 0 {
+		t.Errorf("source/ena reaches %v", hits)
+	}
+	for _, forbidden := range []string{"os", "net/http", module + "/store"} {
+		if _, direct := ena.Imports[forbidden]; direct {
+			t.Errorf("source/ena imports %s", forbidden)
 		}
 	}
 }

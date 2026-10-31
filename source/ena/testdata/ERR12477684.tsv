@@ -1,0 +1,2 @@
+run_accession	library_layout	fastq_ftp	fastq_md5	fastq_bytes	read_count	base_count	status
+ERR12477684	PAIRED	ftp.sra.ebi.ac.uk/vol1/fastq/ERR124/084/ERR12477684/ERR12477684_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/ERR124/084/ERR12477684/ERR12477684_2.fastq.gz	02a4a06a9c0e449b4ec1a3a62f98e127;06e65620b3ab8992821b8ca985deb125	102067;123411	3524	528600	public
