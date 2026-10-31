@@ -75,6 +75,7 @@ Scope:
 - `colligo check --samplesheet`: nf-core pipeline samplesheet checked against the content.
 - MultiQC module that reads the `--json` of `check` and shows the result in the report the user already opens.
 - Polished, modular text output (SPEC §16, "Text output"): the verdict first, each problem once with its likely cause and what to do, what was checked and what was not, and `colligo explain`. Rendering lives in `render/`, apart from the checks, so the presentation (tables or lines, colours, symbols, order of the blocks) can change later without touching them.
+- A weekly drift job for the ENA fixtures (RELIABILITY M14): it repeats every recorded request, compares the structure and the values Colligo uses, and opens an issue on divergence. First deferred to Slice 3, brought back once `check --source` came to depend on the ENA API.
 - Friendly, modular input (SPEC §16, "Input"; implemented): every form of input resolves into one request in `request/`; `--files-from` lists; `--source` takes a copied ENA link or deduces the accession of one run from the file names; common mistakes (an SRA archive, a spreadsheet) are named; an unknown flag gets "did you mean". Nothing is guessed in silence, and there is no implicit path.
 
 Definition of done:
@@ -88,6 +89,7 @@ Definition of done:
 - The text report of the QC Fail case starts with the verdict and the exit code, points at the shortened mate by its bases per read, and says what was not checked; it is a golden file, like every case of the text output.
 - Without `--source`, a folder whose names look like ENA runs gets "not checked" for the source comparison and the suggestion of `--source`, never a network query.
 - The text report and `--json` come from separate renderers over the same report; colour is off when the output is not a terminal and with `NO_COLOR`.
+- The drift job finds a fixture whose run changed status, count or MD5, or whose column was renamed, and stays quiet on a moved or extra column and on an outage of the source.
 - `--files-from` with a missing file names its line and still checks the others; `--source ena` over a folder of two runs is a usage error that lists both; `colligo check` with no path is a usage error that suggests `colligo check .`.
 
 ---
