@@ -21,6 +21,7 @@ const (
 	sequencePrefix    = "SQ."
 	scratchSize       = 32 << 10
 	maxNameBytes      = 64 << 10
+	maxNamesBytes     = 256 << 20
 	maxCollectionSize = 1 << 20
 )
 
@@ -29,6 +30,7 @@ var (
 	errEmptyName     = errors.New("a record header has no name")
 	errNameTooLong   = errors.New("a sequence name is longer than 64 KiB")
 	errTooManyRecord = errors.New("the file has more than 1048576 sequences")
+	errNamesTooLarge = errors.New("the sequence names add up to more than 256 MiB")
 )
 
 type parseState int
@@ -56,6 +58,8 @@ type Collector struct {
 	state     parseState
 	inRecord  bool
 	name      []byte
+	namesSize int
+	namesCap  int
 	length    int64
 	hasher    hash.Hash
 	scratch   [scratchSize]byte
@@ -64,7 +68,7 @@ type Collector struct {
 }
 
 func NewCollector() *Collector {
-	return &Collector{hasher: sha512.New()}
+	return &Collector{hasher: sha512.New(), namesCap: maxNamesBytes}
 }
 
 func (c *Collector) Write(p []byte) (int, error) {
@@ -163,6 +167,11 @@ func (c *Collector) endRecord() {
 		c.fail(errTooManyRecord)
 		return
 	}
+	if c.namesSize+len(c.name) > c.namesCap {
+		c.fail(errNamesTooLarge)
+		return
+	}
+	c.namesSize += len(c.name)
 	var sum [sha512.Size]byte
 	c.hasher.Sum(sum[:0])
 	c.collected.Names = append(c.collected.Names, string(c.name))

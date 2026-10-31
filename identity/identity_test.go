@@ -208,6 +208,31 @@ func TestCollectorRefusesWhatHasNoCollection(t *testing.T) {
 	}
 }
 
+func TestCollectorBoundsTheTotalSizeOfTheNames(t *testing.T) {
+	c := NewCollector()
+	c.namesCap = 10
+	c.Write([]byte(">abcd\nAC\n>efgh\nAC\n>ijkl\nAC\n"))
+	if _, err := c.Collection(); !errors.Is(err, errNamesTooLarge) {
+		t.Fatalf("err = %v, want the names budget error", err)
+	}
+	fact, err := c.Fact()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(fact.Value), "256 MiB") || strings.Contains(string(fact.Value), "digest") {
+		t.Errorf("fact = %s", fact.Value)
+	}
+}
+
+func TestCollectorAcceptsNamesUpToTheBudget(t *testing.T) {
+	c := NewCollector()
+	c.namesCap = 8
+	c.Write([]byte(">abcd\nAC\n>efgh\nAC\n"))
+	if _, err := c.Collection(); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestEmptySequenceIsARecordOfLengthZero(t *testing.T) {
 	got := collect(t, ">a\n>b\nAC\n")
 	if len(got.Names) != 2 || got.Lengths[0] != 0 || got.Lengths[1] != 2 || got.Sequences[0] != "SQ.z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXc" {

@@ -76,7 +76,7 @@ func resolveIdentity(answer *Identification, res facts.Result, references []iden
 	answer.Status = IdentityNotIdentified
 	fact, ok := res.Fact(identity.FactKind)
 	if !ok {
-		answer.Reason = unidentifiableReason(res)
+		answer.Status, answer.Reason = unidentifiable(res)
 		return answer
 	}
 	var value identity.SeqcolValue
@@ -96,17 +96,17 @@ func resolveIdentity(answer *Identification, res facts.Result, references []iden
 	return answer
 }
 
-func unidentifiableReason(res facts.Result) string {
+func unidentifiable(res facts.Result) (status, reason string) {
 	container, content := structureFacts(res)
 	for _, s := range []*structureFact{container, content} {
 		if s != nil && !s.Valid {
-			return fmt.Sprintf("the %s is not valid: %s (at byte %d)", s.Format, s.Reason, s.Offset)
+			return StatusInvalid, fmt.Sprintf("the %s is not valid: %s (at byte %d)", s.Format, s.Reason, s.Offset)
 		}
 	}
 	if res.Content == format.ContentFasta {
-		return "the FASTA has no sequence collection"
+		return IdentityNotIdentified, "the FASTA has no sequence collection"
 	}
-	return fmt.Sprintf("a %s file has no identity to derive; only FASTA can be identified", res.Content)
+	return IdentityNotIdentified, fmt.Sprintf("a %s file has no identity to derive; only FASTA can be identified", res.Content)
 }
 
 func unreadableIdentity(answer *Identification, err error) *Identification {
@@ -132,13 +132,20 @@ type IdentifyReport struct {
 	Files []*Identification `json:"files"`
 }
 
+// ExitCode is 2 when a file could not be read, 3 when a file is not a valid
+// instance of its format, and 0 when every file was answered, identified or
+// not.
 func (r IdentifyReport) ExitCode() int {
+	code := ExitOK
 	for _, f := range r.Files {
-		if f.Status == StatusUnreadable {
+		switch f.Status {
+		case StatusUnreadable:
 			return ExitFatal
+		case StatusInvalid:
+			code = ExitIncomplete
 		}
 	}
-	return ExitOK
+	return code
 }
 
 type jsonIdentify struct {

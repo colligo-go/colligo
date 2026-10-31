@@ -53,11 +53,8 @@ func TestCompressedFastaHasTheSameIdentityAsPlain(t *testing.T) {
 func TestIdentifyNeverFailsOnWhatItCannotName(t *testing.T) {
 	dir := t.TempDir()
 	cases := map[string][]byte{
-		"reads.fastq":  fastqText("SRR1", 5, "ACGT"),
-		"broken.fa":    []byte(">a\nACGT\n;comment\n"),
-		"truncated.fa": []byte(">a\nACGT"),
-		"empty.fa":     nil,
-		"nameless.fa":  []byte(">\nACGT\n"),
+		"reads.fastq": fastqText("SRR1", 5, "ACGT"),
+		"empty.fa":    nil,
 	}
 	for base, data := range cases {
 		got := identify(t, write(t, dir, base, data))
@@ -67,6 +64,33 @@ func TestIdentifyNeverFailsOnWhatItCannotName(t *testing.T) {
 		if code := (IdentifyReport{Files: []*Identification{got}}).ExitCode(); code != ExitOK {
 			t.Errorf("%s: exit %d", base, code)
 		}
+	}
+}
+
+func TestBrokenFastaIsInvalidAndExits3(t *testing.T) {
+	dir := t.TempDir()
+	cases := map[string][]byte{
+		"broken.fa":    []byte(">a\nACGT\n;comment\n"),
+		"truncated.fa": []byte(">a\nACGT"),
+		"nameless.fa":  []byte(">\nACGT\n"),
+	}
+	for base, data := range cases {
+		got := identify(t, write(t, dir, base, data))
+		if got.Status != StatusInvalid || !strings.Contains(got.Reason, "not valid") || got.Seqcol != nil || got.Reference != nil {
+			t.Errorf("%s: %+v", base, got)
+		}
+		if code := (IdentifyReport{Files: []*Identification{got}}).ExitCode(); code != ExitIncomplete {
+			t.Errorf("%s: exit %d, want 3", base, code)
+		}
+	}
+}
+
+func TestUnreadableOutranksInvalidInTheExitCode(t *testing.T) {
+	report := IdentifyReport{Files: []*Identification{
+		{Status: StatusInvalid}, {Status: StatusUnreadable}, {Status: IdentityNotIdentified},
+	}}
+	if code := report.ExitCode(); code != ExitFatal {
+		t.Errorf("exit %d, want 2", code)
 	}
 }
 

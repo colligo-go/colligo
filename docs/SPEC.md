@@ -858,15 +858,15 @@ For a FASTA, plain or inside gzip or BGZF, the same read that validates the stru
 - `lengths`: the length of each normalised sequence. It is reported but, as the specification says, it does not enter the collection digest.
 - Each attribute is digested as its canonical JSON array (RFC 8785) with `sha512t24u`; the collection digest is the `sha512t24u` of the canonical object `{"names": ..., "sequences": ...}`.
 
-The result is the `seqcol` fact (`seqcol-1`), which only exists when the FASTA is structurally valid. A name that is not UTF-8, a name longer than 64 KiB or more than 1,048,576 sequences make the collection impossible to digest; the fact then carries only a `reason`.
+The result is the `seqcol` fact (`seqcol-1`), which only exists when the FASTA is structurally valid. A name that is not UTF-8, a name longer than 64 KiB, names that add up to more than 256 MiB or more than 1,048,576 sequences make the collection impossible to digest; the fact then carries only a `reason`. The caps bound the memory a hostile file can claim.
 
-The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A file that matches nothing is `not_identified`, with the digest when there is one; that is not an error. Anything that is not a FASTA, or a FASTA with a structural problem, is `not_identified` with the reason.
+The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A file that matches nothing is `not_identified`, with the digest when there is one; that is not an error. A file that is not a FASTA is `not_identified` with the reason. A FASTA, or its gzip or BGZF container, with a structural problem is `invalid` with the reason: a truncated or broken reference must not look like an answer.
 
 Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes. A file that changes during the read is `unreadable`, never identified.
 
-Exit codes: 0 when every file was answered, identified or not; 2 when any file is unreadable (missing, unreadable, changed during the read); 1 for a usage error; 4 when interrupted.
+Exit codes: 0 when every file was answered, identified or not; 3 when any file is `invalid`; 2 when any file is unreadable (missing, unreadable, changed during the read), which outranks 3; 1 for a usage error; 4 when interrupted.
 
-`--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified` or `unreadable`.
+`--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified`, `invalid` or `unreadable`.
 
 **Heavy door** — study with a database.
 
