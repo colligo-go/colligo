@@ -109,6 +109,8 @@ The PR CI is 100% offline and deterministic. That is incompatible with detecting
 
 **Separate weekly job:** re-records all fixtures against the real APIs, compares with the versioned ones, and opens an issue on divergence with the structural diff (fields that appeared, disappeared or changed type), never with values.
 
+The `drift` job of `weekly.yml` runs `internal/drift/cmd/drift`. For every recorded ENA response in `source/ena/testdata` it checks the SHA-256 in the meta file, repeats the request the adapter makes, and compares the live answer with the recording on four points: the HTTP status and media type, the columns (appeared, disappeared, moved), the class of each column's cells (integer, md5, path, word, empty, or a list of them), and what the adapter made of it (parsed, not found, which typed error, which defect codes). Exit 0 is clean, 1 is drift and opens, or comments on, the open issue labelled `fixture-drift`, and 2 is a failure of the job itself. A source that does not answer (network, 5xx after retries) is exit 2, never drift: an outage must not teach anyone to ignore the issue. A recorded fixture is never rewritten by the job; a person re-records it after reading the issue.
+
 For restricted sources, the job runs on the institution's infrastructure and never publishes the diff.
 
 ---
