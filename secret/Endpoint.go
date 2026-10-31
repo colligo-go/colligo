@@ -36,3 +36,12 @@ func (e Endpoint) String() string {
 
 func (e Endpoint) GoString() string             { return e.String() }
 func (e Endpoint) MarshalJSON() ([]byte, error) { return json.Marshal(e.String()) }
+
+// Reveal returns the real URL, query string included. Only transport/ may
+// call it; the noleak analyzer fails the build anywhere else.
+func (e Endpoint) Reveal() string {
+	if e.u == nil {
+		return ""
+	}
+	return e.u.String()
+}

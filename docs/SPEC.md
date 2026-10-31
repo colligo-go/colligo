@@ -51,7 +51,7 @@ colligo/
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools`, `cmd/colligo`, `source/ena` (metadata only) and `transport` (the interface only) exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
 **Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
@@ -541,19 +541,20 @@ type Artifact struct {
     Headers      map[string]string
 }
 
+type Transport interface {
+    Get(ctx context.Context, url secret.Endpoint, rng *ByteRange) (*Response, error)
+}
+
 type ByteRange struct {
     Start int64
     End   int64
 }
 
 type Response struct {
-    StatusCode  int
-    ContentType string
-    Body        io.ReadCloser
-}
-
-type Transport interface {
-    Get(ctx context.Context, url secret.Endpoint, rng *ByteRange) (*Response, error)
+    Status        int
+    ContentType   string
+    ContentLength int64
+    Body          io.ReadCloser
 }
 
 type FormatValidator interface {
@@ -607,6 +608,8 @@ type Logger interface {
 }
 ```
 
+`transport.Client` is the HTTP implementation, for metadata only. `Get` accepts only a `nil` `ByteRange` until the resume slice and answers anything else with `RangeNotImplementedError`. `Response.Body` is bounded by a size limit (16 MiB by default) and a request has a timeout (30 s per attempt). A 2xx answer whose media type is not in the allowed list (text, TSV, CSV, JSON, XML by default) is a `ContentTypeError`, never a body: an HTML page served where a TSV was expected must not reach a parser. `Reveal` on `secret.Endpoint` is called only there.
+
 A `Sample` is one run. `Declared` holds the totals the source publishes for the whole run, summed over its files: `ReadCount` and `BaseCount` are not per file, and `Artifact` has no field for them. `Artifact.PairID` is the run accession when the file name carries a `_1` or `_2` mate suffix, and empty for a file without one. `Layout` is the source's own label, never verified by the adapter. `Fetch` fills `Raw` even when it also returns an error. An empty field does not drop the run: an empty `read_count` or `base_count` is `nil`, not declared, which is not zero, so a comparison against it is skipped rather than failed; an empty `library_layout`, `status` or count is an `advisory` `ValidationIssue`; and a run whose three file columns are all empty is kept with no artifacts and its status, which is how a suppressed run must reach the source checks (`RELIABILITY.md` M16). Only an empty `run_accession`, a malformed value, misaligned file lists or file columns that are only partly empty make a row defective: a blocking `ValidationIssue`, and the run is left out of `Samples`; a response that is not a table, lacks a column or lists no usable run is a `*model.SourceError`; an accession with no row is a `*model.NotFoundError`.
 
 `SaveRawResponse` decides on its own whether to store the body or only the hash, consulting the classification. The caller has no choice.
@@ -648,6 +651,13 @@ type IncompatibleError struct{ ... }
 type ClassificationError struct{ ... }
 type SelfTestError struct{ ... }
 type ClockError struct{ ... }
+type StatusError struct{ ... }
+type ContentTypeError struct{ ... }
+type ResponseTooLargeError struct{ ... }
+type RetryAfterError struct{ ... }
+type RetryExhaustedError struct{ ... }
+type RangeNotImplementedError struct{ ... }
+type UnsupportedEndpointError struct{ ... }
 ```
 
 Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) exists; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
@@ -669,6 +679,8 @@ Inspectable via `errors.As`. On the light door, the failure of a file is not one
 
 Backoff: `min(2^N, 300s) + jitter`. Rate limiter shared per API key.
 
+The metadata client applies the rows that concern a GET: timeout and 5xx retry with the backoff above (1 s, 2 s, 4 s, up to 4 attempts, jitter at most a quarter of the delay); 429 and 5xx honour `Retry-After` when it is larger than the backoff, in seconds or as an HTTP date; a `Retry-After` above the 300 s cap is a `RetryAfterError` and the client neither waits nor retries; 404 and 410 are `NotFoundError`, 401 and 403 are `AuthError`, any other 4xx is a `StatusError`, none of them retried. When retries run out the last error is wrapped in `RetryExhaustedError`. Errors and logs carry the endpoint through `secret.Endpoint`, so the query string never appears.
+
 ---
 
 ## 12. Concurrency
@@ -679,7 +691,9 @@ Download pool  → 4–8 goroutines, connection limit per domain
 Verify pool    → 1–2 goroutines
 ```
 
-Per-domain limits (default, configurable): `ftp.ebi.ac.uk` 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
+Per-domain limits (default, configurable): `ebi.ac.uk` (the ENA Portal API and `ftp.ebi.ac.uk`) 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
+
+For the metadata pool the number is a ceiling of requests per second: the client spaces the start of consecutive requests to a domain by at least `1/N` of a second, retries included, so no window of one second holds more than `N` starts. A domain matches itself and its subdomains, the longest match wins, and every host under it shares that one ceiling (`www.ebi.ac.uk` and `ftp.sra.ebi.ac.uk` together stay under the 4 of `ebi.ac.uk`); a host without an entry gets 2 of its own. `WithRate` and `WithDefaultRate` change it.
 
 These defaults exist so as not to burn your institution's IP. Raising them is your responsibility and is recorded in `config_hash`.
 

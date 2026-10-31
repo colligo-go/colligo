@@ -103,3 +103,19 @@ func TestJoinOnTheZeroEndpointIsZero(t *testing.T) {
 		t.Errorf("String = %q", got)
 	}
 }
+
+func TestEndpointRevealKeepsTheQueryThatStringDrops(t *testing.T) {
+	e, err := NewEndpoint("https://example.org/a?api_key=SENTINEL")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := e.Reveal(); got != "https://example.org/a?api_key=SENTINEL" {
+		t.Fatalf("Reveal %q", got)
+	}
+	if strings.Contains(e.String(), "SENTINEL") {
+		t.Fatalf("String leaks the query: %q", e.String())
+	}
+	if (Endpoint{}).Reveal() != "" {
+		t.Fatal("zero Endpoint must reveal an empty string")
+	}
+}
