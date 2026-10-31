@@ -32,6 +32,8 @@ const (
 
 var (
 	utf8BOM          = []byte{0xEF, 0xBB, 0xBF}
+	zipMagic         = []byte("PK\x03\x04")
+	oleMagic         = []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1}
 	genericColumns   = []string{columnSample, columnFastq1, columnFastq2}
 	rnaseqRequired   = []string{columnSample, columnFastq1, columnStrandedness}
 	rnaseqOptional   = []string{columnFastq2, "seq_platform", "seq_center", "genome_bam", "transcriptome_bam", "percent_mapped"}
@@ -113,6 +115,10 @@ func Parse(r io.Reader, sheet secret.Name) (Sheet, error) {
 		if _, err := br.Discard(len(utf8BOM)); err != nil {
 			return Sheet{}, err
 		}
+	}
+	head, _ := br.Peek(len(oleMagic))
+	if bytes.HasPrefix(head, zipMagic) || bytes.HasPrefix(head, oleMagic) {
+		return Sheet{}, &FormatError{Reason: "this is a spreadsheet (.xlsx, .xls or .ods), not a CSV file: in your spreadsheet program choose Save As, CSV, and give that file"}
 	}
 	reader := csv.NewReader(br)
 	reader.TrimLeadingSpace = true

@@ -1,0 +1,1 @@
+colligo check: --source ena: the files belong to 2 runs (DRR021374, ERR12477684), so Colligo cannot tell which to compare them with. Write --source ena:<accession> with one run, or with the study that holds them all

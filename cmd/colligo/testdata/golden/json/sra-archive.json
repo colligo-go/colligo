@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/SRR10663037.sra",
+      "status": "invalid",
+      "container": "none",
+      "content": "sra",
+      "size": 72,
+      "blake3_root": "7f9bc02e4a9ca8035f36c0994be5b65b338f86fff5d0e6bdb7c8ee83a4f50b19",
+      "md5": "f61d4164282352383472e7704b66e739",
+      "sha256": "39427cc70c74fd488203aedb7c6cbd2ba995b59f4084d814801c8a2722cb5f38",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "input_sra",
+          "mode": "M3",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "",
+          "observed": "SRA",
+          "observation": "The file is an SRA archive (it starts with NCBI.sra), not FASTQ, so nothing about the reads was checked.",
+          "probable_cause": "The SRA Toolkit downloads reads in this compact archive; the FASTQ files exist only after a conversion.",
+          "suggested_action": "Convert it with fasterq-dump, then check the FASTQ files it writes with --source ena:\u003caccession\u003e to compare them with the archive."
+        },
+        {
+          "id": "count_mismatch",
+          "mode": "M15",
+          "severity": "blocking",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "input_sra",
+          "declared": "",
+          "observed": ""
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": false,
+          "skipped": true,
+          "skipped_by": "input_sra",
+          "declared": "",
+          "observed": ""
+        }
+      ]
+    }
+  ],
+  "exit_code": 3
+}

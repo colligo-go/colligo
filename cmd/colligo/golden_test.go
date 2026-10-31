@@ -42,6 +42,10 @@ func identifyRun(table identity.Table, args []string) goldenRun {
 }
 
 func sourceCase(accession string, mutate func(spec runSpec, files map[string][]byte), edit func(t *testing.T, body []byte) []byte) func(t *testing.T, dir string) goldenRun {
+	return sourceFlagCase(accession, "ena:"+accession, mutate, edit)
+}
+
+func sourceFlagCase(accession, flagValue string, mutate func(spec runSpec, files map[string][]byte), edit func(t *testing.T, body []byte) []byte) func(t *testing.T, dir string) goldenRun {
 	return func(t *testing.T, dir string) goldenRun {
 		spec := specOf(t, accession)
 		files := syntheticRun(spec)
@@ -53,7 +57,7 @@ func sourceCase(accession string, mutate func(spec runSpec, files map[string][]b
 		if edit != nil {
 			body = edit(t, body)
 		}
-		return checkRun([]string{"--source", "ena:" + accession, dir}, &fakeTransport{body: body})
+		return checkRun([]string{"--source", flagValue, dir}, &fakeTransport{body: body})
 	}
 }
 
@@ -72,6 +76,18 @@ func goldenCases() []goldenCase {
 			return checkRun([]string{dir}, nil)
 		}},
 		{"source-verified", sourceCase("DRR021374", nil, nil)},
+		{"source-link", sourceFlagCase("DRR021374", "https://www.ebi.ac.uk/ena/browser/view/DRR021374", nil, nil)},
+		{"source-deduced", sourceFlagCase("DRR021374", "ena", nil, nil)},
+		{"list-missing-line", func(t *testing.T, dir string) goldenRun {
+			put(t, dir, "sample_R1.fastq", fastq("S", 20))
+			put(t, dir, "sample_R2.fastq", fastq("S", 20))
+			list := put(t, dir, "files.txt", []byte("# my run\nsample_R1.fastq\nsample_R3.fastq\nsample_R2.fastq\n"))
+			return checkRun([]string{"--files-from", list}, nil)
+		}},
+		{"sra-archive", func(t *testing.T, dir string) goldenRun {
+			path := put(t, dir, "SRR10663037.sra", append([]byte("NCBI.sra"), make([]byte, 64)...))
+			return checkRun([]string{path}, nil)
+		}},
 		{"blocking", sourceCase("DRR021374", shortenSecondMate("DRR021374"), nil)},
 		{"advisory", sourceCase("ERR5060520", nil, nil)},
 		{"study", func(t *testing.T, dir string) goldenRun {
@@ -184,5 +200,63 @@ func TestTextGolden(t *testing.T) {
 				goldenFile(t, filepath.Join("text", c.name+".exit"), strconv.Itoa(code)+"\n")
 			})
 		}
+	}
+}
+
+type usageCase struct {
+	name    string
+	prepare func(t *testing.T, dir string) []string
+}
+
+func usageCases() []usageCase {
+	return []usageCase{
+		{"deduce-two-runs", func(t *testing.T, dir string) []string {
+			writeDecompressed(t, dir, syntheticRun(specOf(t, "DRR021374")))
+			writeDecompressed(t, dir, syntheticRun(specOf(t, "ERR12477684")))
+			return []string{"check", "--source", "ena", dir}
+		}},
+		{"deduce-from-a-study-file-name", func(t *testing.T, dir string) []string {
+			path := put(t, dir, "PRJDB0001_1.fastq", fastq("S", 5))
+			return []string{"check", "--source", "ena", path}
+		}},
+		{"link-not-ena", func(t *testing.T, dir string) []string {
+			path := put(t, dir, "a.fastq", fastq("S", 5))
+			return []string{"check", "--source", "https://www.ncbi.nlm.nih.gov/sra/SRR10663037", path}
+		}},
+		{"link-without-accession", func(t *testing.T, dir string) []string {
+			path := put(t, dir, "a.fastq", fastq("S", 5))
+			return []string{"check", "--source", "https://www.ebi.ac.uk/ena/browser/home", path}
+		}},
+		{"unknown-flag", func(t *testing.T, dir string) []string {
+			return []string{"check", "--sorce", "ena", dir}
+		}},
+		{"no-path", func(t *testing.T, dir string) []string {
+			return []string{"check"}
+		}},
+		{"xlsx-as-samplesheet", func(t *testing.T, dir string) []string {
+			sheet := put(t, dir, "samples.xlsx", append([]byte("PK\x03\x04"), make([]byte, 64)...))
+			return []string{"check", "--samplesheet", sheet}
+		}},
+		{"files-from-with-samplesheet", func(t *testing.T, dir string) []string {
+			list := put(t, dir, "files.txt", []byte("a.fastq\n"))
+			sheet := put(t, dir, "samples.csv", []byte("sample,fastq_1,fastq_2\nA,a.fastq,\n"))
+			return []string{"check", "--files-from", list, "--samplesheet", sheet}
+		}},
+	}
+}
+
+func TestUsageGolden(t *testing.T) {
+	for _, c := range usageCases() {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			args := c.prepare(t, dir)
+			var out, errb bytes.Buffer
+			code := run(args, &out, &errb)
+			if out.Len() != 0 {
+				t.Errorf("a usage error wrote to stdout: %q", out.String())
+			}
+			goldenFile(t, filepath.Join("usage", c.name+".txt"), normalized(errb.String(), dir))
+			goldenFile(t, filepath.Join("usage", c.name+".exit"), strconv.Itoa(code)+"\n")
+		})
 	}
 }

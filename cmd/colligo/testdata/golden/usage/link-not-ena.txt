@@ -1,0 +1,1 @@
+colligo check: --source: www.ncbi.nlm.nih.gov is not an ENA address; the only source today is ena, so give an address of www.ebi.ac.uk/ena or ena:<accession>

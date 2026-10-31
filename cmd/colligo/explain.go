@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -14,15 +13,11 @@ import (
 
 func runExplain(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("explain", flag.ContinueOnError)
-	fs.SetOutput(stderr)
 	var present presentation
 	fs.StringVar(&present.color, "color", "auto", "colour the text: auto, always or never")
-	ids, err := parseInterleaved(fs, args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return verifier.ExitOK
-		}
-		return verifier.ExitUsage
+	ids, code, finished := parseCommand(fs, "explain", args, stderr)
+	if finished {
+		return code
 	}
 	if err := present.validate(); err != nil {
 		fmt.Fprintf(stderr, "colligo explain: %v\n", err)

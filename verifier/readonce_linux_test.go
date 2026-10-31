@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/colligo-go/colligo/request"
 	"github.com/colligo-go/colligo/secret"
 )
 
@@ -108,7 +109,7 @@ func TestDiscoverReadsAtMostTheClassificationSamplePerFile(t *testing.T) {
 	var names []secret.Name
 	got := bytesRead(t, func() {
 		var err error
-		names, _, _, err = Discover(context.Background(), secret.NewName(dir), false)
+		names, _, _, err = request.Discover(context.Background(), secret.NewName(dir), false)
 		if err != nil {
 			t.Fatal(err)
 		}

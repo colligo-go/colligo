@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -13,21 +12,18 @@ import (
 	"github.com/colligo-go/colligo/identity"
 	jsonout "github.com/colligo-go/colligo/render/json"
 	"github.com/colligo-go/colligo/render/text"
+	"github.com/colligo-go/colligo/request"
 	"github.com/colligo-go/colligo/verifier"
 )
 
 func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) int {
 	fs := flag.NewFlagSet("identify", flag.ContinueOnError)
-	fs.SetOutput(stderr)
 	jsonOut := fs.Bool("json", false, "write the answer as JSON")
 	var present presentation
 	present.bind(fs)
-	paths, err := parseInterleaved(fs, args)
-	if err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return verifier.ExitOK
-		}
-		return verifier.ExitUsage
+	paths, exit, finished := parseCommand(fs, "identify", args, stderr)
+	if finished {
+		return exit
 	}
 	if err := present.validate(); err != nil {
 		fmt.Fprintf(stderr, "colligo identify: %v\n", err)
@@ -45,12 +41,16 @@ func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	names, _, _, err := collect(ctx, paths, false)
+	arguments, err := request.NamesFromArguments(paths)
+	if err != nil {
+		return failed(err, stderr)
+	}
+	req, err := request.Resolve(ctx, request.Inputs{Paths: arguments})
 	if err != nil {
 		return failed(err, stderr)
 	}
 	counter, finish := present.startProgress(stderr)
-	report, err := verifier.IdentifyAll(ctx, names, table, verifier.WithProgress(counter))
+	report, err := verifier.IdentifyAll(ctx, req.Names(), table, verifier.WithProgress(counter))
 	finish()
 	if err != nil {
 		return failed(err, stderr)

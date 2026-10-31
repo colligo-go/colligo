@@ -160,3 +160,23 @@ func TestLinesCountTheHeaderAndSkippedBlankLines(t *testing.T) {
 		t.Fatalf("lines %s, want 3 6", got)
 	}
 }
+
+func TestASpreadsheetIsRecognisedByItsBytesAndNotByAnExtension(t *testing.T) {
+	cases := map[string]string{
+		"xlsx, ods (ZIP)": "PK\x03\x04" + strings.Repeat("\x00", 30),
+		"xls (OLE2)":      "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1" + strings.Repeat("\x00", 30),
+	}
+	for name, content := range cases {
+		fe := formatError(t, content)
+		if fe.Line != 0 || !strings.Contains(fe.Reason, "spreadsheet") || !strings.Contains(fe.Reason, "CSV") {
+			t.Errorf("%s: %+v", name, fe)
+		}
+	}
+}
+
+func TestACsvThatStartsWithPKIsStillACsv(t *testing.T) {
+	sheet := parse(t, "sample,fastq_1,fastq_2\nPKS1,a.fastq,\n")
+	if len(sheet.Rows) != 1 || sheet.Rows[0].Sample != "PKS1" {
+		t.Fatalf("%+v", sheet.Rows)
+	}
+}
