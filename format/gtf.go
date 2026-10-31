@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/colligo-go/colligo/identity"
 	"github.com/colligo-go/colligo/model"
 )
 
@@ -17,11 +18,36 @@ func (v gtfValidator) NewExtractor() Extractor {
 	return rejectBOM(ContentGTF, v.Version(), newGTFExtractor())
 }
 
+func (v gtfValidator) NewIdentifyingExtractor() Extractor {
+	g := newGTFExtractor()
+	g.observer = newGTFObserver()
+	return rejectBOM(ContentGTF, v.Version(), &identifyingGTF{inner: g})
+}
+
+type identifyingGTF struct {
+	inner *gtfExtractor
+}
+
+func (g *identifyingGTF) Write(p []byte) (int, error) { return g.inner.Write(p) }
+
+func (g *identifyingGTF) Finish() ([]model.Fact, error) {
+	found, err := g.inner.Finish()
+	if err != nil || g.inner.bad != nil {
+		return found, err
+	}
+	header, err := jsonFact(identity.GTFHeaderKind, identity.GTFHeaderVersion, g.inner.observer.header)
+	if err != nil {
+		return nil, err
+	}
+	return append(found, header), nil
+}
+
 type gtfExtractor struct {
-	lines   lineReader
-	names   nameSampler
-	records int64
-	bad     *problem
+	observer *gtfObserver
+	lines    lineReader
+	names    nameSampler
+	records  int64
+	bad      *problem
 }
 
 func newGTFExtractor() *gtfExtractor {
@@ -38,7 +64,13 @@ func (g *gtfExtractor) Write(p []byte) (int, error) {
 }
 
 func (g *gtfExtractor) line(line []byte, length int, offset int64) {
-	if g.bad != nil || length == 0 || line[0] == '#' {
+	if g.bad != nil {
+		return
+	}
+	if length == 0 || line[0] == '#' {
+		if g.observer != nil {
+			g.observer.comment(line, length)
+		}
 		return
 	}
 	if length > len(line) {
@@ -48,6 +80,9 @@ func (g *gtfExtractor) line(line []byte, length int, offset int64) {
 	if n := bytes.Count(line, []byte{'\t'}) + 1; n != 9 {
 		g.bad = &problem{reason: fmt.Sprintf("feature line has %d tab-separated fields, want 9", n), offset: offset}
 		return
+	}
+	if g.observer != nil {
+		g.observer.feature(line)
 	}
 	g.names.add(line[:bytes.IndexByte(line, '\t')])
 	g.records++

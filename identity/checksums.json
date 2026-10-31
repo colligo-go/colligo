@@ -1,0 +1,366 @@
+[
+  {
+    "file": "GRCh38.p14.genome.fa.gz",
+    "md5": "ed810c85fea6d15b5ea092660e774ae4",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "GRCh38.primary_assembly.genome.fa.gz",
+    "md5": "9c3fc2ca260a767530dddb0f26721a6b",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.2wayconspseudos.gff3.gz",
+    "md5": "3dc83ac9c4c7804b1af6a4aecef8028a",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.2wayconspseudos.gtf.gz",
+    "md5": "f7b943746d9edb02ba7d0773bcc6edac",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.annotation.gff3.gz",
+    "md5": "0d066b7f1a814422bbbd3d1d5f881445",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.annotation.gtf.gz",
+    "md5": "ee330cfe6d0654ba9b9cf434d5c1bfb1",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.basic.annotation.gff3.gz",
+    "md5": "f6734422df8d472e24b89dc5eff0e575",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.basic.annotation.gtf.gz",
+    "md5": "7450ef42cf9cb3d29625320b22d4bb45",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.chr_patch_hapl_scaff.annotation.gff3.gz",
+    "md5": "c23b022e5a80b8d58a9aeb7383dc60db",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.chr_patch_hapl_scaff.annotation.gtf.gz",
+    "md5": "19ff1d03dad8156a71afbb4fa768a4fa",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.chr_patch_hapl_scaff.basic.annotation.gff3.gz",
+    "md5": "9df41ee482413dc85b392b69be78bee6",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.chr_patch_hapl_scaff.basic.annotation.gtf.gz",
+    "md5": "d39d5914142ac62ed425f20554b37986",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.lncRNA_transcripts.fa.gz",
+    "md5": "c9ce113cad333a5885b59d088545b5e1",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.long_noncoding_RNAs.gff3.gz",
+    "md5": "b572fc82f0da902f1a27fbfe24e0f512",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.long_noncoding_RNAs.gtf.gz",
+    "md5": "aa89000d9bacb53f5078e2881f602266",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.pc_transcripts.fa.gz",
+    "md5": "1d6f02c471e76f421e36921ddb5715a1",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.pc_translations.fa.gz",
+    "md5": "03e5cf2313e06addf50641005a3a8062",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.polyAs.gff3.gz",
+    "md5": "f20d32a75eeff4bd3c2cdb600506f1a7",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.polyAs.gtf.gz",
+    "md5": "6164716bd1d6c7043a15e885576e3763",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.primary_assembly.annotation.gff3.gz",
+    "md5": "8383bbde6db0315595593ac065695e6c",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.primary_assembly.annotation.gtf.gz",
+    "md5": "b182a9f3b134b9cc2da566a2b1692557",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.primary_assembly.basic.annotation.gff3.gz",
+    "md5": "4f53fc63cdd5b5749a6f2ac16917db8c",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.primary_assembly.basic.annotation.gtf.gz",
+    "md5": "fc4731226d2d315e6b2415fd1690403d",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.tRNAs.gff3.gz",
+    "md5": "a17d5fd75b755fd2389abbeb3b5ef41d",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.tRNAs.gtf.gz",
+    "md5": "10f150b2ccfca1e03aee74f8c9164a66",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.v44.transcripts.fa.gz",
+    "md5": "a30369535731a2fdaa6add9b3530756a",
+    "name": "GENCODE human 44",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_44/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "GRCm39.genome.fa.gz",
+    "md5": "5e5bcbdf1ed391c30ccfacf2a95f854f",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "GRCm39.primary_assembly.genome.fa.gz",
+    "md5": "301645a3e1fa8b627fca48941de70c70",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.2wayconspseudos.gff3.gz",
+    "md5": "422f00c3acae77a041714fecc2897a28",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.2wayconspseudos.gtf.gz",
+    "md5": "2367136713b682f00171751f08158ed2",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.annotation.gff3.gz",
+    "md5": "d19bf340e65095e3ff7414f44a7c1936",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.annotation.gtf.gz",
+    "md5": "442b9dfe08065fb0a201c07e26232403",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.basic.annotation.gff3.gz",
+    "md5": "6f2f96ea4e3326094fb2d75c53ac3981",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.basic.annotation.gtf.gz",
+    "md5": "0e8450c8912ad1e5b19d6baa32c581af",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.chr_patch_hapl_scaff.annotation.gff3.gz",
+    "md5": "0664ca6ccde9aa62b4c5a06158c0f14d",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.chr_patch_hapl_scaff.annotation.gtf.gz",
+    "md5": "16492ba00b538fa4fb76420bec89eeed",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.chr_patch_hapl_scaff.basic.annotation.gff3.gz",
+    "md5": "2240940c448047b49131f9ec22400a19",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.chr_patch_hapl_scaff.basic.annotation.gtf.gz",
+    "md5": "6971884ec11d13b51f7d60727477c0cd",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.lncRNA_transcripts.fa.gz",
+    "md5": "0494dc5778eb5845921f6dd0b11ede07",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.long_noncoding_RNAs.gff3.gz",
+    "md5": "b66811650be8cdf236969bdbd0f047b4",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.long_noncoding_RNAs.gtf.gz",
+    "md5": "851ff39b67c92de6b98d2810954dbf1c",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.pc_transcripts.fa.gz",
+    "md5": "43a740cb8638d3821121151066009b7e",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.pc_translations.fa.gz",
+    "md5": "f0177a8c17ac7dfe82fbf888d68a9827",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.polyAs.gff3.gz",
+    "md5": "1309c2bfa56f791712b7c1f09adac37b",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.polyAs.gtf.gz",
+    "md5": "3ebfd664bf40d4d7b8c2298f34a12b4e",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.primary_assembly.annotation.gff3.gz",
+    "md5": "49377cffd745449246a78ddb4bc9a3a0",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.primary_assembly.annotation.gtf.gz",
+    "md5": "cfe369283ff5d011f10d55a517c208b4",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.primary_assembly.basic.annotation.gff3.gz",
+    "md5": "7df5279211bf03e6e01f65e057deb649",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.primary_assembly.basic.annotation.gtf.gz",
+    "md5": "0cae05a41acc005ef79001a1e5c5c545",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.tRNAs.gff3.gz",
+    "md5": "7bcb1d5f2f97882d37c8ee8e5162e06c",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.tRNAs.gtf.gz",
+    "md5": "c7a2411786baae092367481abed9291d",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  },
+  {
+    "file": "gencode.vM33.transcripts.fa.gz",
+    "md5": "15054f54ac7ae951397b282167fd0373",
+    "name": "GENCODE mouse M33",
+    "origin": "https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M33/MD5SUMS",
+    "retrieved": "2026-10-31"
+  }
+]

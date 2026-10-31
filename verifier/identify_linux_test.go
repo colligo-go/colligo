@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/colligo-go/colligo/identity"
 )
 
 func TestIdentifyFileReadsEveryByteExactlyOnce(t *testing.T) {
@@ -21,11 +23,16 @@ func TestIdentifyFileReadsEveryByteExactlyOnce(t *testing.T) {
 		"html.fa.gz":         []byte("<!DOCTYPE html><title>Login</title>"),
 		"unrecognised.dat":   {0, 1, 2, 3, 4, 5, 6, 7},
 		"not-compressed.fgz": large[:4000],
+		"gencode.gtf":        gencodeGTF(),
+		"gencode.gtf.gz":     gzipped(t, gencodeGTF()),
+		"conflict.gtf":       []byte(gencodeHeader + gencodeFeatures("1", "gene_biotype")),
+		"truncated.gtf":      gencodeGTF()[:len(gencodeGTF())-20],
+		"giant-header.gtf":   []byte(strings.Repeat("#"+strings.Repeat("x", 200)+"\n", 40_000) + gencodeHeader + gencodeFeatures("chr1", "gene_type")),
 	}
 	for base, data := range files {
 		name := write(t, dir, base, data)
 		got := leastBytesRead(t, int64(len(data)), func() {
-			if _, err := IdentifyFile(context.Background(), name, nil); err != nil {
+			if _, err := IdentifyFile(context.Background(), name, identity.Table{}); err != nil {
 				t.Fatal(err)
 			}
 		})

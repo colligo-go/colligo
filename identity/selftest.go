@@ -30,7 +30,8 @@ func (e *SelfTestError) Error() string {
 
 func (e *SelfTestError) Severity() model.Severity { return model.Fatal }
 
-// Verify must run before any digest is trusted. Call it explicitly at
+// Verify must run before any digest is trusted. It also rejects an embedded
+// checksum table with an entry that has no origin or date. Call it explicitly at
 // startup, never from init().
 func Verify() error {
 	for _, v := range vectors {
@@ -38,5 +39,6 @@ func Verify() error {
 			return &SelfTestError{Input: v.input, Want: v.want, Got: got}
 		}
 	}
-	return nil
+	_, err := KnownChecksums()
+	return err
 }
