@@ -81,6 +81,15 @@ func TestLightDoorDoesNotImportStore(t *testing.T) {
 	}
 }
 
+func TestTransportDoesNotImportStoreOrSources(t *testing.T) {
+	all := load(t)
+	for _, forbidden := range []string{module + "/store", module + "/source"} {
+		if hits := reaches(all, module+"/transport", forbidden); len(hits) > 0 {
+			t.Errorf("transport imports %v", hits)
+		}
+	}
+}
+
 func TestNoInitFunctions(t *testing.T) {
 	root := filepath.Join("..", "..")
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
