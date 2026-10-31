@@ -149,9 +149,9 @@ func (v *identifyView) answer(f *verifier.Identification) []string {
 	}
 	name := filepath.Base(f.Name.String())
 	lines := []string{t.Apply(role, symbol+" "+name) + t.Apply(theme.Dim, "  "+strings.ReplaceAll(f.Status, "_", " "))}
-	type pair struct{ key, value string }
+	type pair struct{ field, value string }
 	var rows []pair
-	add := func(key, value string) { rows = append(rows, pair{key, value}) }
+	add := func(field, value string) { rows = append(rows, pair{field, value}) }
 	switch f.Status {
 	case verifier.IdentityIdentified:
 		if f.Checksum != nil {
@@ -187,10 +187,10 @@ func (v *identifyView) answer(f *verifier.Identification) []string {
 	}
 	keyWidth := format.Width(reason)
 	for _, r := range rows {
-		keyWidth = max(keyWidth, format.Width(r.key))
+		keyWidth = max(keyWidth, format.Width(r.field))
 	}
 	for _, r := range rows {
-		lines = append(lines, "  "+t.Apply(theme.Dim, padRight(r.key, keyWidth))+"  "+r.value)
+		lines = append(lines, "  "+t.Apply(theme.Dim, padRight(r.field, keyWidth))+"  "+r.value)
 	}
 	if f.Reason != "" {
 		lines = append(lines, labelledText(t, v.opts.Width, "  ", reason, keyWidth, f.Reason)...)

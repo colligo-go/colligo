@@ -187,3 +187,21 @@ func TestSamplesheetCrossCheckAndCertificatesCoverFilesInSeveralDirectories(t *t
 		}
 	}
 }
+
+func TestSamplesheetRemoteQueryStringNeverReachesTheTextReport(t *testing.T) {
+	dir := t.TempDir()
+	putMates(t, dir, "a", "AAA", 5, ".fastq", false)
+	for _, style := range []string{"--verbose", "--color=always", "--quiet"} {
+		code, out, errText := sheetCommand(t, dir, "sample,fastq_1,fastq_2\nA,a_R1.fastq,https://host.example/a_R2.fastq.gz?token=SECRET\n", style)
+		if code != verifier.ExitIncomplete {
+			t.Fatalf("%s: exit %d\n%s%s", style, code, out, errText)
+		}
+		if strings.Contains(out+errText, "SECRET") || strings.Contains(out+errText, "token=") {
+			t.Fatalf("%s: the query string leaked:\n%s%s", style, out, errText)
+		}
+	}
+	_, out, _ := sheetCommand(t, dir, "sample,fastq_1,fastq_2\nA,a_R1.fastq,https://host.example/a_R2.fastq.gz?token=SECRET\n")
+	if !strings.Contains(out, "sheet_remote_path") || !strings.Contains(out, "host.example") {
+		t.Fatalf("the report must still name the remote entry without its secret:\n%s", out)
+	}
+}

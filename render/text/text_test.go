@@ -270,8 +270,8 @@ func TestFileLinkedByContentShowsTheNameTheSourceUses(t *testing.T) {
 	}
 }
 
-func TestNothingIsDrawnFromARedactedNameBeyondItsDisplayForm(t *testing.T) {
-	remote := &verifier.FileReport{Name: secret.NewName("https://host.example/a.fq.gz?token=SECRET"), Status: verifier.StatusInvalid,
+func TestASamplesheetReportSaysSoInItsVerdict(t *testing.T) {
+	remote := &verifier.FileReport{Name: secret.NewName("https://host.example/a.fq.gz"), Status: verifier.StatusInvalid,
 		Assertions: []model.Assertion{failing(diagnoses.SheetRemotePath, model.Blocking)}}
 	out := render(t, verifier.Report{Files: []*verifier.FileReport{remote}, FromSamplesheet: true}, options(3))
 	if !strings.Contains(out, "samplesheet: ") {

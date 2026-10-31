@@ -99,8 +99,8 @@ func (v *view) runCounts() string {
 	return out + ": " + strings.Join(detail, ", ")
 }
 
-func isOwnOutput(name string) bool {
-	base := filepath.Base(name)
+func isOwnOutput(entry string) bool {
+	base := filepath.Base(entry)
 	return strings.HasSuffix(base, ".colligo-cert.json") || base == "colligo.sha256" || base == "colligo.b3"
 }
 

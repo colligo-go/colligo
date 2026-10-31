@@ -43,4 +43,4 @@ func onlyRunFailure(f *verifier.FileReport) bool {
 	return seen
 }
 
-func baseOf(name string) string { return filepath.Base(name) }
+func baseOf(entry string) string { return filepath.Base(entry) }

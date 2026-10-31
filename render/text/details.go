@@ -125,7 +125,7 @@ func padRight(s string, width int) string {
 }
 
 type fileRow struct {
-	name    string
+	label   string
 	note    string
 	report  *verifier.FileReport
 	missing bool
@@ -136,10 +136,10 @@ func (v *view) runFileTable(rv *runView, indent string) []string {
 	for j, rf := range rv.run.Files {
 		f := rv.files[j]
 		if f == nil {
-			rows = append(rows, fileRow{name: baseOf(rf.Name.String()), missing: true})
+			rows = append(rows, fileRow{label: baseOf(rf.Name.String()), missing: true})
 			continue
 		}
-		row := fileRow{name: v.short[f.Name.String()], report: f}
+		row := fileRow{label: v.short[f.Name.String()], report: f}
 		declared, local := baseOf(rf.Name.String()), baseOf(f.Name.String())
 		if declared != local && declared != local+".gz" {
 			row.note = "for " + declared
@@ -159,7 +159,7 @@ func (v *view) generalFileTable() []string {
 	var rows []fileRow
 	for _, f := range v.report.Files {
 		if !inRun[f] {
-			rows = append(rows, fileRow{name: v.short[f.Name.String()], report: f})
+			rows = append(rows, fileRow{label: v.short[f.Name.String()], report: f})
 		}
 	}
 	return v.fileTable(rows, "")
@@ -181,11 +181,11 @@ func (v *view) fileTable(rows []fileRow, indent string) []string {
 }
 
 func (v *view) fileCells(r fileRow) []format.Cell {
-	name := r.name
+	text := r.label
 	if r.note != "" {
-		name += "  (" + r.note + ")"
+		text += "  (" + r.note + ")"
 	}
-	nameCell := format.Text(name)
+	nameCell := format.Text(text)
 	if r.missing {
 		return []format.Cell{nameCell, format.Num("-"), format.Num("-"), format.Num("-"),
 			format.Text(v.theme.Failed + " missing").Styled(v.theme.Style(theme.Bad))}
