@@ -31,6 +31,7 @@ colligo/
 ├── downloader/       worker pools, retry, rate limit, resume
 ├── adopt/            registration of a pre-existing file under custody
 ├── verifier/         funnel: stat gate, facts, assertions, comparison with a source declaration, scrub
+├── request/          turns what the user typed into one request: paths, folders, list files, samplesheets, source references (§16 "Input"); never reads a data file
 ├── render/           presentation of a report, apart from the checks: text, json, theme, format (§16 "Text output")
 ├── format/           structural validators that also extract facts
 ├── samplesheet/      reads nf-core samplesheets (rnaseq and generic) and resolves their paths; never opens a data file
@@ -956,6 +957,33 @@ The digest is compared with the embedded table of known references (`identity.Kn
 Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes, and the embedded checksum table. A file that changes during the read is `unreadable`, never identified.
 
 `--json` writes its own document, with its own `schema_version` (today 1, since `identify` is not released yet and these fields were added before it was), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `checksum` with `name`, `file`, `md5`, `origin` and `retrieved`, `gencode` with `label`, `release`, `organism`, `assembly`, `ensembl` and `date`, `reason`) and `exit_code`. `status` is `identified`, `declared`, `conflict`, `not_identified`, `invalid` or `unreadable`. `identify` raises no assertion, so the `diagnoses/` catalogue has no entry for it: its `reason` is the sentence.
+
+### Input
+
+Planned in Slice 2, apart from what already exists (paths, folders, `--recursive`, `--samplesheet`, `--source ena:<accession>`). The same rule as the output: Colligo may help to read what the user typed, but it never guesses in silence.
+
+**One request.** Every form of input resolves into one request: the files to read, each a `secret.Name` with where it came from (an argument, a folder, a line of a list or of a samplesheet), and the source to compare with, if any. The checks receive only the request and never know which form produced it. Each form is a small resolver in `request/` (the samplesheet reader of `samplesheet/` is one of them), so a new form — a list file today, a guided mode or a Galaxy form later — is added without touching the checks or the other forms.
+
+**Rules.**
+
+- Every interpretation is shown in the report: `accession DRR021374, taken from the link` or `deduced from the file names`.
+- An ambiguity is a usage error (exit 1) that lists the options; Colligo never picks one.
+- The network is queried only when the user asked for a source.
+- There is no implicit path. `colligo check` with no path is a usage error that suggests `colligo check .`: a script whose variable came out empty (`colligo check $DIR`) must not check another folder in silence and exit 0.
+- A path given as an argument is relative to the working directory; a path written inside a list or a samplesheet is relative to the directory of that file. A `file://` address, as file managers paste it, is read as a path.
+
+**Forms.**
+
+1. **Paths and folders**, as today: a folder is read whole, `--recursive` descends into subfolders.
+2. **`--files-from <file>`**: one path per line; blank lines and lines starting with `#` are skipped; `-` reads the list from standard input (`find … | colligo check --files-from -`), with paths relative to the working directory. A path listed twice is read once. A line whose file does not exist is `read_failed` with `list line N` in the report, and the other files are still checked, as with a samplesheet.
+3. **`--samplesheet <file>`**, as today (above).
+4. **`--source`**:
+   - `ena:<accession>` accepts any case and surrounding spaces; the accession is upper-cased.
+   - An ENA address copied from the browser or the portal (`https://www.ebi.ac.uk/ena/browser/view/DRR021374`) is accepted, and the accession taken from it is shown.
+   - `--source ena` with no accession deduces it from the file names when they all carry the accession of one run; when they carry several, it is a usage error that lists them. A study accession is never deduced: it has to be given.
+5. **Inputs that are a common mistake** keep the severity they have today (an explicit file that cannot be checked is `format_unknown`, `blocking`, never verified), but the report says what the file is and what to do: an SRA archive (`NCBI.sra` at the start: convert it with `fasterq-dump`, then check the result with `--source`), a BAM or CRAM file (not checked yet), a ZIP archive (extract it first), a spreadsheet given as a samplesheet (save it as CSV).
+
+**Flags.** An unknown flag is a usage error that names the closest known flag (`did you mean --source?`) instead of printing every flag. `-h` prints what the command does, a few examples and the exit codes.
 
 ### Text output
 

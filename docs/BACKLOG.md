@@ -16,6 +16,10 @@ Most biologists will not run a command line tool, however polished. Colligo shou
 - A Galaxy tool wrapper, so that `check` and `identify` are a form and a button.
 - A quickstart for biologists: three commands with screenshots, a glossary (what *blocking* and *advisory* mean) and common situations ("I downloaded with fastq-dump", "I renamed my files").
 - Usability tests: three tasks for three to five lab users, watched; they decide the order of the rest.
+- A guided mode: `colligo` alone, on a terminal, asks two or three questions (which folder, which source) and prints the exact command it ran, so the person learns it; never in a script.
+- Shell completion (bash, zsh, fish) for commands, flags and paths.
+- `colligo samplesheet`: write an nf-core samplesheet from a folder, with the pairs found and checked.
+- Checksum files that come with a download (`md5sum.txt`, `*.md5`) used as declared values, each shown with the file it came from.
 - Small touches of the text report: a link from each diagnosis id to its documentation on terminals that support it, a ready rerun command after a failure, and an ASCII theme chosen automatically when the terminal has no Unicode.
 
 Bioconda and static binaries in the GitHub releases are already planned (`packaging/`).
