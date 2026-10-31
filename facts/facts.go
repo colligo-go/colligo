@@ -27,6 +27,9 @@ const (
 type Options struct {
 	Format string
 	Hashes bool
+	// Identify adds the identity facts, such as the seqcol digest of a
+	// FASTA, to the same read.
+	Identify bool
 }
 
 type Result struct {
@@ -80,7 +83,7 @@ func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 	)
 	if res.Container == format.ContainerNone {
 		res.Content = format.DetectContent(head)
-		inner = contentExtractor(opts.Format, res.Content)
+		inner = contentExtractor(opts.Format, res.Content, opts.Identify)
 	} else if v, ok := format.Lookup(res.Container); ok {
 		contnr = v.NewExtractor()
 	}
@@ -92,7 +95,7 @@ func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 	}
 	switch {
 	case contnr != nil:
-		consumers = append(consumers, sink(contnr), payload(contnr, opts.Format, &res, &found))
+		consumers = append(consumers, sink(contnr), payload(contnr, opts.Format, opts.Identify, &res, &found))
 	case inner != nil:
 		consumers = append(consumers, sink(inner))
 	}
@@ -134,7 +137,7 @@ func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 	return res, nil
 }
 
-func contentExtractor(declared, detected string) format.Extractor {
+func contentExtractor(declared, detected string, identify bool) format.Extractor {
 	name := detected
 	if declared != "" {
 		name = declared
@@ -143,7 +146,7 @@ func contentExtractor(declared, detected string) format.Extractor {
 	if !ok || v.Compressed() {
 		return nil
 	}
-	return v.NewExtractor()
+	return format.ExtractorFor(v, identify)
 }
 
 func sink(w io.Writer) consumer {
@@ -194,7 +197,7 @@ func (r *chanReader) finish() {
 	drain(r.in, r.release)
 }
 
-func payload(container format.Extractor, declared string, res *Result, found *collector) consumer {
+func payload(container format.Extractor, declared string, identify bool, res *Result, found *collector) consumer {
 	return func(ctx context.Context, in <-chan *chunk, release func(*chunk)) error {
 		cr := &chanReader{in: in, release: release}
 		defer cr.finish()
@@ -220,7 +223,7 @@ func payload(container format.Extractor, declared string, res *Result, found *co
 		decompressed = int64(filled)
 		content := format.DetectContent(buf[:filled])
 		res.Content = content
-		inner := contentExtractor(declared, content)
+		inner := contentExtractor(declared, content, identify)
 		if inner != nil {
 			inner.Write(buf[:filled])
 		}

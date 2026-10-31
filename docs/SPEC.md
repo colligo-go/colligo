@@ -51,7 +51,7 @@ colligo/
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `identity` (the seqcol digest of a FASTA only), `verifier`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
 **Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
@@ -314,7 +314,7 @@ Fact kinds of v1:
 | `records`     | count of records and bases, length histogram                 |
 | `read_ends`   | first and last read ID, without pair suffix                  |
 | `seq_names`   | sampled sequence names; inferred chromosome convention       |
-| `seqcol`      | Sequence Collection digest and `sorted_name_length_pairs`    |
+| `seqcol`      | Sequence Collection digest, the digest of `names`, `lengths` and `sequences`, and the count of sequences (`sorted_name_length_pairs` arrives with `compat`, Slice 6) |
 | `gtf_header`  | pragmas of the GTF/GFF3 header                               |
 | `read_header` | instrument, run, flowcell and lanes observed in the read IDs |
 | `barcode`     | R1 length and hit rate against chemistry whitelists          |
@@ -863,7 +863,7 @@ Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository
 
 ## 16. CLI
 
-Implemented today: `check`, `validate` and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` and `--certificate`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
+Implemented today: `check`, `validate`, `identify` (FASTA only) and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check` and `--certificate`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
 `--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
@@ -878,7 +878,7 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 | `check --certificate`   | 1     | emits a certificate verifiable by third parties (§13)                                                                            |
 | `check --source`        | 2     | compares against the source                                                                                                      |
 | `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated |
-| `identify`              | 2     | identity by content: seqcol, GTF header, hash against official checksums                                                         |
+| `identify`              | 2     | identity by content: seqcol (FASTA, implemented), GTF header, hash against official checksums                                    |
 | `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
 | `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
 | `check --lock`          | 4     | checks the collection against a `colligo.lock`                                                                                   |
@@ -887,6 +887,27 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 | `check --cross-extract` | —     | runs the Go and an external extractor on the same file and compares the facts; only with an external extractor present           |
 
 The `--json` output of `check` and `validate` is an object with `schema_version` (today 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` and `exit_code`. Each assertion carries `id` (from the `diagnoses/` catalogue), `mode`, `severity`, `passed`, `skipped`, `declared` and `observed`, and, when it failed, `observation`, `probable_cause` and `suggested_action`. A new field requires bumping `schema_version`.
+
+### `identify`
+
+`colligo identify [--json] <path>...` reads each file once and names it by its content. No database, no TOML; it does not import `store`.
+
+For a FASTA, plain or inside gzip or BGZF, the same read that validates the structure produces the **Sequence Collection digest** of GA4GH Refget Sequence Collections v1.0.0, level 0:
+
+- `names`: the first word of each header, in file order.
+- `sequences`: `SQ.` followed by the refget `sha512t24u` of each sequence, after dropping every character that is not a letter and upper-casing the rest. Line width, case, line endings and the text after the name do not change it.
+- `lengths`: the length of each normalised sequence. It is reported but, as the specification says, it does not enter the collection digest.
+- Each attribute is digested as its canonical JSON array (RFC 8785) with `sha512t24u`; the collection digest is the `sha512t24u` of the canonical object `{"names": ..., "sequences": ...}`.
+
+The result is the `seqcol` fact (`seqcol-1`), which only exists when the FASTA is structurally valid. A name that is not UTF-8, a name longer than 64 KiB, names that add up to more than 256 MiB or more than 1,048,576 sequences make the collection impossible to digest; the fact then carries only a `reason`. The caps bound the memory a hostile file can claim.
+
+The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A file that matches nothing is `not_identified`, with the digest when there is one; that is not an error. A file that is not a FASTA is `not_identified` with the reason. A FASTA, or its gzip or BGZF container, with a structural problem is `invalid` with the reason: a truncated or broken reference must not look like an answer.
+
+Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes. A file that changes during the read is `unreadable`, never identified.
+
+Exit codes: 0 when every file was answered, identified or not; 3 when any file is `invalid`; 2 when any file is unreadable (missing, unreadable, changed during the read), which outranks 3; 1 for a usage error; 4 when interrupted.
+
+`--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified`, `invalid` or `unreadable`.
 
 **Heavy door** — study with a database.
 

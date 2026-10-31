@@ -8,6 +8,7 @@ Downloading with an MD5 is a solved problem; knowing what the file *means* is no
 ```
 colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz
 colligo check . --certificate
+colligo identify genome.fa.gz
 ```
 
 Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 interrupted, 5 quick check found nothing in what it read (content not read in full).
