@@ -1,0 +1,81 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/nf-core/modules/master/modules/meta-schema.json
+name: colligo_check
+description: Check that sequencing files are intact and, with a source, that they are the data the source declared
+keywords:
+  - quality control
+  - integrity
+  - fastq
+  - checksum
+  - ena
+tools:
+  - colligo:
+      description: |
+        Identifies, verifies and watches genomic data files. `colligo check`
+        reads each file once and checks its structure, pair and counts, and
+        with `--source ena:<accession>` compares them with what ENA declares.
+      homepage: https://github.com/colligo-go/colligo
+      documentation: https://github.com/colligo-go/colligo
+      tool_dev_url: https://github.com/colligo-go/colligo
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. [ id:'test', single_end:false ]
+    - reads:
+        type: file
+        description: |
+          List of input FastQ files of size 1 and 2 for single-end and paired-end data,
+          respectively. Other formats colligo reads (FASTA, GTF) also work.
+        ontologies:
+          - edam: http://edamontology.org/format_1930 # FASTQ
+output:
+  json:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. [ id:'test', single_end:false ]
+      - "*.colligo.json":
+          type: file
+          description: |
+            The report of `colligo check --json` (schema_version 2): one entry
+            per file with its assertions, and a `source` object with --source.
+          pattern: "*.colligo.json"
+          ontologies:
+            - edam: http://edamontology.org/format_3464 # JSON
+  exit_code:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. [ id:'test', single_end:false ]
+      - "*.colligo.exit_code":
+          type: file
+          description: |
+            The exit code of colligo: 0 verified, 3 blocking failure. Any other
+            code fails the task before this file is published.
+          pattern: "*.colligo.exit_code"
+          ontologies: []
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: http://edamontology.org/format_3750 # YAML
+topics:
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: http://edamontology.org/format_3750 # YAML
+authors:
+  - "@JVguedesF"
+maintainers:
+  - "@JVguedesF"
