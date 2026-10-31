@@ -47,6 +47,15 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 		diagnoses.FormatUnknown: func() Report {
 			return run(t, Options{}, write(t, dir, "mystery.dat", []byte{0, 1, 2, 3, 4, 5}))
 		},
+		diagnoses.InputSRA: func() Report {
+			return run(t, Options{}, write(t, dir, "reads.sra", append([]byte("NCBI.sra"), make([]byte, 32)...)))
+		},
+		diagnoses.InputAlignment: func() Report {
+			return run(t, Options{}, write(t, dir, "aligned.bam", bamBytes(t)))
+		},
+		diagnoses.InputArchive: func() Report {
+			return run(t, Options{}, write(t, dir, "bundle.zip", append([]byte("PK\x03\x04"), make([]byte, 32)...)))
+		},
 		diagnoses.FormatDeclared: func() Report {
 			return run(t, Options{Format: "bgzf"}, write(t, dir, "declared.fastq.gz", gzipped(t, reads(5))))
 		},

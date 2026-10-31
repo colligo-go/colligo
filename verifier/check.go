@@ -140,7 +140,8 @@ func evaluatedIDs() []string {
 		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing,
 			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 			diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
-			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed:
+			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed,
+			diagnoses.InputSRA, diagnoses.InputAlignment, diagnoses.InputArchive:
 		default:
 			ids = append(ids, id)
 		}
@@ -226,7 +227,7 @@ func checkQuick(ctx context.Context, name secret.Name, opts Options) (*FileRepor
 		}
 		res.Facts = append(res.Facts, bgzfTailFact(tail))
 	}
-	if res.Container == format.ContainerNone && res.Content != format.ContentHTML && info.Size() > 0 {
+	if _, _, binaryInput := commonMistake(res.Content); res.Container == format.ContainerNone && res.Content != format.ContentHTML && !binaryInput && info.Size() > 0 {
 		last := make([]byte, 1)
 		if _, err := f.ReadAt(last, info.Size()-1); err != nil {
 			return unreadable(rep, err), nil

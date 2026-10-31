@@ -86,6 +86,8 @@ The server returns `200` with an HTML error. You are left with a 4 KB `.fastq.gz
 
 It costs microseconds and catches a disproportionate number of real failures.
 
+**The wrong file, by name.** The same first bytes name the files people hand to a check by mistake: `NCBI.sra` (`input_sra`), a BGZF whose content starts with `BAM\1` or a `CRAM` file (`input_alignment`) and a ZIP archive (`input_archive`). Each is `blocking`, like the generic `format_unknown` it replaces, so none of them is ever `verified`; the report says what the file is and what to do. Detection is by content: a BAM named `reads.fastq.gz` is still a BAM.
+
 ### M4 — Truncation that slips through
 
 The worst mode. A cut `.gz` decompresses partially. Many downstream tools accept it without complaint and produce plausible numbers.

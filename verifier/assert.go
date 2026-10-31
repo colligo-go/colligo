@@ -28,7 +28,7 @@ func AssertionIDs() []string {
 	return []string{
 		diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.HTMLBody, diagnoses.MagicMismatch,
 		diagnoses.ChecksumMismatch, diagnoses.SizeMismatch, diagnoses.StructureInvalid,
-		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.CountMismatch,
+		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.InputSRA, diagnoses.InputAlignment, diagnoses.InputArchive, diagnoses.CountMismatch,
 		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
 		diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 		diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
@@ -190,9 +190,25 @@ func structureStage(res facts.Result) []model.Assertion {
 	return out
 }
 
+func commonMistake(content string) (id, label string, mistaken bool) {
+	switch content {
+	case format.ContentSRA:
+		return diagnoses.InputSRA, "SRA", true
+	case format.ContentBAM:
+		return diagnoses.InputAlignment, "BAM", true
+	case format.ContentCRAM:
+		return diagnoses.InputAlignment, "CRAM", true
+	case format.ContentZIP:
+		return diagnoses.InputArchive, "ZIP", true
+	}
+	return "", "", false
+}
+
 func formatStage(res facts.Result, declared string) []model.Assertion {
 	var out []model.Assertion
-	if res.Content == format.ContentUnknown {
+	if id, label, mistaken := commonMistake(res.Content); mistaken {
+		out = append(out, newAssertion(id, false, diagnoses.Values{Observed: label}))
+	} else if res.Content == format.ContentUnknown {
 		out = append(out, newAssertion(diagnoses.FormatUnknown, false, diagnoses.Values{Observed: res.Content}))
 	} else {
 		out = append(out, newAssertion(diagnoses.FormatUnknown, true, diagnoses.Values{Observed: res.Content}))
