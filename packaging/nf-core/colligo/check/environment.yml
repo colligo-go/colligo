@@ -4,4 +4,4 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - bioconda::colligo=0.1.0
+  - bioconda::colligo=0.2.0
