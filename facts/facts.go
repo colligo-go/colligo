@@ -30,6 +30,9 @@ type Options struct {
 	// Identify adds the identity facts, such as the seqcol digest of a
 	// FASTA, to the same read.
 	Identify bool
+	// MD5 computes the MD5 of the file without the rest of Hashes, for the
+	// comparison with the checksums a source publishes.
+	MD5 bool
 }
 
 type Result struct {
@@ -90,8 +93,10 @@ func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 
 	var consumers []consumer
 	if opts.Hashes {
-		consumers = append(consumers,
-			sink(&tree), sink(md5h), sink(shah))
+		consumers = append(consumers, sink(&tree), sink(shah))
+	}
+	if opts.Hashes || opts.MD5 {
+		consumers = append(consumers, sink(md5h))
 	}
 	switch {
 	case contnr != nil:
@@ -106,9 +111,11 @@ func Compute(ctx context.Context, src io.Reader, opts Options) (Result, error) {
 	}
 	res.Size = size
 
+	if opts.Hashes || opts.MD5 {
+		copy(res.MD5[:], md5h.Sum(nil))
+	}
 	if opts.Hashes {
 		res.Root, res.Groups = tree.sum()
-		copy(res.MD5[:], md5h.Sum(nil))
 		copy(res.SHA256[:], shah.Sum(nil))
 		digests, err := digestsFact(res)
 		if err != nil {

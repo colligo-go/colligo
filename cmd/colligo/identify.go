@@ -14,7 +14,7 @@ import (
 	"github.com/colligo-go/colligo/verifier"
 )
 
-func runIdentify(args []string, stdout, stderr io.Writer, references []identity.Reference) int {
+func runIdentify(args []string, stdout, stderr io.Writer, table identity.Table) int {
 	fs := flag.NewFlagSet("identify", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	jsonOut := fs.Bool("json", false, "write the answer as JSON")
@@ -41,7 +41,7 @@ func runIdentify(args []string, stdout, stderr io.Writer, references []identity.
 	if err != nil {
 		return failed(err, stderr)
 	}
-	report, err := verifier.IdentifyAll(ctx, names, references)
+	report, err := verifier.IdentifyAll(ctx, names, table)
 	if err != nil {
 		return failed(err, stderr)
 	}

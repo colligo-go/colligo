@@ -114,3 +114,24 @@ func TestSeqcolFactIsOmittedForOtherFormats(t *testing.T) {
 		t.Error("FASTQ has no seqcol")
 	}
 }
+
+func TestMD5OptionHashesWithoutTheOtherHashes(t *testing.T) {
+	data := []byte(identifyFasta)
+	only, err := Compute(context.Background(), bytes.NewReader(data), Options{MD5: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	all, err := Compute(context.Background(), bytes.NewReader(data), Options{Hashes: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if only.MD5 != all.MD5 || only.MD5 == ([16]byte{}) {
+		t.Errorf("md5 = %x, want %x", only.MD5, all.MD5)
+	}
+	if only.Root != ([32]byte{}) || only.SHA256 != ([32]byte{}) {
+		t.Error("the MD5 option must not compute the tree or the SHA-256")
+	}
+	if _, ok := only.Fact("digests"); ok {
+		t.Error("the digests fact belongs to Hashes")
+	}
+}
