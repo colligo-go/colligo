@@ -3,6 +3,7 @@ package secret
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -70,6 +71,36 @@ func TestRestrictedEndpointNeverLeaksThePath(t *testing.T) {
 	assertNeverLeaks(t, "restricted Endpoint", e)
 	if got := e.String(); got != "https://example.org/[REDACTED]" {
 		t.Errorf("restricted String() = %q", got)
+	}
+}
+
+func TestJoinedEndpointHidesItsQuery(t *testing.T) {
+	base, err := NewEndpoint("https://mirror.example/api/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := base.Join(url.Values{"token": {canary}}, "filereport")
+	if got := joined.String(); got != "https://mirror.example/api/filereport" {
+		t.Errorf("String = %q", got)
+	}
+	if joined.u.Query().Get("token") != canary {
+		t.Errorf("the query was not set: %q", joined.u.RawQuery)
+	}
+	assertNeverLeaks(t, "joined Endpoint", joined)
+}
+
+func TestJoinedEndpointStaysRestricted(t *testing.T) {
+	base := Endpoint{u: &url.URL{Scheme: "https", Host: "private.example", Path: "/" + canary}, restricted: true}
+	joined := base.Join(url.Values{"q": {"1"}}, "more")
+	if !joined.restricted {
+		t.Fatal("the restriction was lost")
+	}
+	assertNeverLeaks(t, "joined restricted Endpoint", joined)
+}
+
+func TestJoinOnTheZeroEndpointIsZero(t *testing.T) {
+	if got := (Endpoint{}).Join(url.Values{"a": {"b"}}, "x").String(); got != "" {
+		t.Errorf("String = %q", got)
 	}
 }
 

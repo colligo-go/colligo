@@ -1,0 +1,6 @@
+{
+  "url": "https://www.ebi.ac.uk/ena/portal/api/filereport?accession=DRR021374&result=read_run&fields=run_accession,library_layout,fastq_ftp,fastq_md5,fastq_bytes,read_count,base_count,status&format=tsv",
+  "captured_at": "2026-10-31",
+  "recorded_with": "curl 8.22.0",
+  "sha256": "c8c018700be4c73195d4f73e335ee50d5e0602a023ca83f1b6ca8c3f775737ee"
+}
