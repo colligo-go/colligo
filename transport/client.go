@@ -109,12 +109,12 @@ func (c *Client) Get(ctx context.Context, endpoint secret.Endpoint, rng *ByteRan
 	if err != nil || (target.Scheme != "http" && target.Scheme != "https") || target.Hostname() == "" {
 		return nil, &UnsupportedEndpointError{Endpoint: endpoint}
 	}
-	host := strings.ToLower(target.Hostname())
-	interval := time.Second / time.Duration(c.rateFor(host))
+	domain, perSecond := c.rateFor(strings.ToLower(target.Hostname()))
+	interval := time.Second / time.Duration(perSecond)
 
 	var last error
 	for attempt := 0; attempt < c.maxAttempts; attempt++ {
-		if err := c.awaitSlot(ctx, host, interval); err != nil {
+		if err := c.awaitSlot(ctx, domain, interval); err != nil {
 			return nil, err
 		}
 		resp, fail := c.attempt(ctx, endpoint, target)
@@ -215,28 +215,29 @@ func (c *Client) accept(endpoint secret.Endpoint, resp *http.Response, cancel co
 	}, nil
 }
 
-func (c *Client) awaitSlot(ctx context.Context, host string, interval time.Duration) error {
+func (c *Client) awaitSlot(ctx context.Context, domain string, interval time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	now := c.clock.Now()
-	slot := c.spacing.reserve(host, interval, now)
+	slot := c.spacing.reserve(domain, interval, now)
 	if wait := slot.Sub(now); wait > 0 {
 		return c.clock.Sleep(ctx, wait)
 	}
 	return nil
 }
 
-func (c *Client) rateFor(host string) int {
-	bestLen := 0
-	rate := c.fallbackRate
+func (c *Client) rateFor(host string) (string, int) {
+	matched, rate := "", c.fallbackRate
 	for domain, perSecond := range c.rates {
-		if (host == domain || strings.HasSuffix(host, "."+domain)) && len(domain) > bestLen {
-			bestLen = len(domain)
-			rate = perSecond
+		if (host == domain || strings.HasSuffix(host, "."+domain)) && len(domain) > len(matched) {
+			matched, rate = domain, perSecond
 		}
 	}
-	return rate
+	if matched == "" {
+		return host, rate
+	}
+	return matched, rate
 }
 
 func (c *Client) backoff(attempt int) time.Duration {

@@ -586,6 +586,59 @@ func TestRateFollowsTheLongestMatchingDomain(t *testing.T) {
 	}
 }
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func answerEveryHost(r *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode:    http.StatusOK,
+		Header:        http.Header{"Content-Type": {"text/plain"}},
+		Body:          io.NopCloser(strings.NewReader("x")),
+		ContentLength: 1,
+		Request:       r,
+	}, nil
+}
+
+func TestHostsOfOneDomainShareItsCeiling(t *testing.T) {
+	clock := newFakeClock()
+	c := newClient(t, clock,
+		transport.WithHTTPClient(&http.Client{Transport: roundTripFunc(answerEveryHost)}),
+		transport.WithRate("example.org", 4),
+	)
+	started := clock.Now()
+	for i := range 8 {
+		host := []string{"www.example.org", "ftp.sra.example.org"}[i%2]
+		resp, err := c.Get(context.Background(), endpointOf(t, "https://"+host+"/report"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		readAll(t, resp)
+	}
+	if elapsed := clock.Now().Sub(started); elapsed != 1750*time.Millisecond {
+		t.Fatalf("8 requests over two hosts of one domain at 4 per second took %v, want 1.75s", elapsed)
+	}
+}
+
+func TestUnlistedHostsKeepSeparateCeilings(t *testing.T) {
+	clock := newFakeClock()
+	c := newClient(t, clock,
+		transport.WithHTTPClient(&http.Client{Transport: roundTripFunc(answerEveryHost)}),
+		transport.WithDefaultRate(1),
+	)
+	started := clock.Now()
+	for _, host := range []string{"a.example", "b.example", "c.example"} {
+		resp, err := c.Get(context.Background(), endpointOf(t, "https://"+host+"/"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		readAll(t, resp)
+	}
+	if elapsed := clock.Now().Sub(started); elapsed != 0 {
+		t.Fatalf("one request to each of three unlisted hosts waited %v, want none", elapsed)
+	}
+}
+
 func TestConcurrentCallersStayUnderTheDomainCeiling(t *testing.T) {
 	const perSecond = 100
 	const callers = 12

@@ -677,7 +677,7 @@ Verify pool    → 1–2 goroutines
 
 Per-domain limits (default, configurable): `ebi.ac.uk` (the ENA Portal API and `ftp.ebi.ac.uk`) 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
 
-For the metadata pool the number is a ceiling of requests per second: the client spaces the start of consecutive requests to a domain by at least `1/N` of a second, retries included, so no window of one second holds more than `N` starts. A domain matches itself and its subdomains, the longest match wins, and a domain without an entry gets 2. `WithRate` and `WithDefaultRate` change it.
+For the metadata pool the number is a ceiling of requests per second: the client spaces the start of consecutive requests to a domain by at least `1/N` of a second, retries included, so no window of one second holds more than `N` starts. A domain matches itself and its subdomains, the longest match wins, and every host under it shares that one ceiling (`www.ebi.ac.uk` and `ftp.sra.ebi.ac.uk` together stay under the 4 of `ebi.ac.uk`); a host without an entry gets 2 of its own. `WithRate` and `WithDefaultRate` change it.
 
 These defaults exist so as not to burn your institution's IP. Raising them is your responsibility and is recorded in `config_hash`.
 
