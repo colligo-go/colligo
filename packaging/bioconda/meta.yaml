@@ -1,0 +1,44 @@
+{% set name = "colligo" %}
+{% set version = "0.2.0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  git_url: https://github.com/colligo-go/colligo.git
+  git_rev: v{{ version }}
+
+build:
+  number: 0
+  run_exports:
+    - {{ pin_subpackage(name, max_pin="x.x") }}
+
+requirements:
+  build:
+    - {{ compiler('go-nocgo') }}
+    - go-licenses
+
+test:
+  files:
+    - tiny.fastq
+  commands:
+    - colligo version | grep "^colligo v{{ version }} " > /dev/null
+    - colligo check tiny.fastq
+    - "colligo check --json tiny.fastq | grep '\"schema_version\": 2' > /dev/null"
+
+about:
+  home: https://github.com/colligo-go/colligo
+  dev_url: https://github.com/colligo-go/colligo
+  license: MIT
+  license_family: MIT
+  license_file:
+    - LICENSE
+    - thirdparty/
+  summary: Check that the genomic data you have is the data you think you have
+
+extra:
+  skip-lints:
+    - uses_vcs_url
+  recipe-maintainers:
+    - JVguedesF

@@ -1,0 +1,88 @@
+nextflow_process {
+
+    name "Test Process COLLIGO_CHECK"
+    script "../main.nf"
+    process "COLLIGO_CHECK"
+
+    tag "modules"
+    tag "modules_nfcore"
+    tag "colligo"
+    tag "colligo/check"
+
+    test("sarscov2 single-end [fastq]") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [ id: 'test', single_end: true ],
+                    [ file(params.modules_testdata_base_path + 'genomics/sarscov2/illumina/fastq/test_1.fastq.gz', checkIfExists: true) ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assertAll (
+                { assert process.success },
+                { assert path(process.out.json[0][1]).json.schema_version == 2 },
+                { assert path(process.out.json[0][1]).json.exit_code == 0 },
+                { assert path(process.out.json[0][1]).json.files[0].status == 'verified' },
+                { assert snapshot(process.out.versions).match() }
+            )
+        }
+    }
+
+    test("sarscov2 paired-end [fastq]") {
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [ id: 'test', single_end: false ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/sarscov2/illumina/fastq/test_1.fastq.gz', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/sarscov2/illumina/fastq/test_2.fastq.gz', checkIfExists: true)
+                    ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assertAll (
+                { assert process.success },
+                { assert path(process.out.json[0][1]).json.exit_code == 0 },
+                { assert path(process.out.json[0][1]).json.files.size() == 2 },
+                { assert path(process.out.json[0][1]).json.files.every { it.status == 'verified' } },
+                { assert snapshot(process.out.versions).match() }
+            )
+        }
+    }
+
+    test("sarscov2 paired-end [fastq] - stub") {
+
+        options "-stub"
+
+        when {
+            process {
+                """
+                input[0] = Channel.of([
+                    [ id: 'test', single_end: false ],
+                    [
+                        file(params.modules_testdata_base_path + 'genomics/sarscov2/illumina/fastq/test_1.fastq.gz', checkIfExists: true),
+                        file(params.modules_testdata_base_path + 'genomics/sarscov2/illumina/fastq/test_2.fastq.gz', checkIfExists: true)
+                    ]
+                ])
+                """
+            }
+        }
+
+        then {
+            assertAll (
+                { assert process.success },
+                { assert snapshot(process.out).match() }
+            )
+        }
+    }
+}
