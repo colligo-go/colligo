@@ -26,6 +26,10 @@ const (
 	PairMissing        = "pair_missing"
 	ExtensionMismatch  = "extension_mismatch"
 	TrailingBlankLines = "trailing_blank_lines"
+	SheetRemotePath    = "sheet_remote_path"
+	SheetSharedFile    = "sheet_shared_file"
+	SheetDuplicateRow  = "sheet_duplicate_row"
+	SheetMatesSwapped  = "sheet_mates_swapped"
 )
 
 type Entry struct {
@@ -139,6 +143,30 @@ var catalogue = []Entry{
 		Observation: "The name suggests {declared}, but the content is {observed}.",
 		Cause:       "The file was renamed or saved with a misleading extension.",
 		Action:      "Rename the file so the name matches its content.",
+	},
+	{
+		ID: SheetRemotePath, Mode: "M6", Severity: model.Blocking,
+		Observation: "Samplesheet line {detail} points to a remote location ({observed}), which this version does not check.",
+		Cause:       "The samplesheet refers to data by URL, and Colligo checks only local files here; nothing was downloaded and nothing about that entry was verified.",
+		Action:      "Download the file and point the samplesheet at the local copy, then check again.",
+	},
+	{
+		ID: SheetSharedFile, Mode: "M19", Severity: model.Blocking,
+		Observation: "Samplesheet {detail}: the files listed have identical content (BLAKE3 {declared}).",
+		Cause:       "The same data was listed twice under different names or samples, so a pipeline would count it twice or give two samples the same reads.",
+		Action:      "Fix the line that points at the wrong file, or remove the repeated entry.",
+	},
+	{
+		ID: SheetDuplicateRow, Mode: "M19", Severity: model.Blocking,
+		Observation: "Samplesheet lines {declared} repeat sample {detail} with the same files.",
+		Cause:       "A row was copied. Repeated lines of one sample are lanes only when each has different files; with the same files the pipeline merges the reads with themselves.",
+		Action:      "Remove the repeated line, or give it the files of the lane it stands for.",
+	},
+	{
+		ID: SheetMatesSwapped, Mode: "M5", Severity: model.Blocking,
+		Observation: "The fastq_2 files of samplesheet lines {declared} and {observed} look swapped: each one fits the fastq_1 of the other line.",
+		Cause:       "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
+		Action:      "Exchange the fastq_2 values of those two lines.",
 	},
 }
 

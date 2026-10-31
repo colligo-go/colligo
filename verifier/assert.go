@@ -30,6 +30,7 @@ func AssertionIDs() []string {
 		diagnoses.ChecksumMismatch, diagnoses.SizeMismatch, diagnoses.StructureInvalid,
 		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.CountMismatch,
 		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
+		diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 	}
 }
 
