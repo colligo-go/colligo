@@ -70,7 +70,7 @@ Scope:
 
 - `source/ena/`: only the metadata part — `fastq_md5`, `fastq_bytes`, `read_count`, `base_count`, record status. Pure, with a synthetic fixture.
 - Minimal HTTP `transport/` for metadata, with per-domain rate limit.
-- `colligo check --source ena`: compares facts against the declared. M15 of `RELIABILITY.md`: the layout comes from the content, not from the source label, and a label that contradicts the content is reported as `layout_mismatch`.
+- `colligo check --source ena`: compares facts against the declared. M15 of `RELIABILITY.md`: `base_count` over every file of the run is the blocking comparison, `read_count` is checked against the readings seen in real runs, and a single label on a pair is reported as `layout_mismatch`.
 - `colligo identify`: Sequence Collection digest for FASTA; GENCODE GTF release by the header; hash against official checksums where they exist.
 - `colligo check --samplesheet`: nf-core pipeline samplesheet checked against the content.
 - MultiQC module that reads the `--json` of `check` and shows the result in the report the user already opens.
@@ -78,7 +78,7 @@ Scope:
 Definition of done:
 
 - The QC Fail case reproduced in a fixture — valid FASTQ with a shortened read 2 — exits with code 3 because `base_count` does not match.
-- The recorded ENA responses of DRR021374, SRR10641224 and ERR5060520 are fixtures: the first two pass with `read_count` per file, and the third passes with a `layout_mismatch` advisory instead of a `blocking`.
+- The recorded ENA responses of DRR021374 (`read_count` per file), ERR12477684 (sum of the files), ERR5514981 (sum of three files) and SRR10663037 (pair count plus the unpaired file) are fixtures and all pass; ERR5060520, labelled single but a pair, passes with a `layout_mismatch` advisory.
 - `identify` recognises a GENCODE GTF by the header and a FASTA by the seqcol digest.
 - A samplesheet with R2 swapped between two samples is rejected.
 - The result of `check` appears in a MultiQC report.

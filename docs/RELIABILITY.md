@@ -210,20 +210,28 @@ Documented case: an extraction with `fastq-dump` produced a read 2 with 1 bp ins
 
 **Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The observed count is compared against the declared one; divergence → `blocking`, with both numbers in `discrepancies`.
 
-What the declared number counts depends on the run, and the source label cannot be trusted to say which. Checked against real runs (2026-10-30):
+The two declared numbers are not equally reliable. Measured on 27 real Illumina runs from DDBJ, NCBI and ENA submissions, 52 files (2026-10-30):
 
-| Run | ENA label | `read_count` | Reads in each file | Reading that holds |
-|---|---|---|---|---|
-| DRR021374 | PAIRED | 13767 | 13767 and 13767 | per file |
-| SRR10641224 | PAIRED | 12958 | 12958 and 12958 | per file |
-| ERR5060520 | SINGLE | 8014 | 4007 and 4007 | sum of the pair |
+- `base_count` equals the sum of the bases of every file of the run in 27 of 27 runs, whatever the label and the number of files.
+- `read_count` has no single meaning, and the `library_layout` label does not predict which one holds:
 
-So the rule is not "R1 plus R2 equals `read_count`": that would raise a false `blocking` on every ordinary paired run. The layout comes from the content, not from the label:
+| Run | Label | Files | `read_count` | Reads per file | It is |
+|---|---|---|---|---|---|
+| DRR021374 | PAIRED | 2 | 13767 | 13767, 13767 | each file |
+| ERR12477684 | PAIRED | 2 | 3524 | 1762, 1762 | sum of the files |
+| ERR5060520 | SINGLE | 2 | 8014 | 4007, 4007 | sum of the files |
+| ERR5514981 | SINGLE | 3 | 4923 | 7, 2458, 2458 | sum of the files |
+| SRR10663037 | PAIRED | 3 | 12859 | 1, 12858, 12858 | the pair count plus the unpaired file |
 
-- The files form a pair when they have the same number of reads and compatible IDs (the `pair_count` and `pair_ids` assertions, which need no source).
-- Labelled paired, or a single file: every file must have `read_count` reads.
-- Labelled single, but the files form a pair: each file may have `read_count` reads, or the two together may. The second reading is accepted only because the content shows a pair, and it raises `layout_mismatch`, `advisory`: the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples.
-- No reading matches → `blocking` `count_mismatch`, with the observed count, the declared one and the reading that came closest.
+So the rule is not "R1 plus R2 equals `read_count`": that raises a false `blocking` on ordinary paired runs, and a check that cries wolf teaches users to ignore it. Nor does the label choose the reading. The rule is:
+
+1. `base_count` is the blocking comparison, against the bases of every file listed for the run. Divergence → `blocking` `count_mismatch`. This is what catches the shortened read 2.
+2. `read_count` is checked against the three readings seen above: each file, the sum of the files, the pair count plus the unpaired files. A match passes. When `base_count` holds and no reading matches, the content agrees with the declared bases and the MD5 and only the metadata field is unexplained: `advisory`, never `blocking`. When `base_count` fails, the run is `blocking` whatever `read_count` says.
+3. `layout_mismatch`, `advisory`, when the label says single and the files form a pair (`pair_count` and `pair_ids`): the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples. A label that says paired for one file is not judged, because Colligo does not check for interleaved files.
+
+Trying several readings of `read_count` is safe only because it is not the blocking comparison: with `base_count` independent and blocking, a coincidental match cannot let a shortened run through.
+
+The sample is small: Illumina only, the smallest runs of each label and file count, no long reads. The adapter records every run whose `read_count` no reading explains as a new fixture instead of widening the rule silently.
 
 Regression fixtures are the recorded metadata responses of the runs above, not the files.
 
