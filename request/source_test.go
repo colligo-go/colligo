@@ -107,3 +107,24 @@ func TestEnaAloneDoesNotDeduceFromFilesThatCarryNoRun(t *testing.T) {
 		}
 	}
 }
+
+func TestDeducingFromNamesWithNoRunDescribesThemByCount(t *testing.T) {
+	cases := map[string]struct {
+		files []request.File
+		want  string
+	}{
+		"one":   {filesNamed("a.fastq"), "because a.fastq carries no run accession"},
+		"three": {filesNamed("a.fastq", "b.fastq", "c.fastq"), "because 3 files (a.fastq, b.fastq, c.fastq) carry no run accession"},
+		"five":  {filesNamed("a.fastq", "b.fastq", "c.fastq", "d.fastq", "e.fastq"), "because 5 files (a.fastq, b.fastq, c.fastq, ...) carry no run accession"},
+	}
+	for name, tc := range cases {
+		_, err := request.ParseSource("ena", tc.files)
+		msg := usageMessage(t, err)
+		if !strings.Contains(msg, tc.want) {
+			t.Errorf("%s: message %q lacks %q", name, msg, tc.want)
+		}
+		if name == "five" && (strings.Contains(msg, "d.fastq") || strings.Contains(msg, "e.fastq")) {
+			t.Errorf("%s: message lists more than three names: %q", name, msg)
+		}
+	}
+}
