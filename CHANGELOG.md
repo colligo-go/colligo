@@ -4,6 +4,12 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added
+
+- `colligo identify`: names a FASTA, plain or gzip/BGZF compressed, by its GA4GH Sequence Collection digest (Refget Sequence Collections v1.0.0, level 0), taken from the same single read that validates the file. `--json` has its own schema (`schema_version` 1). A file that matches no known reference is `not_identified`, not an error. The table of known references is embedded and empty until a digest can be checked against an official source.
+- `identity` package: `sha512t24u`, RFC 8785 canonical form, the streaming `Collector`, and a known-vector self-test that runs before any digest is trusted.
+- The `seqcol` fact (`seqcol-1`), added to the read only when `facts.Options.Identify` is set, so `check` does not pay for it.
+
 ## [0.1.0] - 2026-10-30
 
 First release: slices 0 and 1, the light door. One command, no database, no configuration.
