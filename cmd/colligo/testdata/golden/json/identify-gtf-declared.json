@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "<dir>/declared.gtf",
+      "status": "declared",
+      "content": "gtf",
+      "size": 297,
+      "gencode": {
+        "label": "GENCODE 44",
+        "release": "44",
+        "organism": "human",
+        "assembly": "GRCh38",
+        "ensembl": "110",
+        "date": "2023-03-01"
+      },
+      "reason": "the header declares GENCODE 44, and a header can be edited: no official checksum matches this file"
+    }
+  ],
+  "exit_code": 0
+}

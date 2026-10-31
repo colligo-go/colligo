@@ -1,0 +1,37 @@
+[31m✗ FAILED[0m  [1msamplesheet: 4 of 4 files failed a check[0m  [2mexit 3[0m
+
+[31m✗ pair_ids[0m[2m · blocking · M5[0m
+  [2mProblem[0m  The mates do not start or end with the same read: first=AAA.1 last=AAA.10 (fastq_1, line 2) against first=BBB.1 last=BBB.10 (fastq_2, line 2).
+           [2min a_R1.fastq, b_R2.fastq[0m
+  [2mProblem[0m  The mates do not start or end with the same read: first=BBB.1 last=BBB.10 (fastq_1, line 3) against first=AAA.1 last=AAA.10 (fastq_2, line 3).
+           [2min b_R1.fastq, a_R2.fastq[0m
+  [2mLikely [0m  (hypothesis) The files come from different samples or were sorted or filtered differently.
+  [2mDo     [0m  Do not align these files together. Check which files belong to the same sample.
+[31m✗ sheet_mates_swapped[0m[2m · blocking · M5[0m
+  [2mProblem[0m  The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.
+           [2min a_R1.fastq, b_R2.fastq, b_R1.fastq, a_R2.fastq[0m
+  [2mLikely [0m  (hypothesis) The columns were edited or sorted independently, so the mates of two samples were exchanged.
+  [2mDo     [0m  Exchange the fastq_2 values of those two lines.
+
+[2mFile[0m        [2mReads[0m  [2mBases[0m  [2mBases/read[0m  [2mResult[0m
+a_R1.fastq     10    100        10.0  [31m✗ invalid[0m
+b_R2.fastq     10    100        10.0  [31m✗ invalid[0m
+b_R1.fastq     10    100        10.0  [31m✗ invalid[0m
+a_R2.fastq     10    100        10.0  [31m✗ invalid[0m
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 4 files
+  [31m✗[0m the mates agree in read count and read names: 0 of 4 files pass
+
+[1mNot checked[0m
+  [2m–[0m comparison with a source: not made; a samplesheet declares which files belong together, not their content
+
+[1mWhat to do[0m
+  1. Do not align these files together. Check which files belong to the same sample.
+  2. Exchange the fastq_2 values of those two lines.
+
+[2m4 files: 4 invalid · 1.3 kB · <time>[0m
+
+[1mExplain[0m
+  colligo explain pair_ids
+  colligo explain sheet_mates_swapped

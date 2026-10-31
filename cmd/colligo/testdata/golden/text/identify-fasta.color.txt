@@ -1,0 +1,12 @@
+[32m✓ IDENTIFIED[0m  known.fa is tiny  [2mexit 0[0m
+
+[32m✓ known.fa[0m[2m  identified[0m
+  [2midentified[0m  tiny
+  [2mseqcol    [0m  -ILNzNQsKYl_9KDXtkCWYUl5t5NESUdA (3 sequences)
+  [2msource    [0m  independent Python implementation of the specification
+
+[1mChecked[0m
+  [32m✓[0m MD5 of 1 file against the official checksums Colligo carries
+  [32m✓[0m sequence collection of 1 FASTA against the known references
+
+[2m1 file: 1 identified · 67 B · <time>[0m

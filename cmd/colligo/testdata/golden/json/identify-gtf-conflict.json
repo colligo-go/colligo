@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "<dir>/conflict.gtf",
+      "status": "conflict",
+      "content": "gtf",
+      "size": 294,
+      "gencode": {
+        "label": "GENCODE 44",
+        "release": "44",
+        "organism": "human",
+        "assembly": "GRCh38",
+        "ensembl": "110",
+        "date": "2023-03-01"
+      },
+      "reason": "the header says GENCODE 44, but the sequence names follow the Ensembl convention (1, X, MT), and GENCODE names start with chr"
+    }
+  ],
+  "exit_code": 3
+}

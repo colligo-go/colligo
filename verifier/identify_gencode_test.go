@@ -182,7 +182,7 @@ func TestChecksumDoesNotUseTheNameOfTheFile(t *testing.T) {
 	}
 }
 
-func TestIdentifyTextNamesTheEvidence(t *testing.T) {
+func TestIdentifyAnswerNamesTheEvidence(t *testing.T) {
 	dir := t.TempDir()
 	plain := gencodeGTF()
 	report, err := IdentifyAll(t.Context(), []secret.Name{
@@ -192,12 +192,13 @@ func TestIdentifyTextNamesTheEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out strings.Builder
-	report.WriteText(&out)
-	for _, want := range []string{"declared: GENCODE 44", "release: 44", "organism: human", "assembly: GRCh38", "conflict: the header says GENCODE 44"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("text lacks %q:\n%s", want, out.String())
-		}
+	declared, conflict := report.Files[0], report.Files[1]
+	if declared.Status != IdentityDeclared || declared.Gencode == nil || declared.Gencode.Label != "GENCODE 44" ||
+		declared.Gencode.Release != "44" || declared.Gencode.Organism != "human" || declared.Gencode.Assembly != "GRCh38" {
+		t.Errorf("declared %+v %+v", declared, declared.Gencode)
+	}
+	if conflict.Status != IdentityConflict || !strings.Contains(conflict.Reason, "the header says GENCODE 44") {
+		t.Errorf("conflict %+v", conflict)
 	}
 	if report.ExitCode() != ExitIncomplete {
 		t.Errorf("exit %d", report.ExitCode())
@@ -206,12 +207,10 @@ func TestIdentifyTextNamesTheEvidence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out.Reset()
-	identified.WriteText(&out)
-	for _, want := range []string{"identified: GENCODE human 44", "md5: " + md5Of(plain), "https://example.org/MD5SUMS, read on 2026-10-31"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("text lacks %q:\n%s", want, out.String())
-		}
+	got := identified.Files[0]
+	if got.Status != IdentityIdentified || got.Checksum == nil || got.Checksum.Label != "GENCODE human 44" ||
+		got.Checksum.MD5 != md5Of(plain) || got.Checksum.Origin != "https://example.org/MD5SUMS" || got.Checksum.Retrieved != "2026-10-31" {
+		t.Errorf("identified %+v %+v", got, got.Checksum)
 	}
 }
 

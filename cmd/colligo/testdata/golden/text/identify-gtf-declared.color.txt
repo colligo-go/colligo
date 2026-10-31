@@ -1,0 +1,17 @@
+[33m! NOT CONFIRMED[0m  declared.gtf says it is GENCODE 44, and nothing official confirms it  [2mexit 0[0m
+
+[33m! declared.gtf[0m[2m  declared[0m
+  [2mheader says[0m  GENCODE 44
+  [2mrelease    [0m  44
+  [2morganism   [0m  human
+  [2massembly   [0m  GRCh38
+  [2mensembl    [0m  110
+  [2mnote       [0m  the header declares GENCODE 44, and a header can be edited: no official checksum matches this file
+
+[1mChecked[0m
+  [32m✓[0m MD5 of 1 file against the official checksums Colligo carries
+
+[1mNot checked[0m
+  [2m–[0m that the header of 1 GTF is true: only a matching official checksum proves it
+
+[2m1 file: 1 declared · 297 B · <time>[0m

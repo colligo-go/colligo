@@ -1,0 +1,12 @@
+✓ IDENTIFIED  known.fa is tiny  exit 0
+
+✓ known.fa  identified
+  identified  tiny
+  seqcol      -ILNzNQsKYl_9KDXtkCWYUl5t5NESUdA (3 sequences)
+  source      independent Python implementation of the specification
+
+Checked
+  ✓ MD5 of 1 file against the official checksums Colligo carries
+  ✓ sequence collection of 1 FASTA against the known references
+
+1 file: 1 identified · 67 B · <time>

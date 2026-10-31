@@ -1,0 +1,211 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/ERR5060520_1.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 1948500,
+      "blake3_root": "e1eb834867588c42191a8c41170c2d54b3c15dbdecaa83fbb266f2dfb8a80daa",
+      "md5": "97706b17a24466b87687db4735ca9a7b",
+      "sha256": "4afc5c7812cd0051cf7e54dd898570476f657388d3b681c12672ac89fb4f2627",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "4007",
+          "observed": "4007"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=ERR5060520.1 last=ERR5060520.4007",
+          "observed": "first=ERR5060520.1 last=ERR5060520.4007"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/ERR5060520_2.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 1942288,
+      "blake3_root": "61b62d120b63e6b0e869902a986d327718d44c6c6eec17b29a2c3f75186e08b4",
+      "md5": "f285b9d65db664cfebe691a6ec3c9e0f",
+      "sha256": "f4888ae5a019e54c4915f2d9c8ca7c4754ecd49baf5e0ef90b54e96bee95127c",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "4007",
+          "observed": "4007"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=ERR5060520.1 last=ERR5060520.4007",
+          "observed": "first=ERR5060520.1 last=ERR5060520.4007"
+        }
+      ]
+    }
+  ],
+  "source": {
+    "id": "ena",
+    "accession": "ERR5060520",
+    "runs": [
+      {
+        "accession": "ERR5060520",
+        "layout": "SINGLE",
+        "status": "public",
+        "declared": {
+          "read_count": 8014,
+          "base_count": 1862354
+        },
+        "files": [
+          {
+            "name": "ERR5060520_1.fastq.gz",
+            "local": "<dir>/ERR5060520_1.fastq",
+            "linked_by": "name",
+            "md5": "a1838e1e2131672cdc59cbd563608ea2",
+            "size": 179620
+          },
+          {
+            "name": "ERR5060520_2.fastq.gz",
+            "local": "<dir>/ERR5060520_2.fastq",
+            "linked_by": "name",
+            "md5": "ac3444e11fd3fa6ebd812aee53428686",
+            "size": 200969
+          }
+        ],
+        "assertions": [
+          {
+            "id": "source_status",
+            "mode": "M16",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "public",
+            "observed": "public"
+          },
+          {
+            "id": "count_mismatch",
+            "mode": "M15",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "1862354",
+            "observed": "1862354"
+          },
+          {
+            "id": "read_count_unexplained",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "8014",
+            "observed": "8014, the sum of the files"
+          },
+          {
+            "id": "layout_mismatch",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": false,
+            "declared": "SINGLE",
+            "observed": "ERR5060520_1.fastq.gz and ERR5060520_2.fastq.gz",
+            "observation": "Run ERR5060520 is labelled SINGLE, but its files form a pair (ERR5060520_1.fastq.gz and ERR5060520_2.fastq.gz).",
+            "probable_cause": "The library layout recorded at the source is wrong; the data itself is intact.",
+            "suggested_action": "Treat the files as mates of one sample; a pipeline that trusts the label would treat them as two single-end samples."
+          }
+        ]
+      }
+    ],
+    "assertions": []
+  },
+  "exit_code": 0
+}

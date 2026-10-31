@@ -2,6 +2,7 @@ package verifier
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -246,10 +247,12 @@ func TestSamplesheetRemoteLocationIsBlockingAndRedacted(t *testing.T) {
 	if rep.ExitCode(false) != ExitIncomplete || rep.ExitCode(true) != ExitOK {
 		t.Fatalf("exit %d strict, %d permissive", rep.ExitCode(false), rep.ExitCode(true))
 	}
-	var text strings.Builder
-	rep.WriteText(&text)
-	if strings.Contains(text.String(), "SECRET") {
-		t.Fatalf("the query string leaked into the report:\n%s", text.String())
+	encoded, err := json.Marshal(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "SECRET") {
+		t.Fatalf("the query string leaked into the report:\n%s", encoded)
 	}
 }
 

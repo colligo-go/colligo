@@ -1,0 +1,11 @@
+[32m✓ IDENTIFIED[0m  annotation.gtf is GENCODE human 44  [2mexit 0[0m
+
+[32m✓ annotation.gtf[0m[2m  identified[0m
+  [2midentified[0m  GENCODE human 44 (gencode.v44.annotation.gtf)
+  [2mmd5       [0m  b003c2c204d25bd8752b2e89c8fd5d83
+  [2msource    [0m  https://example.org/MD5SUMS, read on 2026-10-31
+
+[1mChecked[0m
+  [32m✓[0m MD5 of 1 file against the official checksums Colligo carries
+
+[2m1 file: 1 identified · 297 B · <time>[0m

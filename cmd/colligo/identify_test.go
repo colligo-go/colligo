@@ -30,11 +30,11 @@ func TestIdentifyRecognizesAKnownFastaAndNotAChangedOne(t *testing.T) {
 	changed := put(t, dir, "changed.fa", []byte(strings.Replace(cliFasta, "GGGGCCCC", "GGGGCCCA", 1)))
 
 	code, out, _ := invokeIdentify(cliReferences, known)
-	if code != verifier.ExitOK || !strings.Contains(out, "identified: tiny") || !strings.Contains(out, cliDigest) {
+	if code != verifier.ExitOK || !strings.Contains(out, "✓ IDENTIFIED  known.fa is tiny") || !strings.Contains(out, cliDigest) {
 		t.Errorf("known: exit %d\n%s", code, out)
 	}
 	code, out, _ = invokeIdentify(cliReferences, changed)
-	if code != verifier.ExitOK || !strings.Contains(out, "not identified") || strings.Contains(out, "identified: tiny") {
+	if code != verifier.ExitOK || !strings.Contains(out, "changed.fa matches no known reference") || strings.Contains(out, "is tiny") || strings.Contains(out, "✓ IDENTIFIED") {
 		t.Errorf("changed: exit %d\n%s", code, out)
 	}
 }
@@ -138,7 +138,7 @@ func TestIdentifyGtfEndToEndThroughTheCommand(t *testing.T) {
 		}
 	}
 	code, out, _ := invokeIdentify(identity.Table{}, paths["declared"])
-	for _, line := range []string{"declared: GENCODE 44", "release: 44", "organism: human", "assembly: GRCh38"} {
+	for _, line := range []string{"declared.gtf says it is GENCODE 44, and nothing official confirms it", "release      44", "organism     human", "assembly     GRCh38"} {
 		if code != verifier.ExitOK || !strings.Contains(out, line) {
 			t.Errorf("declared text lacks %q (exit %d):\n%s", line, code, out)
 		}
@@ -155,7 +155,7 @@ func TestIdentifyWithTheEmbeddedTableRecognisesAnOfficialChecksum(t *testing.T) 
 	}
 	path := put(t, t.TempDir(), "annotation.gtf", []byte(cliGencodeHeader+"chr1"+cliGencodeGene))
 	code, out, _ := invoke("identify", path)
-	if code != verifier.ExitOK || !strings.Contains(out, "declared: GENCODE 44") || strings.Contains(out, "identified:") {
+	if code != verifier.ExitOK || !strings.Contains(out, "says it is GENCODE 44") || strings.Contains(out, "IDENTIFIED") {
 		t.Errorf("a look-alike must stay declared, exit %d:\n%s", code, out)
 	}
 }

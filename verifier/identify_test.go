@@ -141,14 +141,13 @@ func TestIdentifyJSONHasItsOwnSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out bytes.Buffer
-	if err := report.WriteJSON(&out); err != nil {
+	encoded, err := json.Marshal(report)
+	if err != nil {
 		t.Fatal(err)
 	}
+	out := bytes.NewBuffer(encoded)
 	var decoded struct {
-		SchemaVersion int `json:"schema_version"`
-		ExitCode      int `json:"exit_code"`
-		Files         []struct {
+		Files []struct {
 			Path      string `json:"path"`
 			Status    string `json:"status"`
 			Reference *struct {
@@ -163,7 +162,7 @@ func TestIdentifyJSONHasItsOwnSchema(t *testing.T) {
 	if err := json.Unmarshal(out.Bytes(), &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.SchemaVersion != IdentifySchemaVersion || decoded.ExitCode != ExitOK || len(decoded.Files) != 2 {
+	if report.ExitCode() != ExitOK || len(decoded.Files) != 2 {
 		t.Fatalf("decoded = %+v", decoded)
 	}
 	if f := decoded.Files[0]; f.Status != "identified" || f.Reference == nil || f.Reference.Name != "tiny" || f.Seqcol.Digest != identifyDigest {
@@ -174,17 +173,14 @@ func TestIdentifyJSONHasItsOwnSchema(t *testing.T) {
 	}
 }
 
-func TestIdentifyTextAnswersInOneLinePerFact(t *testing.T) {
+func TestIdentifyAnswerCarriesTheDigestAndTheSequenceCount(t *testing.T) {
 	dir := t.TempDir()
 	report, err := IdentifyAll(context.Background(), []secret.Name{write(t, dir, "known.fa", []byte(identifyText))}, tinyReferences)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out bytes.Buffer
-	report.WriteText(&out)
-	for _, want := range []string{"identified: tiny", "seqcol: " + identifyDigest + " (3 sequences)"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("missing %q in\n%s", want, out.String())
-		}
+	got := report.Files[0]
+	if got.Status != IdentityIdentified || got.Reference.Label != "tiny" || got.Seqcol.Digest != identifyDigest || got.Seqcol.Sequences != 3 {
+		t.Errorf("answer %+v %+v", got, got.Seqcol)
 	}
 }

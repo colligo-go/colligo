@@ -42,7 +42,7 @@ func TestSamplesheetWithSwappedMateIsExit3AndNamesTheLines(t *testing.T) {
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d, want 3\n%s", code, out)
 	}
-	for _, want := range []string{"BLOCKING", "sheet_mates_swapped", "lines 2 and 3", "pair_ids"} {
+	for _, want := range []string{"✗ FAILED", "sheet_mates_swapped · blocking", "lines 2 and 3", "pair_ids"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("the report lacks %q:\n%s", want, out)
 		}
@@ -61,7 +61,7 @@ func TestSamplesheetWithRepeatedLanesIsExit0AndRelativePathsFollowTheSheet(t *te
 	if code != verifier.ExitOK {
 		t.Fatalf("exit %d\n%s%s", code, out, errText)
 	}
-	if !strings.Contains(out, "6 file(s): 6 verified") {
+	if !strings.Contains(out, "6 files: 6 verified") || !strings.Contains(out, "samplesheet: 6 files pass every check run") {
 		t.Fatalf("every file must be verified once:\n%s", out)
 	}
 }
@@ -185,5 +185,23 @@ func TestSamplesheetCrossCheckAndCertificatesCoverFilesInSeveralDirectories(t *t
 		if _, err := os.Stat(filepath.Join(work, p+".colligo-cert.json")); err != nil {
 			t.Errorf("no certificate next to %s: %v", p, err)
 		}
+	}
+}
+
+func TestSamplesheetRemoteQueryStringNeverReachesTheTextReport(t *testing.T) {
+	dir := t.TempDir()
+	putMates(t, dir, "a", "AAA", 5, ".fastq", false)
+	for _, style := range []string{"--verbose", "--color=always", "--quiet"} {
+		code, out, errText := sheetCommand(t, dir, "sample,fastq_1,fastq_2\nA,a_R1.fastq,https://host.example/a_R2.fastq.gz?token=SECRET\n", style)
+		if code != verifier.ExitIncomplete {
+			t.Fatalf("%s: exit %d\n%s%s", style, code, out, errText)
+		}
+		if strings.Contains(out+errText, "SECRET") || strings.Contains(out+errText, "token=") {
+			t.Fatalf("%s: the query string leaked:\n%s%s", style, out, errText)
+		}
+	}
+	_, out, _ := sheetCommand(t, dir, "sample,fastq_1,fastq_2\nA,a_R1.fastq,https://host.example/a_R2.fastq.gz?token=SECRET\n")
+	if !strings.Contains(out, "sheet_remote_path") || !strings.Contains(out, "host.example") {
+		t.Fatalf("the report must still name the remote entry without its secret:\n%s", out)
 	}
 }

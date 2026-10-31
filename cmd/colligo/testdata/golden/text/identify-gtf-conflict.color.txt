@@ -1,0 +1,14 @@
+[31m✗ FAILED[0m  [1mconflict.gtf says it is GENCODE 44, but its content says otherwise[0m  [2mexit 3[0m
+
+[31m✗ conflict.gtf[0m[2m  conflict[0m
+  [2mheader says[0m  GENCODE 44
+  [2mrelease    [0m  44
+  [2morganism   [0m  human
+  [2massembly   [0m  GRCh38
+  [2mensembl    [0m  110
+  [2mproblem    [0m  the header says GENCODE 44, but the sequence names follow the Ensembl convention (1, X, MT), and GENCODE names start with chr
+
+[1mChecked[0m
+  [32m✓[0m MD5 of 1 file against the official checksums Colligo carries
+
+[2m1 file: 1 conflict · 294 B · <time>[0m

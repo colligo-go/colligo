@@ -1,0 +1,430 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/DRR021374_1.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 3744567,
+      "blake3_root": "60589759ffaf4fac47493db14fdb8757249375a441e7a0f66e9402d70c0abfc7",
+      "md5": "922b520ec4f9b12eb30489269bcfd423",
+      "sha256": "e9e283923640594d82b69c4d04ee46e5aa003f892944737c2abcf9a2558a8611",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "13767",
+          "observed": "13767"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=DRR021374.1 last=DRR021374.13767",
+          "observed": "first=DRR021374.1 last=DRR021374.13767"
+        },
+        {
+          "id": "source_run_failed",
+          "mode": "M15",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "run DRR021374 agrees with the source",
+          "observed": "count_mismatch",
+          "observation": "The file belongs to run DRR021374, which failed count_mismatch against the source.",
+          "probable_cause": "The file may be valid on its own, but the run it is part of does not match what the source declares, so none of its files can be trusted alone.",
+          "suggested_action": "Read the report of the run, fix what it names, and check again."
+        }
+      ]
+    },
+    {
+      "path": "<dir>/DRR021374_2.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 305535,
+      "blake3_root": "3bfbb39b35bdd5526788fd7205f224af01f7d604b59b0760e4c26f1e24940427",
+      "md5": "8075c6c275097c750c9bb9d8162f99fa",
+      "sha256": "528078f7a29943043b66d24f43579a27d82c57c91dd9e2141ef8961479c141c3",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "13767",
+          "observed": "13767"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=DRR021374.1 last=DRR021374.13767",
+          "observed": "first=DRR021374.1 last=DRR021374.13767"
+        },
+        {
+          "id": "source_run_failed",
+          "mode": "M15",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "run DRR021374 agrees with the source",
+          "observed": "count_mismatch",
+          "observation": "The file belongs to run DRR021374, which failed count_mismatch against the source.",
+          "probable_cause": "The file may be valid on its own, but the run it is part of does not match what the source declares, so none of its files can be trusted alone.",
+          "suggested_action": "Read the report of the run, fix what it names, and check again."
+        }
+      ]
+    },
+    {
+      "path": "<dir>/ERR12477684_1.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 566257,
+      "blake3_root": "0d4dc34d28317bff477f5ca13be0618fc8de20372dfc657812eac0071652b2b3",
+      "md5": "845a98b92f9f4846fe714b9c59647ea3",
+      "sha256": "962d4d003b92a6cbf1d6193bda666d22961b18532656ffa8c4648c5f9d7025d0",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "1762",
+          "observed": "1762"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=ERR12477684.1 last=ERR12477684.1762",
+          "observed": "first=ERR12477684.1 last=ERR12477684.1762"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/ERR12477684_2.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 566257,
+      "blake3_root": "0d4dc34d28317bff477f5ca13be0618fc8de20372dfc657812eac0071652b2b3",
+      "md5": "845a98b92f9f4846fe714b9c59647ea3",
+      "sha256": "962d4d003b92a6cbf1d6193bda666d22961b18532656ffa8c4648c5f9d7025d0",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "1762",
+          "observed": "1762"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=ERR12477684.1 last=ERR12477684.1762",
+          "observed": "first=ERR12477684.1 last=ERR12477684.1762"
+        }
+      ]
+    }
+  ],
+  "source": {
+    "id": "ena",
+    "accession": "PRJDB0001",
+    "runs": [
+      {
+        "accession": "DRR021374",
+        "layout": "PAIRED",
+        "status": "public",
+        "declared": {
+          "read_count": 13767,
+          "base_count": 3454158
+        },
+        "files": [
+          {
+            "name": "DRR021374_1.fastq.gz",
+            "local": "<dir>/DRR021374_1.fastq",
+            "linked_by": "name",
+            "md5": "8f8e57d7be5e2ad58b836563fe99457e",
+            "size": 730247
+          },
+          {
+            "name": "DRR021374_2.fastq.gz",
+            "local": "<dir>/DRR021374_2.fastq",
+            "linked_by": "name",
+            "md5": "670182accbd67c947b86a2d4d8b3aef3",
+            "size": 935734
+          }
+        ],
+        "assertions": [
+          {
+            "id": "source_status",
+            "mode": "M16",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "public",
+            "observed": "public"
+          },
+          {
+            "id": "count_mismatch",
+            "mode": "M15",
+            "severity": "blocking",
+            "passed": false,
+            "declared": "3454158",
+            "observed": "1747050",
+            "observation": "The content has 1747050 bases over the 2 file(s) of run DRR021374, but 3454158 were expected.",
+            "probable_cause": "The content is valid but shorter or longer than the source declared, as with an extraction that shortened the reads.",
+            "suggested_action": "Extract or download the file again and compare the counts with the source record."
+          },
+          {
+            "id": "read_count_unexplained",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": false,
+            "skipped": true,
+            "skipped_by": "count_mismatch",
+            "declared": "",
+            "observed": ""
+          },
+          {
+            "id": "layout_mismatch",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "PAIRED",
+            "observed": "DRR021374_1.fastq.gz and DRR021374_2.fastq.gz"
+          }
+        ]
+      },
+      {
+        "accession": "ERR12477684",
+        "layout": "PAIRED",
+        "status": "public",
+        "declared": {
+          "read_count": 3524,
+          "base_count": 528600
+        },
+        "files": [
+          {
+            "name": "ERR12477684_1.fastq.gz",
+            "local": "<dir>/ERR12477684_1.fastq",
+            "linked_by": "name",
+            "md5": "02a4a06a9c0e449b4ec1a3a62f98e127",
+            "size": 102067
+          },
+          {
+            "name": "ERR12477684_2.fastq.gz",
+            "local": "<dir>/ERR12477684_2.fastq",
+            "linked_by": "name",
+            "md5": "06e65620b3ab8992821b8ca985deb125",
+            "size": 123411
+          }
+        ],
+        "assertions": [
+          {
+            "id": "source_status",
+            "mode": "M16",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "public",
+            "observed": "public"
+          },
+          {
+            "id": "count_mismatch",
+            "mode": "M15",
+            "severity": "blocking",
+            "passed": true,
+            "declared": "528600",
+            "observed": "528600"
+          },
+          {
+            "id": "read_count_unexplained",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "3524",
+            "observed": "3524, the sum of the files"
+          },
+          {
+            "id": "layout_mismatch",
+            "mode": "M15",
+            "severity": "advisory",
+            "passed": true,
+            "declared": "PAIRED",
+            "observed": "ERR12477684_1.fastq.gz and ERR12477684_2.fastq.gz"
+          }
+        ]
+      }
+    ],
+    "assertions": []
+  },
+  "exit_code": 3
+}

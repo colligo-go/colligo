@@ -100,7 +100,7 @@ func TestDoubleDashEndsTheFlagsEvenForNamesStartingWithDash(t *testing.T) {
 	put(t, dir, "-b.fastq", fastq("B", 5))
 	t.Chdir(dir)
 	code, out, errText := invoke("check", "--", "-a.fastq", "-b.fastq")
-	if code != 0 || strings.Count(out, "verified: fastq") != 2 {
+	if code != 0 || strings.Count(out, "✓ verified") != 2 {
 		t.Fatalf("exit %d\n%s\n%s", code, out, errText)
 	}
 	code, out, _ = invoke("check", "--json", "--", "-a.fastq")
@@ -125,7 +125,7 @@ func TestExpectedHashIsCaseInsensitive(t *testing.T) {
 func TestSameFileTwiceIsReportedTwiceWithoutPairClaims(t *testing.T) {
 	p := put(t, t.TempDir(), "s_R1.fastq", fastq("S", 10))
 	code, out, _ := invoke("check", p, p)
-	if code != 0 || strings.Count(out, "verified: fastq") != 2 || strings.Contains(out, "pair_") {
+	if code != 0 || strings.Count(out, "✓ verified") != 2 || strings.Contains(out, "pair_") {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
 }
@@ -239,7 +239,7 @@ func TestSymbolicLinks(t *testing.T) {
 	os.Symlink(dir, filepath.Join(sub, "loop"))
 	os.Symlink(filepath.Join(dir, "missing.fastq"), filepath.Join(dir, "broken.fastq"))
 
-	code, out, _ := invoke("check", "--recursive", dir)
+	code, out, _ := invoke("check", "--recursive", "--verbose", dir)
 	if code != verifier.ExitFatal {
 		t.Fatalf("a broken link is unreadable, want exit 2, got %d\n%s", code, out)
 	}
@@ -249,11 +249,15 @@ func TestSymbolicLinks(t *testing.T) {
 	if strings.Contains(out, "not a recognised data file") {
 		t.Fatalf("a directory link was labelled as unrecognised data:\n%s", out)
 	}
-	if strings.Count(out, "verified: fastq") != 2 {
+	if strings.Count(out, "✓ verified") != 2 {
 		t.Fatalf("each real file once:\n%s", out)
 	}
 	if !strings.Contains(out, "unreadable") {
 		t.Fatalf("the broken link must be reported:\n%s", out)
+	}
+	_, quiet, _ := invoke("check", "--recursive", dir)
+	if !strings.Contains(quiet, "2 directory links not followed") {
+		t.Fatalf("the default report must still say that links were not followed:\n%s", quiet)
 	}
 	_, js, _ := invoke("check", "--recursive", "--json", dir)
 	if !strings.Contains(js, "skipped_directory_links") {
@@ -273,7 +277,7 @@ func TestHugeJobsValueAndDeepRecursion(t *testing.T) {
 	}
 	put(t, p, "deep.fastq", fastq("D", 3))
 	code, out, errText := invoke("check", "--recursive", "--jobs", "1000000000", root)
-	if code != 0 || strings.Count(out, "verified: fastq") != 2 {
+	if code != 0 || strings.Count(out, "✓ verified") != 2 {
 		t.Fatalf("exit %d\n%s\n%s", code, out, errText)
 	}
 }

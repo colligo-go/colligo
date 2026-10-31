@@ -11,12 +11,15 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/colligo-go/colligo/checksum"
 	"github.com/colligo-go/colligo/format"
 	"github.com/colligo-go/colligo/identity"
 	"github.com/colligo-go/colligo/internal/buildinfo"
 	"github.com/colligo-go/colligo/manifest"
+	jsonout "github.com/colligo-go/colligo/render/json"
+	"github.com/colligo-go/colligo/render/text"
 	"github.com/colligo-go/colligo/samplesheet"
 	"github.com/colligo-go/colligo/secret"
 	"github.com/colligo-go/colligo/transport"
@@ -30,6 +33,7 @@ commands:
              --samplesheet checks an nf-core samplesheet against the content;
              --source ena:<accession> compares them with what ENA declares
   validate   structural validation of the format only
+  explain    the long explanation of a diagnosis id from a report, offline
   identify   name a FASTA or GTF by its content: seqcol digest, GENCODE header, official checksum
   version    print the version
 
@@ -62,6 +66,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return verifier.ExitFatal
 		}
 		return runIdentify(args[1:], stdout, stderr, table)
+	case "explain":
+		return runExplain(args[1:], stdout, stderr)
 	case "version", "--version":
 		fmt.Fprintf(stdout, "colligo %s (%s)\n", buildinfo.Version(), buildinfo.GitSHA())
 		return verifier.ExitOK
@@ -74,6 +80,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 type settings struct {
+	presentation
 	jsonOut     bool
 	permissive  bool
 	recursive   bool
@@ -92,6 +99,7 @@ func newFlagSet(command string, stderr io.Writer, structureOnly bool) (*flag.Fla
 	fs := flag.NewFlagSet(command, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.BoolVar(&s.jsonOut, "json", false, "write the report as JSON")
+	s.presentation.bind(fs)
 	fs.BoolVar(&s.permissive, "permissive", false, "exit 0 on blocking failures; nothing is hidden")
 	fs.BoolVar(&s.recursive, "recursive", false, "descend into subdirectories")
 	fs.StringVar(&s.format, "format", "", "declare the format: fastq, fasta, gtf, gzip or bgzf")
@@ -153,6 +161,10 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 		}
 		return verifier.ExitUsage
 	}
+	if err := s.presentation.validate(); err != nil {
+		fmt.Fprintf(stderr, "colligo %s: %v\n", command, err)
+		return verifier.ExitUsage
+	}
 	if s.samplesheet != "" && s.source != "" {
 		fmt.Fprintf(stderr, "colligo %s: --source and --samplesheet cannot be combined yet\n", command)
 		return verifier.ExitUsage
@@ -204,17 +216,22 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 	if err != nil {
 		return failed(err, stderr)
 	}
-	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs}
+	counter, finish := s.presentation.startProgress(stderr)
+	defer finish()
+	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs, Progress: counter}
 	var report verifier.Report
 	if s.source != "" {
+		started := time.Now()
 		decl, fetchErr := fetchDeclaration(ctx, ref, net)
 		if fetchErr != nil {
 			return sourceFailed(fetchErr, ref, stderr)
 		}
 		report, err = verifier.CheckAgainstSource(ctx, names, decl, opts)
+		report.Elapsed = time.Since(started)
 	} else {
 		report, err = verifier.CheckAll(ctx, names, opts)
 	}
+	finish()
 	if err != nil {
 		return failed(err, stderr)
 	}
@@ -223,13 +240,15 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 }
 
 func emit(report verifier.Report, code int, s *settings, stdout, stderr io.Writer) int {
+	var err error
 	if s.jsonOut {
-		if err := report.WriteJSON(stdout, code); err != nil {
-			fmt.Fprintf(stderr, "colligo: %v\n", err)
-			return verifier.ExitFatal
-		}
+		err = jsonout.Check(stdout, report, code)
 	} else {
-		report.WriteText(stdout)
+		err = text.Check(stdout, report, s.presentation.options(stdout, code, s.permissive))
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "colligo: %v\n", err)
+		return verifier.ExitFatal
 	}
 	if s.crossCheck {
 		if err := writeCrossCheck(report); err != nil {
@@ -286,7 +305,10 @@ func checkSamplesheet(s *settings, stdout, stderr io.Writer) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	report, err := verifier.CheckSamplesheet(ctx, sheet, verifier.Options{Jobs: s.jobs})
+	counter, finish := s.presentation.startProgress(stderr)
+	defer finish()
+	report, err := verifier.CheckSamplesheet(ctx, sheet, verifier.Options{Jobs: s.jobs, Progress: counter})
+	finish()
 	if err != nil {
 		return failed(err, stderr)
 	}

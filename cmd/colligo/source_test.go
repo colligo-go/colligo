@@ -13,8 +13,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/colligo-go/colligo/internal/exttool"
 	"github.com/colligo-go/colligo/secret"
@@ -262,12 +265,12 @@ func TestSourceQCFailShortenedRead2IsExit3(t *testing.T) {
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d, want 3\n%s", code, out)
 	}
-	for _, want := range []string{"[BLOCKING] count_mismatch (M15)", "but 3454158 were expected", "bases over the 2 file(s) of run DRR021374"} {
+	for _, want := range []string{"✗ FAILED  DRR021374 does not match ENA: do not use these files  exit 3", "count_mismatch · blocking · M15", "but 3454158 were expected", "bases over the 2 file(s) of run DRR021374", "3,454,158 declared by ENA", "colligo explain count_mismatch"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("report lacks %q:\n%s", want, out)
 		}
 	}
-	if got := strings.Count(out, "invalid: fastq"); got != 2 {
+	if got := strings.Count(out, "✗ invalid (its run failed)"); got != 2 {
 		t.Errorf("both files of the run must read invalid, %d do:\n%s", got, out)
 	}
 	if strings.Contains(out, "pair_count") || strings.Contains(out, "structure_invalid") {
@@ -331,7 +334,7 @@ func TestSourceEmptyReadCountIsNotDeclared(t *testing.T) {
 	files["DRR021374_2.fastq.gz"] = bytes.Replace(files["DRR021374_2.fastq.gz"], []byte("FFFF"), []byte("F"), 1)
 	writeDecompressed(t, dir, files)
 	code, out, _ = checkSource(t, &fakeTransport{body: body}, "--source", "ena:"+spec.accession, dir)
-	if code != verifier.ExitIncomplete || !strings.Contains(out, "count_mismatch") || !strings.Contains(out, "read_count_unexplained not evaluated") {
+	if code != verifier.ExitIncomplete || !strings.Contains(out, "count_mismatch") || !strings.Contains(out, "read count of run DRR021374: skipped, because count_mismatch failed") {
 		t.Fatalf("base_count still decides: exit %d\n%s", code, out)
 	}
 }
@@ -347,7 +350,7 @@ func TestSourceSuppressedRunWithoutFilesIsReported(t *testing.T) {
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d\n%s\n%s", code, out, errText)
 	}
-	for _, want := range []string{"run DRR021374 (PAIRED, suppressed)", "[BLOCKING] source_status (M16)", "marks run DRR021374 as suppressed"} {
+	for _, want := range []string{"Run DRR021374  PAIRED · ENA status suppressed", "source_status · blocking · M16", "marks run DRR021374 as suppressed"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("report lacks %q:\n%s", want, out)
 		}
@@ -364,7 +367,7 @@ func TestSourceMissingFileAndStrayFile(t *testing.T) {
 	if code != verifier.ExitIncomplete {
 		t.Fatalf("exit %d\n%s", code, out)
 	}
-	for _, want := range []string{"source_file_missing", "lists DRR021374_2.fastq.gz", "source_file_unlisted", "notes_from_lab.fastq", "1 of 2 listed file(s) present"} {
+	for _, want := range []string{"source_file_missing", "lists DRR021374_2.fastq.gz", "source_file_unlisted", "notes_from_lab.fastq", "✗ missing"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("report lacks %q:\n%s", want, out)
 		}
@@ -452,6 +455,32 @@ func TestSourceCertificatesStillAgreeWithTheIndependentVerifier(t *testing.T) {
 		}
 		if !bytes.Contains(result, []byte("UNCHECKED assertion source_run_failed")) {
 			t.Errorf("%s: the run failure must be listed as not recomputed:\n%s", name, result)
+		}
+	}
+}
+
+type slowTransport struct {
+	fakeTransport
+	delay time.Duration
+}
+
+func (s *slowTransport) Get(ctx context.Context, e secret.Endpoint, r *transport.ByteRange) (*transport.Response, error) {
+	time.Sleep(s.delay)
+	return s.fakeTransport.Get(ctx, e, r)
+}
+
+func TestTheFooterTimeIncludesTheSourceQuery(t *testing.T) {
+	dir := t.TempDir()
+	put(t, dir, "DRR021374_1.fastq", fastq("A", 3))
+	net := &slowTransport{fakeTransport: fakeTransport{body: recorded(t, "DRR021374")}, delay: 150 * time.Millisecond}
+	_, out, _ := checkSource(t, net, "--source", "ena:DRR021374", dir)
+	m := regexp.MustCompile(`· (\d+) ms\n|· ([0-9.]+) s\n`).FindStringSubmatch(out)
+	if m == nil {
+		t.Fatalf("no elapsed time in the footer:\n%s", out)
+	}
+	if m[1] != "" {
+		if ms, _ := strconv.Atoi(m[1]); ms < 150 {
+			t.Errorf("the footer says %d ms, but the source query alone took 150 ms", ms)
 		}
 	}
 }

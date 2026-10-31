@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "<dir>/annotation.gtf",
+      "status": "identified",
+      "content": "gtf",
+      "size": 297,
+      "checksum": {
+        "name": "GENCODE human 44",
+        "file": "gencode.v44.annotation.gtf",
+        "md5": "b003c2c204d25bd8752b2e89c8fd5d83",
+        "origin": "https://example.org/MD5SUMS",
+        "retrieved": "2026-10-31"
+      },
+      "gencode": {
+        "label": "GENCODE 44",
+        "release": "44",
+        "organism": "human",
+        "assembly": "GRCh38",
+        "ensembl": "110",
+        "date": "2023-03-01"
+      }
+    }
+  ],
+  "exit_code": 0
+}

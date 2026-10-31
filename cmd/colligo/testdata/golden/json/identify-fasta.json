@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "<dir>/known.fa",
+      "status": "identified",
+      "content": "fasta",
+      "size": 67,
+      "seqcol": {
+        "digest": "-ILNzNQsKYl_9KDXtkCWYUl5t5NESUdA",
+        "names_digest": "CAGy-sVTWUrV8SJomv02N6iVn0ro28ok",
+        "lengths_digest": "wcAyh-wBAWVP_j2o0s4WCpXCggoBggXN",
+        "sequences_digest": "ovIi3RsJDtIbAV_4X6Fi4D_PGB8hclgB",
+        "sequences": 3
+      },
+      "reference": {
+        "name": "tiny",
+        "digest": "-ILNzNQsKYl_9KDXtkCWYUl5t5NESUdA",
+        "source": "independent Python implementation of the specification"
+      }
+    }
+  ],
+  "exit_code": 0
+}

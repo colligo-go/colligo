@@ -51,10 +51,14 @@ var domainTypes = map[string]reflect.Type{
 	"verifier.SourceReport":   reflect.TypeOf(verifier.SourceReport{}),
 	"verifier.RunReport":      reflect.TypeOf(verifier.RunReport{}),
 	"verifier.RunFile":        reflect.TypeOf(verifier.RunFile{}),
+	"verifier.RunTotals":      reflect.TypeOf(verifier.RunTotals{}),
+	"verifier.Progress":       reflect.TypeOf(verifier.Progress{}),
+	"verifier.IdentifyOption": reflect.TypeOf(verifier.IdentifyOption(nil)),
 	"manifest.Tool":           reflect.TypeOf(manifest.Tool{}),
 	"manifest.Certificate":    reflect.TypeOf(manifest.Certificate{}),
 	"diagnoses.Entry":         reflect.TypeOf(diagnoses.Entry{}),
 	"diagnoses.Values":        reflect.TypeOf(diagnoses.Values{}),
+	"diagnoses.Explanation":   reflect.TypeOf(diagnoses.Explanation{}),
 }
 
 func TestEveryExportedDomainTypeIsCovered(t *testing.T) {

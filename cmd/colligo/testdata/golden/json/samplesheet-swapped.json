@@ -1,0 +1,334 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/a_R1.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 331,
+      "blake3_root": "d9e797e77615e83868cb092263e7b386d71a3913e4f3138576ec2194af83ea76",
+      "md5": "8bb8cf51d86cf472ab6fe3be9c4658c8",
+      "sha256": "5263472ba19cd5c6315d4fd508abe89b059551da3acf3d1fffe8d2381b229e1d",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "10 (fastq_1, line 2)",
+          "observed": "10 (fastq_2, line 2)"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "first=AAA.1 last=AAA.10 (fastq_1, line 2)",
+          "observed": "first=BBB.1 last=BBB.10 (fastq_2, line 2)",
+          "observation": "The mates do not start or end with the same read: first=AAA.1 last=AAA.10 (fastq_1, line 2) against first=BBB.1 last=BBB.10 (fastq_2, line 2).",
+          "probable_cause": "The files come from different samples or were sorted or filtered differently.",
+          "suggested_action": "Do not align these files together. Check which files belong to the same sample."
+        },
+        {
+          "id": "sheet_mates_swapped",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "2",
+          "observed": "3",
+          "observation": "The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.",
+          "probable_cause": "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
+          "suggested_action": "Exchange the fastq_2 values of those two lines."
+        }
+      ]
+    },
+    {
+      "path": "<dir>/b_R2.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 331,
+      "blake3_root": "d9e6afd95a60c5745be4308ea1465ca25fd44157f8641f6b987eac3ebdab5a3a",
+      "md5": "a3fc05c5a7e7d686b8dc62128c96a1e9",
+      "sha256": "35abfc09b5dac5fde891a78e909d30904aeb464509409dc4a9005901991574cb",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "10 (fastq_1, line 2)",
+          "observed": "10 (fastq_2, line 2)"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "first=AAA.1 last=AAA.10 (fastq_1, line 2)",
+          "observed": "first=BBB.1 last=BBB.10 (fastq_2, line 2)",
+          "observation": "The mates do not start or end with the same read: first=AAA.1 last=AAA.10 (fastq_1, line 2) against first=BBB.1 last=BBB.10 (fastq_2, line 2).",
+          "probable_cause": "The files come from different samples or were sorted or filtered differently.",
+          "suggested_action": "Do not align these files together. Check which files belong to the same sample."
+        },
+        {
+          "id": "sheet_mates_swapped",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "2",
+          "observed": "3",
+          "observation": "The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.",
+          "probable_cause": "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
+          "suggested_action": "Exchange the fastq_2 values of those two lines."
+        }
+      ]
+    },
+    {
+      "path": "<dir>/b_R1.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 331,
+      "blake3_root": "d19ec5ed0d9d6c1e3340fcbe5d4e2f1f7973e27315cd685f60ce5e8b9383a339",
+      "md5": "4283e0fc7c3bd8877fa419f3bb820c31",
+      "sha256": "eb627dae4b735823d6a09d3575062b24aebe4165a39aed6251afd38f348d4606",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "10 (fastq_1, line 3)",
+          "observed": "10 (fastq_2, line 3)"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "first=BBB.1 last=BBB.10 (fastq_1, line 3)",
+          "observed": "first=AAA.1 last=AAA.10 (fastq_2, line 3)",
+          "observation": "The mates do not start or end with the same read: first=BBB.1 last=BBB.10 (fastq_1, line 3) against first=AAA.1 last=AAA.10 (fastq_2, line 3).",
+          "probable_cause": "The files come from different samples or were sorted or filtered differently.",
+          "suggested_action": "Do not align these files together. Check which files belong to the same sample."
+        },
+        {
+          "id": "sheet_mates_swapped",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "2",
+          "observed": "3",
+          "observation": "The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.",
+          "probable_cause": "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
+          "suggested_action": "Exchange the fastq_2 values of those two lines."
+        }
+      ]
+    },
+    {
+      "path": "<dir>/a_R2.fastq",
+      "status": "invalid",
+      "container": "none",
+      "content": "fastq",
+      "size": 331,
+      "blake3_root": "8499c6f1ec2a8ce6170b8f3600d695fa72f21c4f50c7730d4502e79a715496de",
+      "md5": "2463d5ca2377717b663d37dec67f1ee6",
+      "sha256": "fe089cd92b10919ca7a85f2bd7bf16c5a252bb351b58f1c9c52487b59fa3a041",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "10 (fastq_1, line 3)",
+          "observed": "10 (fastq_2, line 3)"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "first=BBB.1 last=BBB.10 (fastq_1, line 3)",
+          "observed": "first=AAA.1 last=AAA.10 (fastq_2, line 3)",
+          "observation": "The mates do not start or end with the same read: first=BBB.1 last=BBB.10 (fastq_1, line 3) against first=AAA.1 last=AAA.10 (fastq_2, line 3).",
+          "probable_cause": "The files come from different samples or were sorted or filtered differently.",
+          "suggested_action": "Do not align these files together. Check which files belong to the same sample."
+        },
+        {
+          "id": "sheet_mates_swapped",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": false,
+          "declared": "2",
+          "observed": "3",
+          "observation": "The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.",
+          "probable_cause": "The columns were edited or sorted independently, so the mates of two samples were exchanged.",
+          "suggested_action": "Exchange the fastq_2 values of those two lines."
+        }
+      ]
+    }
+  ],
+  "exit_code": 3
+}
