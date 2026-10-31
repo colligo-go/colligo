@@ -74,7 +74,7 @@ func TestCoreDoesNotImportSources(t *testing.T) {
 
 func TestLightDoorDoesNotImportStore(t *testing.T) {
 	all := load(t)
-	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "identity", "samplesheet"} {
+	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "identity", "samplesheet", "source/ena", "transport"} {
 		if hits := reaches(all, module+"/"+light, module+"/store"); len(hits) > 0 {
 			t.Errorf("%s imports %v", light, hits)
 		}
