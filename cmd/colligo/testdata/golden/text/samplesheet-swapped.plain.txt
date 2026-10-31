@@ -2,22 +2,22 @@
 
 ✗ pair_ids · blocking · M5
   Problem  The mates do not start or end with the same read: first=AAA.1 last=AAA.10 (fastq_1, line 2) against first=BBB.1 last=BBB.10 (fastq_2, line 2).
-           in a_R1.fastq.gz, b_R2.fastq.gz
+           in a_R1.fastq, b_R2.fastq
   Problem  The mates do not start or end with the same read: first=BBB.1 last=BBB.10 (fastq_1, line 3) against first=AAA.1 last=AAA.10 (fastq_2, line 3).
-           in b_R1.fastq.gz, a_R2.fastq.gz
+           in b_R1.fastq, a_R2.fastq
   Likely   (hypothesis) The files come from different samples or were sorted or filtered differently.
   Do       Do not align these files together. Check which files belong to the same sample.
 ✗ sheet_mates_swapped · blocking · M5
   Problem  The fastq_2 files of samplesheet lines 2 and 3 look swapped: each one fits the fastq_1 of the other line.
-           in a_R1.fastq.gz, b_R2.fastq.gz, b_R1.fastq.gz, a_R2.fastq.gz
+           in a_R1.fastq, b_R2.fastq, b_R1.fastq, a_R2.fastq
   Likely   (hypothesis) The columns were edited or sorted independently, so the mates of two samples were exchanged.
   Do       Exchange the fastq_2 values of those two lines.
 
-File           Reads  Bases  Bases/read  Result
-a_R1.fastq.gz     10    100        10.0  ✗ invalid
-b_R2.fastq.gz     10    100        10.0  ✗ invalid
-b_R1.fastq.gz     10    100        10.0  ✗ invalid
-a_R2.fastq.gz     10    100        10.0  ✗ invalid
+File        Reads  Bases  Bases/read  Result
+a_R1.fastq     10    100        10.0  ✗ invalid
+b_R2.fastq     10    100        10.0  ✗ invalid
+b_R1.fastq     10    100        10.0  ✗ invalid
+a_R2.fastq     10    100        10.0  ✗ invalid
 
 Checked
   ✓ format and structure of 4 files
@@ -30,7 +30,7 @@ What to do
   1. Do not align these files together. Check which files belong to the same sample.
   2. Exchange the fastq_2 values of those two lines.
 
-4 files: 4 invalid · 306 B · <time>
+4 files: 4 invalid · 1.3 kB · <time>
 
 Explain
   colligo explain pair_ids

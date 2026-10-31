@@ -2,14 +2,14 @@
   "schema_version": 2,
   "files": [
     {
-      "path": "<dir>/a_R1.fastq.gz",
+      "path": "<dir>/a_R1.fastq",
       "status": "invalid",
-      "container": "gzip",
+      "container": "none",
       "content": "fastq",
-      "size": 74,
-      "blake3_root": "e37910a673dd69914a7590e1e76051e1af14929bd8d6b901a7453b246a4b04e9",
-      "md5": "33d5bda78b4fd00be7e339652c2b4d66",
-      "sha256": "374e753f1bb3a54924ca319b5dd06814a9da67b07d1d807381aea2d3d5e1803f",
+      "size": 331,
+      "blake3_root": "d9e797e77615e83868cb092263e7b386d71a3913e4f3138576ec2194af83ea76",
+      "md5": "8bb8cf51d86cf472ab6fe3be9c4658c8",
+      "sha256": "5263472ba19cd5c6315d4fd508abe89b059551da3acf3d1fffe8d2381b229e1d",
       "assertions": [
         {
           "id": "html_body",
@@ -18,22 +18,6 @@
           "passed": true,
           "declared": "data",
           "observed": "data"
-        },
-        {
-          "id": "magic_mismatch",
-          "mode": "M3",
-          "severity": "fatal",
-          "passed": true,
-          "declared": "gzip",
-          "observed": "gzip"
-        },
-        {
-          "id": "structure_invalid",
-          "mode": "M4",
-          "severity": "blocking",
-          "passed": true,
-          "declared": "valid",
-          "observed": "valid"
         },
         {
           "id": "structure_invalid",
@@ -64,8 +48,8 @@
           "mode": "M4",
           "severity": "advisory",
           "passed": true,
-          "declared": "fastq in gzip",
-          "observed": "fastq in gzip"
+          "declared": "fastq",
+          "observed": "fastq"
         },
         {
           "id": "pair_count",
@@ -100,14 +84,14 @@
       ]
     },
     {
-      "path": "<dir>/b_R2.fastq.gz",
+      "path": "<dir>/b_R2.fastq",
       "status": "invalid",
-      "container": "gzip",
+      "container": "none",
       "content": "fastq",
-      "size": 79,
-      "blake3_root": "b6c932b037acc13432b1416f4f557ad7f831ddc60436d7929e5a76c74d4d77f7",
-      "md5": "06a35d2953419a60b031f99d87657028",
-      "sha256": "59f35ed6b50a8304f49187599dc5ab1223eca1cb2e33c29b6e8261ecaafacd01",
+      "size": 331,
+      "blake3_root": "d9e6afd95a60c5745be4308ea1465ca25fd44157f8641f6b987eac3ebdab5a3a",
+      "md5": "a3fc05c5a7e7d686b8dc62128c96a1e9",
+      "sha256": "35abfc09b5dac5fde891a78e909d30904aeb464509409dc4a9005901991574cb",
       "assertions": [
         {
           "id": "html_body",
@@ -116,22 +100,6 @@
           "passed": true,
           "declared": "data",
           "observed": "data"
-        },
-        {
-          "id": "magic_mismatch",
-          "mode": "M3",
-          "severity": "fatal",
-          "passed": true,
-          "declared": "gzip",
-          "observed": "gzip"
-        },
-        {
-          "id": "structure_invalid",
-          "mode": "M4",
-          "severity": "blocking",
-          "passed": true,
-          "declared": "valid",
-          "observed": "valid"
         },
         {
           "id": "structure_invalid",
@@ -162,8 +130,8 @@
           "mode": "M4",
           "severity": "advisory",
           "passed": true,
-          "declared": "fastq in gzip",
-          "observed": "fastq in gzip"
+          "declared": "fastq",
+          "observed": "fastq"
         },
         {
           "id": "pair_count",
@@ -198,14 +166,14 @@
       ]
     },
     {
-      "path": "<dir>/b_R1.fastq.gz",
+      "path": "<dir>/b_R1.fastq",
       "status": "invalid",
-      "container": "gzip",
+      "container": "none",
       "content": "fastq",
-      "size": 74,
-      "blake3_root": "165e244f46d58373f345a3c732b3d7b040438db46b10725cac902a046dd50633",
-      "md5": "f8017a4360f805f875e12597114b72c4",
-      "sha256": "60d4781ec09a7527cf92a71c15040ea7096295b989b2c250a87faba2ed1a5cf3",
+      "size": 331,
+      "blake3_root": "d19ec5ed0d9d6c1e3340fcbe5d4e2f1f7973e27315cd685f60ce5e8b9383a339",
+      "md5": "4283e0fc7c3bd8877fa419f3bb820c31",
+      "sha256": "eb627dae4b735823d6a09d3575062b24aebe4165a39aed6251afd38f348d4606",
       "assertions": [
         {
           "id": "html_body",
@@ -214,22 +182,6 @@
           "passed": true,
           "declared": "data",
           "observed": "data"
-        },
-        {
-          "id": "magic_mismatch",
-          "mode": "M3",
-          "severity": "fatal",
-          "passed": true,
-          "declared": "gzip",
-          "observed": "gzip"
-        },
-        {
-          "id": "structure_invalid",
-          "mode": "M4",
-          "severity": "blocking",
-          "passed": true,
-          "declared": "valid",
-          "observed": "valid"
         },
         {
           "id": "structure_invalid",
@@ -260,8 +212,8 @@
           "mode": "M4",
           "severity": "advisory",
           "passed": true,
-          "declared": "fastq in gzip",
-          "observed": "fastq in gzip"
+          "declared": "fastq",
+          "observed": "fastq"
         },
         {
           "id": "pair_count",
@@ -296,14 +248,14 @@
       ]
     },
     {
-      "path": "<dir>/a_R2.fastq.gz",
+      "path": "<dir>/a_R2.fastq",
       "status": "invalid",
-      "container": "gzip",
+      "container": "none",
       "content": "fastq",
-      "size": 79,
-      "blake3_root": "2812d903b3f970d3460c18d9a6a7cad2a957b1e9fe8106dcbc0df9aff0c81868",
-      "md5": "5dffc0fd79986bca64bad7b793823f6b",
-      "sha256": "0d9110df41146a3b25e34f603eeb824b332fea91e5ce0a7926ba6d0f3c701081",
+      "size": 331,
+      "blake3_root": "8499c6f1ec2a8ce6170b8f3600d695fa72f21c4f50c7730d4502e79a715496de",
+      "md5": "2463d5ca2377717b663d37dec67f1ee6",
+      "sha256": "fe089cd92b10919ca7a85f2bd7bf16c5a252bb351b58f1c9c52487b59fa3a041",
       "assertions": [
         {
           "id": "html_body",
@@ -312,22 +264,6 @@
           "passed": true,
           "declared": "data",
           "observed": "data"
-        },
-        {
-          "id": "magic_mismatch",
-          "mode": "M3",
-          "severity": "fatal",
-          "passed": true,
-          "declared": "gzip",
-          "observed": "gzip"
-        },
-        {
-          "id": "structure_invalid",
-          "mode": "M4",
-          "severity": "blocking",
-          "passed": true,
-          "declared": "valid",
-          "observed": "valid"
         },
         {
           "id": "structure_invalid",
@@ -358,8 +294,8 @@
           "mode": "M4",
           "severity": "advisory",
           "passed": true,
-          "declared": "fastq in gzip",
-          "observed": "fastq in gzip"
+          "declared": "fastq",
+          "observed": "fastq"
         },
         {
           "id": "pair_count",

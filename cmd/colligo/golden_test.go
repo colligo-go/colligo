@@ -99,11 +99,11 @@ func goldenCases() []goldenCase {
 			return checkRun([]string{dir}, nil)
 		}},
 		{"samplesheet-swapped", func(t *testing.T, dir string) goldenRun {
-			putMates(t, dir, "a", "AAA", 10, ".fastq.gz", true)
-			putMates(t, dir, "b", "BBB", 10, ".fastq.gz", true)
+			putMates(t, dir, "a", "AAA", 10, ".fastq", false)
+			putMates(t, dir, "b", "BBB", 10, ".fastq", false)
 			sheet := put(t, dir, "samples.csv", []byte("sample,fastq_1,fastq_2,strandedness\n"+
-				"A,a_R1.fastq.gz,b_R2.fastq.gz,auto\n"+
-				"B,b_R1.fastq.gz,a_R2.fastq.gz,auto\n"))
+				"A,a_R1.fastq,b_R2.fastq,auto\n"+
+				"B,b_R1.fastq,a_R2.fastq,auto\n"))
 			return checkRun([]string{"--samplesheet", sheet}, nil)
 		}},
 		{"identify-fasta", func(t *testing.T, dir string) goldenRun {
