@@ -233,6 +233,8 @@ So the rule is not "R1 plus R2 equals `read_count`": that raises a false `blocki
 
 `colligo check --source ena:<accession>` applies this rule at the light door (SPEC §16). The bases are compared once per run, when every file of the run was read; a file of a run that fails gets `source_run_failed`, so it never reads `verified`. A count the source left empty is reported as not declared and skipped, never compared as zero.
 
+A renamed download is not a false alarm: the local file is linked to the declared one by its computed MD5 and size when no name matches, and the report says it was linked by content (`linked_by: "md5"`). The link comes after the name and never replaces it, and two candidates are `source_file_ambiguous`, not a guess. What it cannot link is a file that was both renamed and decompressed, whose name and MD5 both fail to match: it stays `source_file_missing` (blocking) for the declared file and `source_file_unlisted` for the local one. That is an incomplete-looking run for intact data, the price of not trusting a name or a hash that the content cannot support; the user restores the name or checks the compressed original.
+
 Trying several readings of `read_count` is safe only because it is not the blocking comparison: with `base_count` independent and blocking, a coincidental match cannot let a shortened run through.
 
 The sample is small: Illumina only, the smallest runs of each label and file count, no long reads. The adapter records every run whose `read_count` no reading explains as a new fixture instead of widening the rule silently.
