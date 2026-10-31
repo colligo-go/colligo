@@ -1,16 +1,21 @@
 {% set name = "colligo" %}
 {% set version = "0.2.0" %}
+{# Filled at release, from the tag: sha256sum of the tarball below, and git rev-list -n 1 v<version>. #}
+{% set sha256 = "" %}
+{% set commit = "" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
-  git_url: https://github.com/colligo-go/colligo.git
-  git_rev: v{{ version }}
+  url: https://github.com/colligo-go/colligo/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: {{ sha256 }}
 
 build:
   number: 0
+  script_env:
+    - COLLIGO_COMMIT={{ commit }}
   run_exports:
     - {{ pin_subpackage(name, max_pin="x.x") }}
 
@@ -38,7 +43,5 @@ about:
   summary: Check that the genomic data you have is the data you think you have
 
 extra:
-  skip-lints:
-    - uses_vcs_url
   recipe-maintainers:
     - JVguedesF

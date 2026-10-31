@@ -180,7 +180,7 @@ v1.0.0 — public interface frozen, strict semver
 
 It stays at v0 until the interface is stable and tested in real use. The light door can get its own v0 releases from Slice 1.
 
-**The version comes only from the git tag.** There is no version constant in the code. Each closed slice bumps the minor: Slice 1 → `v0.1.0`, Slice 2 → `v0.2.0`. A fix published over a release bumps the patch: `v0.1.1`. Between tags, the binary identifies itself by Go's pseudo-version, with date and commit (`v0.0.0-20261029173537-1d27b8e84ac6` before the first tag), and with `+dirty` when it was built with an uncommitted change. `colligo version` and every certificate record version and commit, so that any result points to the exact code that produced it.
+**The version comes only from the git tag.** There is no version constant in the code. Each closed slice bumps the minor: Slice 1 → `v0.1.0`, Slice 2 → `v0.2.0`. A fix published over a release bumps the patch: `v0.1.1`. Between tags, the binary identifies itself by Go's pseudo-version, with date and commit (`v0.0.0-20261029173537-1d27b8e84ac6` before the first tag), and with `+dirty` when it was built with an uncommitted change. `colligo version` and every certificate record version and commit, so that any result points to the exact code that produced it. A build from a release tarball, which has no `.git` and so no VCS stamp (the bioconda recipe), receives the tag's version and commit through `-ldflags -X`; the stamp always wins when it exists, and the code holds no default value.
 
 Tag only from `main` with green CI, annotated, with the release notes taken from `CHANGELOG.md`.
 

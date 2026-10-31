@@ -1,16 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
+if [[ ! "${COLLIGO_COMMIT:-}" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "COLLIGO_COMMIT must be the 40-character commit of tag v${PKG_VERSION}; set commit in meta.yaml" >&2
+    exit 1
+fi
+
 export CGO_ENABLED=0
-export GOFLAGS="-trimpath -buildvcs=true -mod=readonly"
+export GOFLAGS="-trimpath -mod=readonly"
 export GOPATH="$(mktemp -d)"
 export GOCACHE="$(mktemp -d)"
 
-printf '%s\n' conda_build.sh build_env_setup.sh metadata_conda_debug.yaml thirdparty >> .git/info/exclude
+buildinfo=github.com/colligo-go/colligo/internal/buildinfo
+go build \
+    -ldflags "-X ${buildinfo}.injectedVersion=v${PKG_VERSION} -X ${buildinfo}.injectedCommit=${COLLIGO_COMMIT}" \
+    -o "${PREFIX}/bin/colligo" ./cmd/colligo
 
-go build -o "${PREFIX}/bin/colligo" ./cmd/colligo
-
-"${PREFIX}/bin/colligo" version | grep -q "^colligo v${PKG_VERSION} "
+test "$("${PREFIX}/bin/colligo" version)" = "colligo v${PKG_VERSION} (${COLLIGO_COMMIT})"
 
 go-licenses save ./cmd/colligo --save_path=thirdparty --ignore github.com/colligo-go/colligo
 
