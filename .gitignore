@@ -24,3 +24,6 @@ profile.cov
 go.work
 go.work.sum
 .env
+__pycache__/
+*.egg-info/
+.venv*/

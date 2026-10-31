@@ -1,0 +1,55 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "testdata/synthetic/plain.fastq",
+      "status": "valid",
+      "container": "none",
+      "content": "fastq",
+      "size": 35830,
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        }
+      ]
+    }
+  ],
+  "exit_code": 0
+}
