@@ -8,15 +8,16 @@ Both target `v0.2.0`, the first release with `--source` and the `schema_version`
 
 `meta.yaml`, `build.sh` and `tiny.fastq` (the recipe test). The recipe builds with `compiler('go-nocgo')`, `-trimpath` and `CGO_ENABLED=0`. The binary is static, so it needs no `stdlib('c')`; `compiler('go')` is not used because it resolved a Go older than the 1.26.3 that `go.mod` asks for, while `go-nocgo` resolves the newest one.
 
-**Why the source is a git tag and not a tarball.** The version comes only from the git tag (`ROADMAP.md`), and `internal/buildinfo` reads it from the VCS stamp that `go build` writes inside a git checkout. A GitHub tarball has no `.git`, and its binary reports `colligo dev (unknown)`; measured on `v0.1.0`, with and without `-buildvcs=false`. So the recipe uses `git_url` with `git_rev: v{{ version }}`.
+**Source: the release tarball, with its checksum.** bioconda requires a checksum for every source, so the recipe downloads the GitHub tarball of tag `v{{ version }}` and pins its `sha256`. A tarball has no `.git`, so `go build` writes no VCS stamp; `build.sh` therefore injects the version and the commit of the tag with `-ldflags -X` into `internal/buildinfo`, which uses them only when the binary has no stamp (a git checkout and `go install …@v…` keep reading the stamp). The code still holds no version constant: without stamp or injection the binary says `colligo dev (unknown)`.
 
-`build.sh` fails when `colligo version` is not exactly `colligo v<version> (<commit>)`, so a tarball build or a dirty tree (`+dirty`) stops the build instead of shipping a binary with a wrong version. It excludes the files conda-build leaves in the work directory from `git status` for the same reason.
+At release, fill the two values at the top of `meta.yaml`: `sha256` (`sha256sum` of the tarball) and `commit` (`git rev-list -n 1 v<version>`). `build.sh` refuses to build when `commit` is not a 40-character commit, and fails when `colligo version` is not exactly `colligo v<version> (<commit>)`, so a recipe with a missing or wrong value never ships a binary with a wrong version.
 
-Tested on 2026-10-31 with conda-build 25.7.0 and the bioconda build configuration of bioconda-utils 4.1.0, against a throwaway local clone of `main` carrying a local `v0.2.0` tag (never pushed):
+Tested on 2026-10-31 with conda-build 25.7.0 and the bioconda build configuration of bioconda-utils 4.1.0, against a tarball made by `git archive` (as GitHub makes its release tarballs) of the branch, with its `sha256` and commit filled in:
 
-- `conda-build` passes end to end: Go 1.27.3, the version guard of `build.sh`, the bundled licences, and the three recipe tests (`colligo version` reports `v0.2.0`, `colligo check` passes on `tiny.fastq`, the JSON has `schema_version` 2).
+- `conda-build` passes end to end: Go 1.27.3, the injected version checked by `build.sh`, the bundled licences, and the three recipe tests (`colligo version` reports `v0.2.0`, `colligo check` passes on `tiny.fastq`, the JSON has `schema_version` 2).
+- With `commit` left empty, `build.sh` stops with `COLLIGO_COMMIT must be the 40-character commit of tag v0.2.0` and no package is made.
+- `bioconda-utils lint`, with the real GitHub address and a filled `sha256`: all checks OK.
 - A test command that contains `": "` must be quoted in YAML, or it is read as a mapping and conda-build stops with `TypeError: write() argument must be str, not dict`.
-- `bioconda-utils lint` reports one error: `missing_hash`. A `git_url` source has no file to hash, and bioconda requires a checksum for every source. **This is the open decision**: either bioconda accepts `git_url` for this recipe, or the source becomes a release tarball with its `sha256`, which needs `internal/buildinfo` to accept a version injected at build time (`-ldflags -X`) when the binary has no VCS stamp. That is not a version constant in the code, but it is a change to make before submitting.
 
 Guidelines consulted on 2026-10-31: [bioconda guidelines](https://bioconda.github.io/contributor/guidelines.html), [linting](https://bioconda.github.io/contributor/linting.html), [building locally](https://bioconda.github.io/contributor/building-locally.html). None of these pages has Go-specific guidance; the Go parts follow the conda-forge pinning (`go_compiler: go-nocgo`) and general practice.
 
@@ -37,9 +38,8 @@ Spec consulted on 2026-10-31: [nf-core modules specifications](https://nf-co.re/
 
 ## What is missing to submit
 
-1. Tag `v0.2.0`.
-2. Decide the bioconda source (`git_url` or tarball, above) and, for a tarball, teach `internal/buildinfo` to take a version from `-ldflags -X`.
-3. Open the PR to `bioconda/bioconda-recipes` with the recipe under `recipes/colligo/` (the maintainer's action), and confirm there that the bioconda CI may download Go modules during the build (otherwise vendor them).
-4. Once `colligo=0.2.0` is published, add the container lines to `main.nf`, run `nf-test` inside nf-core/modules to create `tests/main.nf.test.snap`, and run `nf-core modules lint` again.
-5. Add the `identifier` (bio.tools) to `meta.yml` once Colligo has one.
-6. Open the PR in `nf-core/modules` (the maintainer's action).
+1. Tag `v0.2.0`, then fill `sha256` and `commit` in `meta.yaml`.
+2. Open the PR to `bioconda/bioconda-recipes` with the recipe under `recipes/colligo/` (the maintainer's action), and confirm there that the bioconda CI may download Go modules during the build (otherwise vendor them).
+3. Once `colligo=0.2.0` is published, add the container lines to `main.nf`, run `nf-test` inside nf-core/modules to create `tests/main.nf.test.snap`, and run `nf-core modules lint` again.
+4. Add the `identifier` (bio.tools) to `meta.yml` once Colligo has one.
+5. Open the PR in `nf-core/modules` (the maintainer's action).
