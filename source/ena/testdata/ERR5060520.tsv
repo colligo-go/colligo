@@ -1,0 +1,2 @@
+run_accession	library_layout	fastq_ftp	fastq_md5	fastq_bytes	read_count	base_count	status
+ERR5060520	SINGLE	ftp.sra.ebi.ac.uk/vol1/fastq/ERR506/000/ERR5060520/ERR5060520_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/ERR506/000/ERR5060520/ERR5060520_2.fastq.gz	a1838e1e2131672cdc59cbd563608ea2;ac3444e11fd3fa6ebd812aee53428686	179620;200969	8014	1862354	public

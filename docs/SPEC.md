@@ -18,6 +18,7 @@ colligo/
 ├── secret/           Secret, Name, Endpoint
 ├── store/            SQLite implementation of Store; embedded migrations
 ├── source/           one sub-package per source, with no access to disk or database
+│   ├── ena/
 │   ├── gencode/
 │   ├── ensembl/
 │   ├── geo/
@@ -50,7 +51,7 @@ colligo/
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools`, `cmd/colligo`, `source/ena` (metadata only) and `transport` (the interface only) exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
 **Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
@@ -513,18 +514,42 @@ type Fetched struct {
     Issues     []model.ValidationIssue
 }
 
+type Sample struct {
+    ID           string
+    ExperimentID string
+    Accession    string
+    Layout       string
+    SourceStatus string
+    Declared     RunCounts
+    Artifacts    []Artifact
+}
+
+type RunCounts struct {
+    ReadCount int64
+    BaseCount int64
+}
+
 type Artifact struct {
     URL          secret.Endpoint
     Name         secret.Name
     Size         int64
     MD5          string
     SHA256       string
-    ReadCount    int64
-    BaseCount    int64
     Format       string
     PairID       string
     SourceStatus string
     Headers      map[string]string
+}
+
+type ByteRange struct {
+    Start int64
+    End   int64
+}
+
+type Response struct {
+    StatusCode  int
+    ContentType string
+    Body        io.ReadCloser
 }
 
 type Transport interface {
@@ -581,6 +606,8 @@ type Logger interface {
     Error(msg string, fields ...logf.Field)
 }
 ```
+
+A `Sample` is one run. `Declared` holds the totals the source publishes for the whole run, summed over its files: `ReadCount` and `BaseCount` are not per file, and `Artifact` has no field for them. `Artifact.PairID` is the run accession when the file name carries a `_1` or `_2` mate suffix, and empty for a file without one. `Layout` is the source's own label, never verified by the adapter. `Fetch` fills `Raw` even when it also returns an error. A defective row of the response becomes a blocking `ValidationIssue` and the run is left out of `Samples`; a response that is not a table, lacks a column or lists no usable run is a `*model.SourceError`; an accession with no row is a `*model.NotFoundError`.
 
 `SaveRawResponse` decides on its own whether to store the body or only the hash, consulting the classification. The caller has no choice.
 

@@ -112,3 +112,19 @@ func TestNoInitFunctions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestENAAdapterStaysPure(t *testing.T) {
+	all := load(t)
+	ena, ok := all[module+"/source/ena"]
+	if !ok {
+		t.Fatal("source/ena was not loaded")
+	}
+	if hits := reaches(all, module+"/source/ena", module+"/store"); len(hits) > 0 {
+		t.Errorf("source/ena reaches %v", hits)
+	}
+	for _, forbidden := range []string{"os", "net/http", module + "/store"} {
+		if _, direct := ena.Imports[forbidden]; direct {
+			t.Errorf("source/ena imports %s", forbidden)
+		}
+	}
+}
