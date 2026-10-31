@@ -111,7 +111,8 @@ func looksLikeData(name secret.Name) bool {
 	head := make([]byte, headBytes)
 	n, _ := io.ReadFull(f, head)
 	container, content := format.Sniff(head[:n])
-	if container != format.ContainerNone || content == format.ContentFastq || content == format.ContentFasta || content == format.ContentGTF {
+	if container != format.ContainerNone || content == format.ContentFastq || content == format.ContentFasta || content == format.ContentGTF ||
+		content == format.ContentSRA || content == format.ContentCRAM {
 		return true
 	}
 	nameContainer, nameContent := format.FromName(name)

@@ -50,7 +50,7 @@ func identifyVerdict(v *identifyView) []string {
 	role := theme.Good
 	switch {
 	case len(v.report.Files) == 0:
-		head, role, sentence = t.Advisory+" NOTHING IDENTIFIED", theme.Warn, "no file was given"
+		head, role, sentence = t.Failed+" NOTHING IDENTIFIED", theme.Bad, "no file was found, so nothing is identified"
 	case counts[verifier.StatusUnreadable] > 0:
 		head, role = t.Failed+" FAILED", theme.Bad
 		sentence = format.Plural(counts[verifier.StatusUnreadable], "file", "files") + " could not be read: nothing is identified for them"

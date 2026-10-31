@@ -43,7 +43,7 @@ func TestIdentifyVerdictSaysWhatIsAndIsNotConfirmed(t *testing.T) {
 		{"conflict", []*verifier.Identification{conflict}, 3, "✗ FAILED  b.gtf says it is GENCODE 44, but its content says otherwise  exit 3"},
 		{"unreadable", []*verifier.Identification{identification("d.gtf", verifier.StatusUnreadable)}, 2, "✗ FAILED  1 file could not be read: nothing is identified for them  exit 2"},
 		{"several", []*verifier.Identification{known, declared, conflict}, 3, "✗ FAILED  3 files: 1 identified, 1 declared, 1 conflict  exit 3"},
-		{"none", nil, 0, "! NOTHING IDENTIFIED  no file was given  exit 0"},
+		{"none", nil, 3, "✗ NOTHING IDENTIFIED  no file was found, so nothing is identified  exit 3"},
 	}
 	for _, c := range cases {
 		out := identified(t, c.code, c.files...)

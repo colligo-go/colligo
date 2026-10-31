@@ -42,8 +42,8 @@ func (v *view) verdict() verdict {
 	switch {
 	case worst.Rank() >= model.Blocking.Rank():
 		return verdict{t.Failed, "FAILED", theme.Bad, v.failureSentence()}
-	case len(r.Files) == 0 && (r.Source == nil || len(r.Source.Runs) == 0):
-		return verdict{t.Advisory, "NOTHING CHECKED", theme.Warn, "no data file was found"}
+	case r.NothingChecked():
+		return verdict{t.Failed, "NOTHING CHECKED", theme.Bad, "no data file was found, so nothing is verified"}
 	case r.Quick:
 		return verdict{t.Advisory, "QUICK", theme.Warn, format.Plural(len(r.Files), "file", "files") + " read in part: a quick check is never verified"}
 	case worst == model.Advisory:

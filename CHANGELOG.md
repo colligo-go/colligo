@@ -55,6 +55,8 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 - The `count_mismatch` observation says "The content has" instead of "The file has", since it now also describes a run.
 - `verifier.Discover` moved to `request.Discover` and the CLI no longer builds the list of files itself. A `--quiet` report is the verdict line, plus one `Input:` line when an input was interpreted.
 - The error text of the usage mistakes of `check` changed with the new input rules; their exit code (1) did not.
+- A `check` that found nothing to check (an empty folder, a folder with no data file) and an `identify` with no file now exit 3 instead of 0, with the verdict `✗ NOTHING CHECKED` or `✗ NOTHING IDENTIFIED`: nothing was verified, so a script must not read it as success. `--permissive` still gives 0.
+- An SRA archive or a CRAM file in a folder is now checked, whatever its name, and reported as `input_sra` or `input_alignment` (exit 3), instead of being skipped. A ZIP in a folder is still skipped, since FastQC writes one beside every FASTQ.
 
 ## [0.1.0] - 2026-10-30
 

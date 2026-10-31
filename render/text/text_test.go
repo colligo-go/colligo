@@ -73,7 +73,7 @@ func TestVerdictIsTheFirstLineWithSymbolWordAndExitCode(t *testing.T) {
 	}{
 		{"verified", healthy, 0, "✓ VERIFIED  1 file passes every check run  exit 0"},
 		{"failed", broken, 3, "✗ FAILED  1 of 1 file failed a check  exit 3"},
-		{"nothing", verifier.Report{}, 0, "! NOTHING CHECKED  no data file was found  exit 0"},
+		{"nothing", verifier.Report{}, 3, "✗ NOTHING CHECKED  no data file was found, so nothing is verified  exit 3"},
 		{"quick", verifier.Report{Files: healthy.Files, Quick: true}, 5, "! QUICK  1 file read in part: a quick check is never verified  exit 5"},
 	}
 	for _, c := range cases {
