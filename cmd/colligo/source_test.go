@@ -13,8 +13,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/colligo-go/colligo/internal/exttool"
 	"github.com/colligo-go/colligo/secret"
@@ -452,6 +455,32 @@ func TestSourceCertificatesStillAgreeWithTheIndependentVerifier(t *testing.T) {
 		}
 		if !bytes.Contains(result, []byte("UNCHECKED assertion source_run_failed")) {
 			t.Errorf("%s: the run failure must be listed as not recomputed:\n%s", name, result)
+		}
+	}
+}
+
+type slowTransport struct {
+	fakeTransport
+	delay time.Duration
+}
+
+func (s *slowTransport) Get(ctx context.Context, e secret.Endpoint, r *transport.ByteRange) (*transport.Response, error) {
+	time.Sleep(s.delay)
+	return s.fakeTransport.Get(ctx, e, r)
+}
+
+func TestTheFooterTimeIncludesTheSourceQuery(t *testing.T) {
+	dir := t.TempDir()
+	put(t, dir, "DRR021374_1.fastq", fastq("A", 3))
+	net := &slowTransport{fakeTransport: fakeTransport{body: recorded(t, "DRR021374")}, delay: 150 * time.Millisecond}
+	_, out, _ := checkSource(t, net, "--source", "ena:DRR021374", dir)
+	m := regexp.MustCompile(`· (\d+) ms\n|· ([0-9.]+) s\n`).FindStringSubmatch(out)
+	if m == nil {
+		t.Fatalf("no elapsed time in the footer:\n%s", out)
+	}
+	if m[1] != "" {
+		if ms, _ := strconv.Atoi(m[1]); ms < 150 {
+			t.Errorf("the footer says %d ms, but the source query alone took 150 ms", ms)
 		}
 	}
 }

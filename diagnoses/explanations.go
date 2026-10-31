@@ -79,7 +79,7 @@ var explanations = map[string]Explanation{
 		Means:   "The file is well formed, but it holds a different amount of data from what was declared: fewer or more reads or bases.",
 		Why:     "A tool may have shortened or trimmed the reads, the file may have been extracted or converted in a way that lost data, or you may hold another version of the data than the one the source describes. Nothing looks broken, which is why only a count catches it.",
 		Do:      "Extract or download the file again and compare the counts with the source record. Do not use the data until the difference is explained.",
-		Confirm: "Count the reads with 'zcat file.fastq.gz | wc -l' and divide by 4. The source record lists its own numbers: for ENA, the base_count and read_count fields of the run.",
+		Confirm: "Count the reads with 'zcat file.fastq.gz | wc -l' divided by 4. For a run, add up every file of the run; the source record lists its own numbers, for ENA the read_count and base_count fields of the run. Count the bases with: zcat file.fastq.gz | awk 'NR % 4 == 2 { n += length($0) } END { print n }'",
 	},
 	PairCount: {
 		Means:   "The two mate files of a pair (R1 and R2) hold different numbers of reads.",

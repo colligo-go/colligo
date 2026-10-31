@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/colligo-go/colligo/checksum"
 	"github.com/colligo-go/colligo/format"
@@ -220,11 +221,13 @@ func runCheck(args []string, stdout, stderr io.Writer, structureOnly bool, net t
 	opts := verifier.Options{Format: s.format, Expected: expected, Structure: structureOnly, Quick: s.quick, Jobs: s.jobs, Progress: counter}
 	var report verifier.Report
 	if s.source != "" {
+		started := time.Now()
 		decl, fetchErr := fetchDeclaration(ctx, ref, net)
 		if fetchErr != nil {
 			return sourceFailed(fetchErr, ref, stderr)
 		}
 		report, err = verifier.CheckAgainstSource(ctx, names, decl, opts)
+		report.Elapsed = time.Since(started)
 	} else {
 		report, err = verifier.CheckAll(ctx, names, opts)
 	}
