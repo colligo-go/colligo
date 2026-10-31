@@ -75,7 +75,7 @@ Scope:
 - `colligo check --samplesheet`: nf-core pipeline samplesheet checked against the content.
 - MultiQC module that reads the `--json` of `check` and shows the result in the report the user already opens.
 - Polished, modular text output (SPEC §16, "Text output"): the verdict first, each problem once with its likely cause and what to do, what was checked and what was not, and `colligo explain`. Rendering lives in `render/`, apart from the checks, so the presentation (tables or lines, colours, symbols, order of the blocks) can change later without touching them.
-- Friendly, modular input (SPEC §16, "Input"): every form of input resolves into one request in `request/`; `--files-from` lists; `--source` takes a copied ENA link or deduces the accession of one run from the file names; common mistakes (an SRA archive, a spreadsheet) are named; an unknown flag gets "did you mean". Nothing is guessed in silence, and there is no implicit path.
+- Friendly, modular input (SPEC §16, "Input"; implemented): every form of input resolves into one request in `request/`; `--files-from` lists; `--source` takes a copied ENA link or deduces the accession of one run from the file names; common mistakes (an SRA archive, a spreadsheet) are named; an unknown flag gets "did you mean". Nothing is guessed in silence, and there is no implicit path.
 
 Definition of done:
 

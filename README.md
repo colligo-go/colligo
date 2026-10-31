@@ -9,8 +9,13 @@ Downloading with an MD5 is a solved problem; knowing what the file *means* is no
 colligo check SRR2133898_1.fastq.gz SRR2133898_2.fastq.gz
 colligo check . --certificate
 colligo check --source ena:SRR10663037 downloads/
+colligo check --source ena downloads/                  # the accession is deduced from the file names
+colligo check --source https://www.ebi.ac.uk/ena/browser/view/DRR021374 .
+find . -name '*.fastq.gz' | colligo check --files-from -
 colligo identify genome.fa.gz
 ```
+
+Colligo helps to read what you type, and says so: an accession taken from a link or deduced from the file names is shown in the report (`Input: accession DRR021374, deduced from the file names`), two runs in one folder are a usage error that lists both instead of a guess, and `colligo check` with no path suggests `colligo check .` instead of checking another folder in silence. A file that is a common mistake (an SRA archive, a BAM, a ZIP, a spreadsheet given as a samplesheet) is named, with what to do. An unknown flag gets "did you mean", and `-h` of each command shows examples and the exit codes.
 
 A failure is stated as a failure, in the first line, with its exit code. This is what `colligo check --source ena:DRR021374 .` prints when read 2 was shortened, a file that is still valid FASTQ:
 
