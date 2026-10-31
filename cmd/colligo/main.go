@@ -30,7 +30,7 @@ commands:
              --samplesheet checks an nf-core samplesheet against the content;
              --source ena:<accession> compares them with what ENA declares
   validate   structural validation of the format only
-  identify   name a FASTA by its sequence collection digest
+  identify   name a FASTA or GTF by its content: seqcol digest, GENCODE header, official checksum
   version    print the version
 
 run "colligo <command> -h" for the flags of a command.
@@ -56,7 +56,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	case "validate":
 		return runCheck(args[1:], stdout, stderr, true, nil)
 	case "identify":
-		return runIdentify(args[1:], stdout, stderr, identity.Known())
+		table, err := identity.Embedded()
+		if err != nil {
+			fmt.Fprintf(stderr, "colligo: %v\nthe embedded table is unusable; nothing was identified\n", err)
+			return verifier.ExitFatal
+		}
+		return runIdentify(args[1:], stdout, stderr, table)
 	case "version", "--version":
 		fmt.Fprintf(stdout, "colligo %s (%s)\n", buildinfo.Version(), buildinfo.GitSHA())
 		return verifier.ExitOK

@@ -19,7 +19,7 @@ const (
 	changedDigest  = "N0YRD0n4wtA3-ThKhQSX4fCW0--XU5U0"
 )
 
-var tinyReferences = []identity.Reference{{Label: "tiny", Digest: identifyDigest, Source: "independent Python implementation of the specification"}}
+var tinyReferences = identity.Table{Collections: []identity.Reference{{Label: "tiny", Digest: identifyDigest, Source: "independent Python implementation of the specification"}}}
 
 func identify(t *testing.T, name secret.Name) *Identification {
 	t.Helper()

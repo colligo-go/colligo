@@ -47,7 +47,7 @@ colligo/
 ├── mutants/          (planned, Slice 7) generator of silent failures for test and benchmark
 ├── diagnoses/        versioned catalogue of diagnoses: observation, probable cause, action
 ├── spec/             TLA+ models of resume, rename and the state machine
-├── tools/            independent certificate verifier (Python)
+├── tools/            independent certificate verifier and the checksum table generator (Python)
 ├── cmd/colligo/      CLI: light door and heavy door (§16)
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
@@ -864,7 +864,7 @@ Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository
 
 ## 16. CLI
 
-Implemented today: `check`, `validate`, `identify` (FASTA only) and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate`, `--samplesheet` and `--source` (ENA only). The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
+Implemented today: `check`, `validate`, `identify` (FASTA and GTF) and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate`, `--samplesheet` and `--source` (ENA only). The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
 `--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
@@ -879,7 +879,7 @@ Implemented today: `check`, `validate`, `identify` (FASTA only) and `version`, w
 | `check --certificate`   | 1     | emits a certificate verifiable by third parties (§13)                                                                            |
 | `check --source`        | 2     | compares against the source: ENA `read_count`, `base_count`, status, MD5 and size (implemented, see below)                       |
 | `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated (implemented, see below) |
-| `identify`              | 2     | identity by content: seqcol (FASTA, implemented), GTF header, hash against official checksums                                    |
+| `identify`              | 2     | identity by content: seqcol (FASTA), GENCODE GTF header, hash against official checksums (implemented, see below)                |
 | `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
 | `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
 | `check --lock`          | 4     | checks the collection against a `colligo.lock`                                                                                   |
@@ -914,9 +914,33 @@ The `--json` output of `check` and `validate` is an object with `schema_version`
 
 ### `identify`
 
-`colligo identify [--json] <path>...` reads each file once and names it by its content. No database, no TOML; it does not import `store`.
+`colligo identify [--json] <path>...` reads each file once and names it by its content. No database, no TOML; it does not import `store`. Three signals can name a file, from the weakest to the strongest: the header of a GENCODE GTF (`declared`), the digest of a sequence collection and the checksum its source published (`identified`).
 
-For a FASTA, plain or inside gzip or BGZF, the same read that validates the structure produces the **Sequence Collection digest** of GA4GH Refget Sequence Collections v1.0.0, level 0:
+**Status.**
+
+| `status`         | Meaning                                                                                                                                  | Exit |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| `identified`     | the content matches something official: an entry of the checksum table or of the table of sequence collections                          | 0    |
+| `declared`       | the file says what it is, in a GENCODE header, and nothing in the content contradicts it. A header can be edited: this is not a proof   | 0    |
+| `conflict`       | the header says GENCODE and the content says otherwise                                                                                   | 3    |
+| `not_identified` | no signal names the file, or it is a format that has no identity to derive. Not an error                                                 | 0    |
+| `invalid`        | the file, or its gzip or BGZF container, has a structural problem: a truncated or broken file must not look like an answer               | 3    |
+| `unreadable`     | missing, unreadable, or changed during the read                                                                                          | 2    |
+
+An unreadable file outranks 3; 1 is a usage error; 4 is an interruption. `invalid` is decided first: a file that is not valid is never identified, whatever its header or checksum.
+
+**Checksum.** The MD5 of the bytes of the file, as stored (a `.gz` is hashed compressed), taken from the same read, is looked up in the embedded table of official checksums (`identity.KnownChecksums`). The name of the file never takes part. The table is `identity/checksums.json`; every entry has the `name` of the release, the `file` as the source names it, the `md5`, the `origin` (the address of the checksum file it was read from) and the day it was `retrieved`. `identity.ParseChecksums` rejects an entry with no origin or no date, a malformed MD5 or an MD5 that appears twice, and `identity.Verify` runs it on the embedded table, so a bad table stops `identify` before anything is claimed. The table is built by `tools/gen_checksums.py` from the copies of the official `MD5SUMS` files kept in `tools/checksums/` (listed with their origin and date in `sources.tsv`), and a test rebuilds it and compares it byte for byte; the output is sorted and does not depend on the order of the sources. Today it holds the GTF, GFF3 and FASTA files of GENCODE human 44, 48, 49 and 50 and mouse M33, M37, M38 and M39: the three latest releases of each organism on 2026-10-31, plus the ones checked on real files. GENCODE compresses every release anew, so even a genome FASTA whose sequences did not change has a different MD5 in each release, and no MD5 repeats across them: the checksum names the exact file of one release, while the sequence collection digest (the same for every release of one assembly) names its content. A match is `identified` for any format and is reported in `checksum`.
+
+**GENCODE GTF.** The extractor keeps the leading comment lines of the GTF, up to 1,024 lines or 1 MiB (whichever comes first, counted on the real length of each line) and 1 KiB per value, and the first occurrence of `##description`, `##provider`, `##format` and `##date`. A header that outgrows the limit is flagged (`header_truncated`) and the read goes on: the memory does not depend on the size of the header, and what was read before the limit still counts. The result is the `gtf_header` fact (`gtf-header-1`), which only exists with `identify` and only when the GTF is structurally valid.
+
+The `##description` line of GENCODE (`evidence-based annotation of the human genome (GRCh38), version 44 (Ensembl 110)`) gives `gencode`: `label` (`GENCODE 44`), `release` (`44`, or `M33` for the mouse), `organism`, `assembly` (absent when the line does not carry one), `ensembl` and the `date` of the header. A file with this line is `declared`, and the text says that a header can be edited. The header is then checked against the content, and any of these makes it `conflict`, with the reason naming each one:
+
+- the sequence names follow the Ensembl convention (`1`, `X`, `MT`), or mix it with `chr`. GENCODE names start with `chr`;
+- a `gene` line carries the attribute `gene_biotype`, which Ensembl writes and GENCODE writes as `gene_type`. Only `gene` lines are scanned, whole keys only: reading the attributes of every exon would nearly double the time of `identify`.
+
+A GTF without the line is `not_identified`: that includes an Ensembl GTF (`#!genome-build`), whose release is not in the header, a header with `##provider: GENCODE` but no release, a header whose description comes after the limit and a description that comes after the first feature. Ensembl GTFs are recognised only by checksum, and no Ensembl checksum is in the table.
+
+**FASTA.** For a FASTA, plain or inside gzip or BGZF, the same read that validates the structure produces the **Sequence Collection digest** of GA4GH Refget Sequence Collections v1.0.0, level 0:
 
 - `names`: the first word of each header, in file order.
 - `sequences`: `SQ.` followed by the refget `sha512t24u` of each sequence, after dropping every character that is not a letter and upper-casing the rest. Line width, case, line endings and the text after the name do not change it.
@@ -925,13 +949,11 @@ For a FASTA, plain or inside gzip or BGZF, the same read that validates the stru
 
 The result is the `seqcol` fact (`seqcol-1`), which only exists when the FASTA is structurally valid. A name that is not UTF-8, a name longer than 64 KiB, names that add up to more than 256 MiB or more than 1,048,576 sequences make the collection impossible to digest; the fact then carries only a `reason`. The caps bound the memory a hostile file can claim.
 
-The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A file that matches nothing is `not_identified`, with the digest when there is one; that is not an error. A file that is not a FASTA is `not_identified` with the reason. A FASTA, or its gzip or BGZF container, with a structural problem is `invalid` with the reason: a truncated or broken reference must not look like an answer.
+The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A FASTA that matches no collection and no checksum is `not_identified`, with the digest when there is one; that is not an error. The seqcol digest is always reported, also when the checksum is what identified the file.
 
-Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes. A file that changes during the read is `unreadable`, never identified.
+Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes, and the embedded checksum table. A file that changes during the read is `unreadable`, never identified.
 
-Exit codes: 0 when every file was answered, identified or not; 3 when any file is `invalid`; 2 when any file is unreadable (missing, unreadable, changed during the read), which outranks 3; 1 for a usage error; 4 when interrupted.
-
-`--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified`, `invalid` or `unreadable`.
+`--json` writes its own document, with its own `schema_version` (today 1, since `identify` is not released yet and these fields were added before it was), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `checksum` with `name`, `file`, `md5`, `origin` and `retrieved`, `gencode` with `label`, `release`, `organism`, `assembly`, `ensembl` and `date`, `reason`) and `exit_code`. `status` is `identified`, `declared`, `conflict`, `not_identified`, `invalid` or `unreadable`. `identify` raises no assertion, so the `diagnoses/` catalogue has no entry for it: its `reason` is the sentence.
 
 **Heavy door** — study with a database.
 
@@ -989,7 +1011,7 @@ Exit codes: 0 when every file was answered, identified or not; 3 when any file i
 
 | Question                                              | How to resolve                                                                     |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Source of Ensembl's official checksums for `identify` | Survey the format of the checksum file per release in Slice 2 before implementing. |
+| Source of Ensembl's official checksums for `identify` | GENCODE publishes an `MD5SUMS` per release and it is in the table. Ensembl's `CHECKSUMS` (a `sum` checksum, not MD5) per release still has to be surveyed before Ensembl GTFs can be identified. |
 
 ### Resolved in Slice 1
 
