@@ -130,7 +130,8 @@ func evaluatedIDs() []string {
 	var ids []string
 	for _, id := range AssertionIDs() {
 		switch id {
-		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing:
+		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing,
+			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped:
 		default:
 			ids = append(ids, id)
 		}
@@ -144,7 +145,7 @@ func unreadable(rep *FileReport, err error) *FileReport {
 	return rep
 }
 
-func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, error) {
+func checkFiles(ctx context.Context, names []secret.Name, opts Options) ([]*FileReport, error) {
 	jobs := opts.Jobs
 	if jobs <= 0 {
 		jobs = defaultJobs
@@ -160,6 +161,14 @@ func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, e
 		})
 	}
 	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
+func CheckAll(ctx context.Context, names []secret.Name, opts Options) (Report, error) {
+	reports, err := checkFiles(ctx, names, opts)
+	if err != nil {
 		return Report{}, err
 	}
 	if !opts.Structure && !opts.Quick {

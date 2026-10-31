@@ -41,6 +41,21 @@ func pairable(r *FileReport) (mate, bool) {
 	return mate{report: r, records: rec.Records, ends: ends}, ok
 }
 
+func matesAgree(a, b mate) bool {
+	return a.records == b.records && a.ends == b.ends
+}
+
+func comparePair(m1, m2 mate, where1, where2 string) []model.Assertion {
+	out := []model.Assertion{newAssertion(diagnoses.PairCount, m1.records == m2.records, diagnoses.Values{
+		Declared: fmt.Sprint(m1.records) + where1, Observed: fmt.Sprint(m2.records) + where2})}
+	if m1.records == m2.records {
+		out = append(out, newAssertion(diagnoses.PairIDs, m1.ends == m2.ends, diagnoses.Values{
+			Declared: fmt.Sprintf("first=%s last=%s%s", m1.ends.First, m1.ends.Last, where1),
+			Observed: fmt.Sprintf("first=%s last=%s%s", m2.ends.First, m2.ends.Last, where2)}))
+	}
+	return out
+}
+
 // EvaluatePairs forms pairs by file-name suffix and confirms them by the
 // read_ends and records facts. A pair whose reads do not match is blocking
 // on both files. A mate whose other half is not among reports gets the
@@ -84,14 +99,7 @@ func EvaluatePairs(reports []*FileReport) {
 		if !ok1 || !ok2 {
 			continue
 		}
-		var as []model.Assertion
-		as = append(as, newAssertion(diagnoses.PairCount, m1.records == m2.records, diagnoses.Values{
-			Declared: fmt.Sprint(m1.records), Observed: fmt.Sprint(m2.records)}))
-		if m1.records == m2.records {
-			as = append(as, newAssertion(diagnoses.PairIDs, m1.ends == m2.ends, diagnoses.Values{
-				Declared: fmt.Sprintf("first=%s last=%s", m1.ends.First, m1.ends.Last),
-				Observed: fmt.Sprintf("first=%s last=%s", m2.ends.First, m2.ends.Last)}))
-		}
+		as := comparePair(m1, m2, "", "")
 		for _, r := range []*FileReport{g[1], g[2]} {
 			r.Assertions = append(r.Assertions, as...)
 			r.finalize()

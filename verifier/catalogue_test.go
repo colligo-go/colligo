@@ -73,6 +73,23 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 		diagnoses.TrailingBlankLines: func() Report {
 			return run(t, Options{}, write(t, dir, "blank.fastq", append(reads(5), '\n', '\n')))
 		},
+		diagnoses.SheetRemotePath: func() Report {
+			return checkSheet(t, dir, "sample,fastq_1,fastq_2\nR,s3://bucket/r.fq.gz,\n")
+		},
+		diagnoses.SheetSharedFile: func() Report {
+			writeMates(t, dir, "shared_a", "SHA", 5)
+			writeMates(t, dir, "shared_b", "SHB", 5)
+			return checkSheet(t, dir, "sample,fastq_1,fastq_2\nA,shared_a_R1.fastq,shared_a_R2.fastq\nB,shared_b_R1.fastq,shared_a_R2.fastq\n")
+		},
+		diagnoses.SheetDuplicateRow: func() Report {
+			writeMates(t, dir, "dup_a", "DUA", 5)
+			return checkSheet(t, dir, "sample,fastq_1,fastq_2\nA,dup_a_R1.fastq,dup_a_R2.fastq\nA,dup_a_R1.fastq,dup_a_R2.fastq\n")
+		},
+		diagnoses.SheetMatesSwapped: func() Report {
+			writeMates(t, dir, "swap_a", "SWA", 5)
+			writeMates(t, dir, "swap_b", "SWB", 5)
+			return checkSheet(t, dir, "sample,fastq_1,fastq_2\nA,swap_a_R1.fastq,swap_b_R2.fastq\nB,swap_b_R1.fastq,swap_a_R2.fastq\n")
+		},
 	}
 
 	fired := map[string]bool{}

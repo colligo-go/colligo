@@ -12,6 +12,8 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 - `colligo identify`: names a FASTA, plain or gzip/BGZF compressed, by its GA4GH Sequence Collection digest (Refget Sequence Collections v1.0.0, level 0), taken from the same single read that validates the file. `--json` has its own schema (`schema_version` 1). A file that matches no known reference is `not_identified`, not an error (exit 0); a structurally broken FASTA is `invalid` (exit 3). The table of known references is embedded and empty until a digest can be checked against an official source.
 - `identity` package: `sha512t24u`, RFC 8785 canonical form, the streaming `Collector`, and a known-vector self-test that runs before any digest is trusted.
 - The `seqcol` fact (`seqcol-1`), added to the read only when `facts.Options.Identify` is set, so `check` does not pay for it.
+- `colligo check --samplesheet <file.csv>` checks an nf-core samplesheet (the nf-core/rnaseq format, schema 3.27.0, or the generic `sample,fastq_1,fastq_2`) against the content of the files it lists: every file is read once, the mates are the ones the samplesheet declares, and a swapped, missing, repeated or shared file is reported with the line it is on. Lanes of one sample are legitimate. A remote location (`s3://`, `https://`) is not fetched and is `blocking`. An unknown format, a missing column or a malformed CSV is a usage error (exit 1). The `--json` output keeps schema version 1.
+- Diagnoses `sheet_remote_path`, `sheet_shared_file`, `sheet_duplicate_row` and `sheet_mates_swapped`.
 
 ## [0.1.0] - 2026-10-30
 
