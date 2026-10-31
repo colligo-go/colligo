@@ -388,6 +388,8 @@ Input: a `File` with an existing `path_part` and `file_groups`.
 9. On completion: MD5, SHA-256 and the format extractors (§7) must have seen the whole file. Uninterrupted download: they ran during the streaming of step 7, with no re-read. Resumed download: their state does not survive between sessions, so a read of the whole `.part` feeds them. The root derived from the CVs must equal the computed root. Matches `md5_expected`/`sha256_expected` → `validating`.
 10. In `validating`: structure assertions, pair assertions if there is a `pair_id`, and count assertions if there is `reads_expected`/`bases_expected`. All match → rename `.part` → final, `done`.
 
+The source publishes `base_count` and `read_count` per run, not per file, and `read_count` does not always count what one file holds (`RELIABILITY.md` M15). So `reads_expected` and `bases_expected` hold a value only when the source declares it for that file or the user passes `--expected`. The comparison against the run's `base_count` happens once every file of the run is in `validating`, over the sum of their bases.
+
 On the uninterrupted path, the file is read exactly once: while it arrives from the network. Any additional read outside the resume case is a bug.
 
 Invariant: after any interruption and resumption, the final global checksum always matches. Guaranteed by a property test.

@@ -208,7 +208,32 @@ The source changed the response format; your suite stays green because it tests 
 
 Documented case: an extraction with `fastq-dump` produced a read 2 with 1 bp instead of 98, finished with code 0, and the resulting FASTQ is structurally valid. There is no source MD5 for a locally extracted file, the structure passes, and the error only appears in trimming or alignment — when it appears.
 
-**Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The sum of R1 and R2 is compared against the declared; divergence → `blocking`, with both numbers in `discrepancies`.
+**Defence.** ENA publishes `read_count` and `base_count` per run. The read that validates the FASTQ structure already decompresses everything, so it counts reads and bases at no additional cost. The observed count is compared against the declared one; divergence → `blocking`, with both numbers in `discrepancies`.
+
+The two declared numbers are not equally reliable. Measured on 27 real Illumina runs from DDBJ, NCBI and ENA submissions, 52 files (2026-10-30):
+
+- `base_count` equals the sum of the bases of every file of the run in 27 of 27 runs, whatever the label and the number of files.
+- `read_count` has no single meaning, and the `library_layout` label does not predict which one holds:
+
+| Run | Label | Files | `read_count` | Reads per file | It is |
+|---|---|---|---|---|---|
+| DRR021374 | PAIRED | 2 | 13767 | 13767, 13767 | each file |
+| ERR12477684 | PAIRED | 2 | 3524 | 1762, 1762 | sum of the files |
+| ERR5060520 | SINGLE | 2 | 8014 | 4007, 4007 | sum of the files |
+| ERR5514981 | SINGLE | 3 | 4923 | 7, 2458, 2458 | sum of the files |
+| SRR10663037 | PAIRED | 3 | 12859 | 1, 12858, 12858 | the pair count plus the unpaired file |
+
+So the rule is not "R1 plus R2 equals `read_count`": that raises a false `blocking` on ordinary paired runs, and a check that cries wolf teaches users to ignore it. Nor does the label choose the reading. The rule is:
+
+1. `base_count` is the blocking comparison, against the bases of every file listed for the run. Divergence → `blocking` `count_mismatch`. This is what catches the shortened read 2.
+2. `read_count` is checked against the three readings seen above: each file, the sum of the files, the pair count plus the unpaired files. A match passes. When `base_count` holds and no reading matches, the content agrees with the declared bases and the MD5 and only the metadata field is unexplained: `advisory`, never `blocking`. When `base_count` fails, the run is `blocking` whatever `read_count` says.
+3. `layout_mismatch`, `advisory`, when the label says single and the files form a pair (`pair_count` and `pair_ids`): the data is intact, the label is wrong, and a pipeline that trusts the label would treat the mates as two samples. A label that says paired for one file is not judged, because Colligo does not check for interleaved files.
+
+Trying several readings of `read_count` is safe only because it is not the blocking comparison: with `base_count` independent and blocking, a coincidental match cannot let a shortened run through.
+
+The sample is small: Illumina only, the smallest runs of each label and file count, no long reads. The adapter records every run whose `read_count` no reading explains as a new fixture instead of widening the rule silently.
+
+Regression fixtures are the recorded metadata responses of the runs above, not the files.
 
 It is the cheapest defence per real failure caught in this catalogue: zero extra reading, one metadata query that fetch already makes.
 
