@@ -374,6 +374,150 @@ func TestSourceReportJSON(t *testing.T) {
 	}
 }
 
+func withChecksum(s model.Sample, j int, data []byte) model.Sample {
+	sum := md5.Sum(data)
+	artifacts := append([]model.Artifact(nil), s.Artifacts...)
+	artifacts[j].MD5, artifacts[j].Size = hex.EncodeToString(sum[:]), int64(len(data))
+	s.Artifacts = artifacts
+	return s
+}
+
+func mates(t *testing.T) ([]byte, []byte) {
+	t.Helper()
+	r1 := reads("SRR1", 10, 50)
+	r2 := bytes.ReplaceAll(r1, []byte("AAAAA"), []byte("CCCCC"))
+	return gzipped(t, r1), gzipped(t, r2)
+}
+
+func pairedRun(r1, r2 []byte) model.Sample {
+	s := sample("SRR1", "PAIRED", "public", count(10), count(1000), "SRR1_1.fastq.gz", "SRR1_2.fastq.gz")
+	return withChecksum(withChecksum(s, 0, r1), 1, r2)
+}
+
+func TestSourceRenamedFilesAreLinkedByMD5(t *testing.T) {
+	dir := t.TempDir()
+	d1, d2 := mates(t)
+	one := write(t, dir, "sample1_R1.fastq.gz", d1)
+	two := write(t, dir, "sample1_R2.fastq.gz", d2)
+	rep := against(t, Declaration{Samples: []model.Sample{pairedRun(d1, d2)}}, one, two)
+	if code := rep.ExitCode(false); code != ExitOK {
+		t.Fatalf("exit %d, failures %v", code, sourceFailures(rep))
+	}
+	for j, f := range rep.Source.Runs[0].Files {
+		if f.Local == nil || f.LinkedBy != LinkedByMD5 {
+			t.Fatalf("file %d: %+v", j, f)
+		}
+	}
+	for _, f := range rep.Files {
+		if has(failed(f), diagnoses.SourceFileUnlisted) {
+			t.Fatalf("%s must not be unlisted", f.Name)
+		}
+	}
+	if a := runAssertion(t, rep, 0, diagnoses.CountMismatch); !a.Passed {
+		t.Fatalf("the linked files must enter the comparison: %+v", a)
+	}
+	var text bytes.Buffer
+	rep.WriteText(&text)
+	for _, want := range []string{"sample1_R1.fastq.gz stands for SRR1_1.fastq.gz", "same MD5 and size"} {
+		if !strings.Contains(text.String(), want) {
+			t.Errorf("text lacks %q:\n%s", want, text.String())
+		}
+	}
+	var out bytes.Buffer
+	if err := rep.WriteJSON(&out, rep.ExitCode(false)); err != nil || !strings.Contains(out.String(), `"linked_by": "md5"`) && !strings.Contains(out.String(), `"linked_by":"md5"`) {
+		t.Fatalf("json lacks linked_by: %v\n%s", err, out.String())
+	}
+}
+
+func TestSourceRenamedAndShortenedFileIsNotLinked(t *testing.T) {
+	dir := t.TempDir()
+	d1, d2 := mates(t)
+	one := write(t, dir, "sample1_R1.fastq.gz", d1)
+	shortened := write(t, dir, "sample1_R2.fastq.gz", gzipped(t, reads("SRR1", 10, 1)))
+	rep := against(t, Declaration{Samples: []model.Sample{pairedRun(d1, d2)}}, one, shortened)
+	if code := rep.ExitCode(false); code != ExitIncomplete {
+		t.Fatalf("exit %d, want 3", code)
+	}
+	if m := runAssertion(t, rep, 0, diagnoses.SourceFileMissing); m.Declared != "SRR1_2.fastq.gz" {
+		t.Fatalf("missing %+v", m)
+	}
+	if f := rep.Source.Runs[0].Files[1]; f.Local != nil || f.LinkedBy != "" {
+		t.Fatalf("a different content must not be linked: %+v", f)
+	}
+	if !has(failed(rep.Files[1]), diagnoses.SourceFileUnlisted) {
+		t.Fatalf("the shortened file: %s %v", rep.Files[1].Status, failed(rep.Files[1]))
+	}
+	if bc := runAssertion(t, rep, 0, diagnoses.CountMismatch); !bc.Skipped || bc.SkippedBy != diagnoses.SourceFileMissing {
+		t.Fatalf("the run must not be judged complete: %+v", bc)
+	}
+}
+
+func TestSourceTwoFilesWithTheContentOfOneDeclaredFileAreAmbiguous(t *testing.T) {
+	dir := t.TempDir()
+	data := gzipped(t, reads("R", 5, 4))
+	a := write(t, mkdir(t, filepath.Join(dir, "a")), "x.fastq.gz", data)
+	b := write(t, mkdir(t, filepath.Join(dir, "b")), "y.fastq.gz", data)
+	s := withChecksum(sample("R", "SINGLE", "public", count(5), count(20), "R.fastq.gz"), 0, data)
+	rep := against(t, Declaration{Samples: []model.Sample{s}}, a, b)
+	for _, f := range rep.Files {
+		if !has(failed(f), diagnoses.SourceFileAmbiguous) {
+			t.Fatalf("%s: %v", f.Name, failed(f))
+		}
+	}
+	if rep.Source.Runs[0].Files[0].Local != nil || rep.ExitCode(false) != ExitIncomplete {
+		t.Fatalf("files %+v exit %d", rep.Source.Runs[0].Files, rep.ExitCode(false))
+	}
+	if bc := runAssertion(t, rep, 0, diagnoses.CountMismatch); !bc.Skipped || bc.SkippedBy != diagnoses.SourceFileAmbiguous {
+		t.Fatalf("base count %+v", bc)
+	}
+}
+
+func TestSourceOneFileWithTheContentOfTwoDeclaredFilesIsAmbiguous(t *testing.T) {
+	dir := t.TempDir()
+	data := gzipped(t, reads("R", 5, 4))
+	local := write(t, dir, "x.fastq.gz", data)
+	s := sample("R", "PAIRED", "public", count(5), count(40), "R_1.fastq.gz", "R_2.fastq.gz")
+	s = withChecksum(withChecksum(s, 0, data), 1, data)
+	rep := against(t, Declaration{Samples: []model.Sample{s}}, local)
+	if !has(failed(rep.Files[0]), diagnoses.SourceFileAmbiguous) || rep.ExitCode(false) != ExitIncomplete {
+		t.Fatalf("%v exit %d", failed(rep.Files[0]), rep.ExitCode(false))
+	}
+	for _, f := range rep.Source.Runs[0].Files {
+		if f.Local != nil {
+			t.Fatalf("one file must not stand for two: %+v", rep.Source.Runs[0].Files)
+		}
+	}
+}
+
+func TestSourceTheNameWinsOverAContentMatch(t *testing.T) {
+	dir := t.TempDir()
+	data := gzipped(t, reads("R", 5, 4))
+	exact := write(t, dir, "R.fastq.gz", data)
+	renamed := write(t, dir, "copy.fastq.gz", data)
+	s := withChecksum(sample("R", "SINGLE", "public", count(5), count(20), "R.fastq.gz"), 0, data)
+	rep := against(t, Declaration{Samples: []model.Sample{s}}, renamed, exact)
+	f := rep.Source.Runs[0].Files[0]
+	if f.Local == nil || filepath.Base(f.Local.String()) != "R.fastq.gz" || f.LinkedBy != LinkedByName {
+		t.Fatalf("the exact name must stand for the declared file: %+v", f)
+	}
+	if !has(failed(rep.Files[0]), diagnoses.SourceFileUnlisted) || rep.ExitCode(false) != ExitOK {
+		t.Fatalf("the renamed copy: %v exit %d", failed(rep.Files[0]), rep.ExitCode(false))
+	}
+}
+
+func TestSourceRenamedFilesPairByTheDeclaredName(t *testing.T) {
+	dir := t.TempDir()
+	r1, r2 := mates(t)
+	one := write(t, dir, "alpha.fastq.gz", r1)
+	two := write(t, dir, "beta.fastq.gz", r2)
+	s := pairedRun(r1, r2)
+	s.Layout = "SINGLE"
+	rep := against(t, Declaration{Samples: []model.Sample{s}}, one, two)
+	if a := runAssertion(t, rep, 0, diagnoses.LayoutMismatch); a.Passed || !strings.Contains(a.Observed, "SRR1_1.fastq.gz and SRR1_2.fastq.gz") {
+		t.Fatalf("the pair must come from the declared names: %+v", a)
+	}
+}
+
 func mkdir(t *testing.T, dir string) string {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
