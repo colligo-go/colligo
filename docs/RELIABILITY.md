@@ -206,7 +206,7 @@ Timestamps are the backbone of the audit. A wrong clock corrupts the order of ev
 
 The source changed the response format; your suite stays green because it tests against the capture from two years ago.
 
-**Defence.** A weekly drift job, separate from the PR CI, that re-records fixtures against the real APIs and opens an issue on divergence. Detail in `TESTING.md` §3.
+**Defence.** A weekly drift job, separate from the PR CI, that repeats the request of every recorded fixture against the real API and opens an issue on divergence; it never rewrites a fixture. It compares the structure Colligo reads and the values it uses, so a run of a fixture that the archive suppressed, or whose counts or MD5 changed, is caught as well as a renamed column. A source that does not answer is a failure of the job, never drift, and a moved or extra column is only a note: both would otherwise be alarms that teach people to ignore the issue. Detail in `TESTING.md` §3.
 
 ### M15 — Valid content, but smaller than the source declared
 
