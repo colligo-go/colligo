@@ -17,6 +17,9 @@ const (
 	NotDeclared   = "not_declared"
 	NoFilesListed = "no_files_listed"
 
+	LinkedByName = "name"
+	LinkedByMD5  = "md5"
+
 	statusPublic = "public"
 	layoutSingle = "SINGLE"
 	layoutPaired = "PAIRED"
@@ -48,12 +51,14 @@ type RunReport struct {
 }
 
 // RunFile is one file the source lists for a run. Local is nil when no
-// checked file stands for it.
+// checked file stands for it, and LinkedBy then is empty; otherwise LinkedBy
+// says whether the file was matched by its name or by its content.
 type RunFile struct {
-	Name  secret.Name  `json:"name"`
-	Local *secret.Name `json:"local"`
-	MD5   string       `json:"md5,omitempty"`
-	Size  int64        `json:"size"`
+	Name     secret.Name  `json:"name"`
+	Local    *secret.Name `json:"local"`
+	LinkedBy string       `json:"linked_by,omitempty"`
+	MD5      string       `json:"md5,omitempty"`
+	Size     int64        `json:"size"`
 }
 
 func (s *SourceReport) Worst() model.Severity {
@@ -86,6 +91,7 @@ type claim struct {
 	ref    declaredRef
 	role   role
 	exact  bool
+	byMD5  bool
 	by     int
 	rivals int
 }
@@ -144,6 +150,49 @@ func link(names []secret.Name, samples []model.Sample) (map[int]*claim, map[decl
 	return claims, files, rivals
 }
 
+func linkByContent(reports []*FileReport, samples []model.Sample, claims map[int]*claim, files map[declaredRef]int, rivals map[declaredRef]int) {
+	byLocal := map[int][]declaredRef{}
+	byRef := map[declaredRef][]int{}
+	var order []declaredRef
+	for i, s := range samples {
+		for j, a := range s.Artifacts {
+			ref := declaredRef{sample: i, artifact: j}
+			_, linked := files[ref]
+			if linked || rivals[ref] > 0 || a.MD5 == "" || a.Size <= 0 {
+				continue
+			}
+			for k, r := range reports {
+				if _, taken := claims[k]; taken || r.MD5 == "" {
+					continue
+				}
+				if strings.EqualFold(r.MD5, a.MD5) && r.Size == a.Size {
+					if len(byRef[ref]) == 0 {
+						order = append(order, ref)
+					}
+					byRef[ref] = append(byRef[ref], k)
+					byLocal[k] = append(byLocal[k], ref)
+				}
+			}
+		}
+	}
+	for _, ref := range order {
+		locals := byRef[ref]
+		contested := len(locals)
+		for _, k := range locals {
+			contested = max(contested, len(byLocal[k]))
+		}
+		if contested > 1 {
+			rivals[ref] = contested
+			for _, k := range locals {
+				claims[k] = &claim{ref: ref, role: roleAmbiguous, rivals: contested, byMD5: true}
+			}
+			continue
+		}
+		files[ref] = locals[0]
+		claims[locals[0]] = &claim{ref: ref, role: roleLinked, byMD5: true}
+	}
+}
+
 // CheckAgainstSource checks the files and then compares them with what the
 // source declares, following RELIABILITY.md M15 and M16: the bases of every
 // file of a run are the blocking comparison, read_count is matched against
@@ -153,7 +202,12 @@ func link(names []secret.Name, samples []model.Sample) (map[int]*claim, map[decl
 //
 // A local file stands for the declared file of the same name, or of the same
 // name plus .gz, because a locally extracted FASTQ is the case M15 exists for.
-// Only an exact name is held to the published MD5 and size. The files of a run
+// Only an exact name is held to the published MD5 and size. A declared file
+// that no name reached is then matched, after the read, to the unclaimed local
+// file with the same MD5 and size, which is how a renamed download is found;
+// equal MD5 and size already are the integrity check of that file. A name
+// always wins over a content match, and two files with the same content for one
+// declared file are ambiguous. The files of a run
 // that fails get source_run_failed rather than a copy of the run assertion,
 // whose observed count is not the count of any one file.
 func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declaration, opts Options) (Report, error) {
@@ -175,6 +229,7 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 		return Report{}, err
 	}
 	EvaluatePairs(reports)
+	linkByContent(reports, decl.Samples, claims, files, rivals)
 
 	src := &SourceReport{ID: decl.Source, Accession: decl.Accession, Assertions: issueAssertions(decl.Issues), Runs: []*RunReport{}}
 	where := decl.Source + " " + decl.Accession
@@ -206,6 +261,10 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 			if k, ok := files[ref]; ok {
 				local := reports[k].Name
 				rf.Local = &local
+				rf.LinkedBy = LinkedByName
+				if claims[k].byMD5 {
+					rf.LinkedBy = LinkedByMD5
+				}
 				linked[j] = reports[k]
 			}
 			run.Files = append(run.Files, rf)
@@ -440,6 +499,11 @@ func (s *SourceReport) writeText(w io.Writer) {
 		}
 		fmt.Fprintf(w, "run %s (%s, %s)\n  %d of %d listed file(s) present\n",
 			r.Accession, orUnknown(r.Layout), orUnknown(r.Status), present, len(r.Files))
+		for _, f := range r.Files {
+			if f.LinkedBy == LinkedByMD5 {
+				fmt.Fprintf(w, "  %s stands for %s (same MD5 and size, not the same name)\n", *f.Local, f.Name)
+			}
+		}
 		writeAssertions(w, r.Assertions)
 		for _, a := range r.Assertions {
 			if a.ID == diagnoses.ReadCountUnexplained && a.Passed {

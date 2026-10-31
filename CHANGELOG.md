@@ -18,6 +18,10 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 - Diagnoses `source_status`, `source_file_missing`, `source_file_unlisted`, `source_file_ambiguous`, `read_count_unexplained`, `layout_mismatch`, `source_row_rejected`, `source_field_empty` and `source_run_failed`.
 - `packaging/`: a drafted bioconda recipe (built from the git tag so that `colligo version` reports it) and a sketched nf-core `colligo/check` module that emits the `--json` report. Neither is submitted.
 
+### Fixed
+
+- `colligo check --source`: a download the user renamed (for example `SRR10663037_1.fastq.gz` to `amostra1_R1.fastq.gz` while assembling a samplesheet) is now linked to the declared file by its MD5 and size once the files are read, instead of being reported as `source_file_missing` (blocking, exit 3) plus `source_file_unlisted`. The name still comes first, two candidates are `source_file_ambiguous`, and the report says the link was by content (`linked_by` in `--json`, a line in the text). A file both renamed and decompressed is still not linked. `linked_by` is added inside `schema_version` 2, which is not released yet.
+
 ### Changed
 
 - The `--json` output of `check` and `validate` is now `schema_version` 2: it gains the `source` object, present only with `--source`. Nothing else changed in the document.
