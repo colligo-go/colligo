@@ -27,6 +27,18 @@ type Entry struct {
 	DirLink bool
 }
 
+// Resolve returns the relative path rel placed in the directory that holds
+// name, ready for secret.NewName.
+func Resolve(name func(FSAccess) string, rel string) string {
+	return filepath.Join(filepath.Dir(Reveal(name)), rel)
+}
+
+// SamePath reports whether two names are the same path once cleaned. It
+// says nothing about the content: two paths to one file can differ.
+func SamePath(a, b func(FSAccess) string) bool {
+	return filepath.Clean(Reveal(a)) == filepath.Clean(Reveal(b))
+}
+
 func Open(name func(FSAccess) string) (*os.File, error) {
 	f, err := os.Open(Reveal(name))
 	return f, sanitize(err)

@@ -65,7 +65,7 @@ func reaches(all map[string]*packages.Package, from, targetPrefix string) []stri
 
 func TestCoreDoesNotImportSources(t *testing.T) {
 	all := load(t)
-	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum"} {
+	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum", "samplesheet"} {
 		if hits := reaches(all, module+"/"+core, module+"/source"); len(hits) > 0 {
 			t.Errorf("%s imports %v", core, hits)
 		}
@@ -74,7 +74,7 @@ func TestCoreDoesNotImportSources(t *testing.T) {
 
 func TestLightDoorDoesNotImportStore(t *testing.T) {
 	all := load(t)
-	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses"} {
+	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "samplesheet"} {
 		if hits := reaches(all, module+"/"+light, module+"/store"); len(hits) > 0 {
 			t.Errorf("%s imports %v", light, hits)
 		}
