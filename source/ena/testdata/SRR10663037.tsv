@@ -1,0 +1,2 @@
+run_accession	library_layout	fastq_ftp	fastq_md5	fastq_bytes	read_count	base_count	status
+SRR10663037	PAIRED	ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/037/SRR10663037/SRR10663037.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/037/SRR10663037/SRR10663037_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR106/037/SRR10663037/SRR10663037_2.fastq.gz	ee8e642d6f9844f3cf1ae077b1c63058;cf50c11c78a5140271a8acd84bae7009;74d0f13e581440e20a5777dadb46474e	252;1317645;1751604	12859	6454967	public

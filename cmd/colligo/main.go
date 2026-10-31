@@ -14,6 +14,7 @@ import (
 
 	"github.com/colligo-go/colligo/checksum"
 	"github.com/colligo-go/colligo/format"
+	"github.com/colligo-go/colligo/identity"
 	"github.com/colligo-go/colligo/internal/buildinfo"
 	"github.com/colligo-go/colligo/manifest"
 	"github.com/colligo-go/colligo/samplesheet"
@@ -27,6 +28,7 @@ commands:
   check      facts and assertions of loose files or a directory;
              --samplesheet checks an nf-core samplesheet against the content
   validate   structural validation of the format only
+  identify   name a FASTA by its sequence collection digest
   version    print the version
 
 run "colligo <command> -h" for the flags of a command.
@@ -51,6 +53,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runCheck(args[1:], stdout, stderr, false)
 	case "validate":
 		return runCheck(args[1:], stdout, stderr, true)
+	case "identify":
+		return runIdentify(args[1:], stdout, stderr, identity.Known())
 	case "version", "--version":
 		fmt.Fprintf(stdout, "colligo %s (%s)\n", buildinfo.Version(), buildinfo.GitSHA())
 		return verifier.ExitOK

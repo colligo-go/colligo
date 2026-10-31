@@ -18,6 +18,7 @@ colligo/
 ├── secret/           Secret, Name, Endpoint
 ├── store/            SQLite implementation of Store; embedded migrations
 ├── source/           one sub-package per source, with no access to disk or database
+│   ├── ena/
 │   ├── gencode/
 │   ├── ensembl/
 │   ├── geo/
@@ -51,7 +52,7 @@ colligo/
 └── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `samplesheet`, `verifier`, `manifest` (the certificate only), `diagnoses`, `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `identity` (the seqcol digest of a FASTA only), `samplesheet`, `verifier`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
 **Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format`, `samplesheet` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
@@ -314,7 +315,7 @@ Fact kinds of v1:
 | `records`     | count of records and bases, length histogram                 |
 | `read_ends`   | first and last read ID, without pair suffix                  |
 | `seq_names`   | sampled sequence names; inferred chromosome convention       |
-| `seqcol`      | Sequence Collection digest and `sorted_name_length_pairs`    |
+| `seqcol`      | Sequence Collection digest, the digest of `names`, `lengths` and `sequences`, and the count of sequences (`sorted_name_length_pairs` arrives with `compat`, Slice 6) |
 | `gtf_header`  | pragmas of the GTF/GFF3 header                               |
 | `read_header` | instrument, run, flowcell and lanes observed in the read IDs |
 | `barcode`     | R1 length and hit rate against chemistry whitelists          |
@@ -514,14 +515,27 @@ type Fetched struct {
     Issues     []model.ValidationIssue
 }
 
+type Sample struct {
+    ID           string
+    ExperimentID string
+    Accession    string
+    Layout       string
+    SourceStatus string
+    Declared     RunCounts
+    Artifacts    []Artifact
+}
+
+type RunCounts struct {
+    ReadCount *int64
+    BaseCount *int64
+}
+
 type Artifact struct {
     URL          secret.Endpoint
     Name         secret.Name
     Size         int64
     MD5          string
     SHA256       string
-    ReadCount    int64
-    BaseCount    int64
     Format       string
     PairID       string
     SourceStatus string
@@ -530,6 +544,18 @@ type Artifact struct {
 
 type Transport interface {
     Get(ctx context.Context, url secret.Endpoint, rng *ByteRange) (*Response, error)
+}
+
+type ByteRange struct {
+    Start int64
+    End   int64
+}
+
+type Response struct {
+    Status        int
+    ContentType   string
+    ContentLength int64
+    Body          io.ReadCloser
 }
 
 type FormatValidator interface {
@@ -583,6 +609,10 @@ type Logger interface {
 }
 ```
 
+`transport.Client` is the HTTP implementation, for metadata only. `Get` accepts only a `nil` `ByteRange` until the resume slice and answers anything else with `RangeNotImplementedError`. `Response.Body` is bounded by a size limit (16 MiB by default) and a request has a timeout (30 s per attempt). A 2xx answer whose media type is not in the allowed list (text, TSV, CSV, JSON, XML by default) is a `ContentTypeError`, never a body: an HTML page served where a TSV was expected must not reach a parser. `Reveal` on `secret.Endpoint` is called only there.
+
+A `Sample` is one run. `Declared` holds the totals the source publishes for the whole run, summed over its files: `ReadCount` and `BaseCount` are not per file, and `Artifact` has no field for them. `Artifact.PairID` is the run accession when the file name carries a `_1` or `_2` mate suffix, and empty for a file without one. `Layout` is the source's own label, never verified by the adapter. `Fetch` fills `Raw` even when it also returns an error. An empty field does not drop the run: an empty `read_count` or `base_count` is `nil`, not declared, which is not zero, so a comparison against it is skipped rather than failed; an empty `library_layout`, `status` or count is an `advisory` `ValidationIssue`; and a run whose three file columns are all empty is kept with no artifacts and its status, which is how a suppressed run must reach the source checks (`RELIABILITY.md` M16). Only an empty `run_accession`, a malformed value, misaligned file lists or file columns that are only partly empty make a row defective: a blocking `ValidationIssue`, and the run is left out of `Samples`; a response that is not a table, lacks a column or lists no usable run is a `*model.SourceError`; an accession with no row is a `*model.NotFoundError`.
+
 `SaveRawResponse` decides on its own whether to store the body or only the hash, consulting the classification. The caller has no choice.
 
 Construction via functional options:
@@ -622,6 +652,13 @@ type IncompatibleError struct{ ... }
 type ClassificationError struct{ ... }
 type SelfTestError struct{ ... }
 type ClockError struct{ ... }
+type StatusError struct{ ... }
+type ContentTypeError struct{ ... }
+type ResponseTooLargeError struct{ ... }
+type RetryAfterError struct{ ... }
+type RetryExhaustedError struct{ ... }
+type RangeNotImplementedError struct{ ... }
+type UnsupportedEndpointError struct{ ... }
 ```
 
 Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) and `samplesheet.FormatError` (a samplesheet that cannot be read, a usage error) exist; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
@@ -643,6 +680,8 @@ Inspectable via `errors.As`. On the light door, the failure of a file is not one
 
 Backoff: `min(2^N, 300s) + jitter`. Rate limiter shared per API key.
 
+The metadata client applies the rows that concern a GET: timeout and 5xx retry with the backoff above (1 s, 2 s, 4 s, up to 4 attempts, jitter at most a quarter of the delay); 429 and 5xx honour `Retry-After` when it is larger than the backoff, in seconds or as an HTTP date; a `Retry-After` above the 300 s cap is a `RetryAfterError` and the client neither waits nor retries; 404 and 410 are `NotFoundError`, 401 and 403 are `AuthError`, any other 4xx is a `StatusError`, none of them retried. When retries run out the last error is wrapped in `RetryExhaustedError`. Errors and logs carry the endpoint through `secret.Endpoint`, so the query string never appears.
+
 ---
 
 ## 12. Concurrency
@@ -653,7 +692,9 @@ Download pool  → 4–8 goroutines, connection limit per domain
 Verify pool    → 1–2 goroutines
 ```
 
-Per-domain limits (default, configurable): `ftp.ebi.ac.uk` 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
+Per-domain limits (default, configurable): `ebi.ac.uk` (the ENA Portal API and `ftp.ebi.ac.uk`) 4, `ftp.ensembl.org` 2, `ncbi.nlm.nih.gov` 3, `www.cbioportal.org` 2, `files.rcsb.org` 4, `dfam.org` 2.
+
+For the metadata pool the number is a ceiling of requests per second: the client spaces the start of consecutive requests to a domain by at least `1/N` of a second, retries included, so no window of one second holds more than `N` starts. A domain matches itself and its subdomains, the longest match wins, and every host under it shares that one ceiling (`www.ebi.ac.uk` and `ftp.sra.ebi.ac.uk` together stay under the 4 of `ebi.ac.uk`); a host without an entry gets 2 of its own. `WithRate` and `WithDefaultRate` change it.
 
 These defaults exist so as not to burn your institution's IP. Raising them is your responsibility and is recorded in `config_hash`.
 
@@ -823,7 +864,7 @@ Besides `https` and `ftp`, the URL field accepts `drs://` (GA4GH Data Repository
 
 ## 16. CLI
 
-Implemented today: `check`, `validate` and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate` and `--samplesheet`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
+Implemented today: `check`, `validate`, `identify` (FASTA only) and `version`, with the flags `--json`, `--permissive`, `--recursive`, `--format`, `--jobs`, `--expected`, `--quick`, `--cross-check`, `--certificate` and `--samplesheet`. The "Slice" column says when each command or flag of the rest arrives (`ROADMAP.md`); "—" is what does not have a slice yet.
 
 `--recursive` descends into subdirectories (without it, only the given directory; names that start with `.` are ignored, and a symbolic link to a directory is never followed). `--format` declares the format (`fastq`, `fasta`, `gtf`, `gzip` or `bgzf`). `--jobs` is the number of files read at the same time.
 
@@ -838,7 +879,7 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 | `check --certificate`   | 1     | emits a certificate verifiable by third parties (§13)                                                                            |
 | `check --source`        | 2     | compares against the source                                                                                                      |
 | `check --samplesheet`   | 2     | checks an nf-core pipeline samplesheet against the content: files exist, R1 and R2 match, counts match, samples are not repeated (implemented, see below) |
-| `identify`              | 2     | identity by content: seqcol, GTF header, hash against official checksums                                                         |
+| `identify`              | 2     | identity by content: seqcol (FASTA, implemented), GTF header, hash against official checksums                                    |
 | `get`                   | 3     | accession → download with overlapped verification → `samplesheet.csv` + `colligo.lock`; no database                              |
 | `lock`                  | 4     | generates `colligo.lock` from loose files or from a study                                                                        |
 | `check --lock`          | 4     | checks the collection against a `colligo.lock`                                                                                   |
@@ -856,6 +897,27 @@ Implemented today: `check`, `validate` and `version`, with the flags `--json`, `
 - **Output.** The `--json` document is the one of `check`, schema version 1, with one entry per distinct file (and one per remote location); no field was added.
 
 The `--json` output of `check` and `validate` is an object with `schema_version` (today 1), `files[]` (`path`, `status`, `container`, `content`, `size`, `blake3_root`, `md5`, `sha256`, `assertions[]`), `skipped`, `skipped_directory_links` and `exit_code`. Each assertion carries `id` (from the `diagnoses/` catalogue), `mode`, `severity`, `passed`, `skipped`, `declared` and `observed`, and, when it failed, `observation`, `probable_cause` and `suggested_action`. A new field requires bumping `schema_version`.
+
+### `identify`
+
+`colligo identify [--json] <path>...` reads each file once and names it by its content. No database, no TOML; it does not import `store`.
+
+For a FASTA, plain or inside gzip or BGZF, the same read that validates the structure produces the **Sequence Collection digest** of GA4GH Refget Sequence Collections v1.0.0, level 0:
+
+- `names`: the first word of each header, in file order.
+- `sequences`: `SQ.` followed by the refget `sha512t24u` of each sequence, after dropping every character that is not a letter and upper-casing the rest. Line width, case, line endings and the text after the name do not change it.
+- `lengths`: the length of each normalised sequence. It is reported but, as the specification says, it does not enter the collection digest.
+- Each attribute is digested as its canonical JSON array (RFC 8785) with `sha512t24u`; the collection digest is the `sha512t24u` of the canonical object `{"names": ..., "sequences": ...}`.
+
+The result is the `seqcol` fact (`seqcol-1`), which only exists when the FASTA is structurally valid. A name that is not UTF-8, a name longer than 64 KiB, names that add up to more than 256 MiB or more than 1,048,576 sequences make the collection impossible to digest; the fact then carries only a `reason`. The caps bound the memory a hostile file can claim.
+
+The digest is compared with the embedded table of known references (`identity.Known`). A digest enters that table only after it was checked against an official seqcol or refget server, and each entry records its source. The table is empty today: the official server does not label its collections with names, and no official list pairs a name with a digest. A file that matches nothing is `not_identified`, with the digest when there is one; that is not an error. A file that is not a FASTA is `not_identified` with the reason. A FASTA, or its gzip or BGZF container, with a structural problem is `invalid` with the reason: a truncated or broken reference must not look like an answer.
+
+Before any digest is trusted, `identity.Verify` checks the `sha512t24u` known vectors, like `checksum.Verify` does for the hashes. A file that changes during the read is `unreadable`, never identified.
+
+Exit codes: 0 when every file was answered, identified or not; 3 when any file is `invalid`; 2 when any file is unreadable (missing, unreadable, changed during the read), which outranks 3; 1 for a usage error; 4 when interrupted.
+
+`--json` writes its own document, with its own `schema_version` (today 1), independent of the one of `check`: `files[]` (`path`, `status`, `content`, `size`, `seqcol` with `digest`, `names_digest`, `lengths_digest`, `sequences_digest` and `sequences`, `reference` with `name`, `digest` and `source`, `reason`) and `exit_code`. `status` is `identified`, `not_identified`, `invalid` or `unreadable`.
 
 **Heavy door** — study with a database.
 

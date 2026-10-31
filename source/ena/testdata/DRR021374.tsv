@@ -1,0 +1,2 @@
+run_accession	library_layout	fastq_ftp	fastq_md5	fastq_bytes	read_count	base_count	status
+DRR021374	PAIRED	ftp.sra.ebi.ac.uk/vol1/fastq/DRR021/DRR021374/DRR021374_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/DRR021/DRR021374/DRR021374_2.fastq.gz	8f8e57d7be5e2ad58b836563fe99457e;670182accbd67c947b86a2d4d8b3aef3	730247;935734	13767	3454158	public

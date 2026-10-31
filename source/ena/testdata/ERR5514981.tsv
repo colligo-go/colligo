@@ -1,0 +1,2 @@
+run_accession	library_layout	fastq_ftp	fastq_md5	fastq_bytes	read_count	base_count	status
+ERR5514981	SINGLE	ftp.sra.ebi.ac.uk/vol1/fastq/ERR551/001/ERR5514981/ERR5514981.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/ERR551/001/ERR5514981/ERR5514981_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/ERR551/001/ERR5514981/ERR5514981_2.fastq.gz	d3ec59dbfe77d2611589c04903e317f9;c26407607b230b54ba4111eb1d417d1e;f7cfd9bc4b536670201509faa4eb5737	684;90319;93286	4923	598798	public

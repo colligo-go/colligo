@@ -65,7 +65,7 @@ func reaches(all map[string]*packages.Package, from, targetPrefix string) []stri
 
 func TestCoreDoesNotImportSources(t *testing.T) {
 	all := load(t)
-	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum", "samplesheet"} {
+	for _, core := range []string{"model", "store", "downloader", "verifier", "facts", "format", "checksum", "identity", "samplesheet"} {
 		if hits := reaches(all, module+"/"+core, module+"/source"); len(hits) > 0 {
 			t.Errorf("%s imports %v", core, hits)
 		}
@@ -74,9 +74,18 @@ func TestCoreDoesNotImportSources(t *testing.T) {
 
 func TestLightDoorDoesNotImportStore(t *testing.T) {
 	all := load(t)
-	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "samplesheet"} {
+	for _, light := range []string{"cmd/colligo", "verifier", "facts", "format", "manifest", "diagnoses", "identity", "samplesheet"} {
 		if hits := reaches(all, module+"/"+light, module+"/store"); len(hits) > 0 {
 			t.Errorf("%s imports %v", light, hits)
+		}
+	}
+}
+
+func TestTransportDoesNotImportStoreOrSources(t *testing.T) {
+	all := load(t)
+	for _, forbidden := range []string{module + "/store", module + "/source"} {
+		if hits := reaches(all, module+"/transport", forbidden); len(hits) > 0 {
+			t.Errorf("transport imports %v", hits)
 		}
 	}
 }
@@ -110,5 +119,40 @@ func TestNoInitFunctions(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestIdentityIsPure(t *testing.T) {
+	all := load(t)
+	pkg, ok := all[module+"/identity"]
+	if !ok {
+		t.Fatal("identity package not found")
+	}
+	forbidden := []string{"os", "io/fs", "net", "net/http", "database/sql", "path/filepath"}
+	for path := range pkg.Imports {
+		for _, bad := range forbidden {
+			if path == bad {
+				t.Errorf("identity imports %s", path)
+			}
+		}
+		if strings.HasPrefix(path, module+"/") && path != module+"/model" {
+			t.Errorf("identity imports %s: only model is allowed", path)
+		}
+	}
+}
+
+func TestENAAdapterStaysPure(t *testing.T) {
+	all := load(t)
+	ena, ok := all[module+"/source/ena"]
+	if !ok {
+		t.Fatal("source/ena was not loaded")
+	}
+	if hits := reaches(all, module+"/source/ena", module+"/store"); len(hits) > 0 {
+		t.Errorf("source/ena reaches %v", hits)
+	}
+	for _, forbidden := range []string{"os", "net/http", module + "/store"} {
+		if _, direct := ena.Imports[forbidden]; direct {
+			t.Errorf("source/ena imports %s", forbidden)
+		}
 	}
 }

@@ -80,25 +80,12 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 		}
 		return unreadable(rep, err), nil
 	}
-	info, err = f.Stat()
+	observed, err := observedChange(rep.Name, f, before)
 	if err != nil {
-		return unreadable(rep, statFailure(err)), nil
+		return unreadable(rep, err), nil
 	}
 	rep.Result = res
 	rep.Container, rep.Content, rep.Size = res.Container, res.Content, res.Size
-	opened := stateOf(info)
-	observed := ""
-	if changed := before.differences(opened); len(changed) > 0 {
-		observed = strings.Join(changed, ", ") + " changed"
-	}
-	switch pathInfo, err := fsaccess.Stat(rep.Name.Raw); {
-	case errors.Is(err, fs.ErrNotExist):
-		observed = "removed"
-	case err != nil:
-		return unreadable(rep, err), nil
-	case !opened.sameFile(stateOf(pathInfo)):
-		observed = "replaced"
-	}
 	if observed != "" {
 		rep.Assertions = append(
 			[]model.Assertion{newAssertion(diagnoses.ChangedDuringRead, false, diagnoses.Values{Declared: "unchanged", Observed: observed})},
@@ -116,6 +103,27 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 	rep.Assertions = Evaluate(rep.Name, res, exp, opts.Format, !opts.Structure)
 	rep.finalize()
 	return rep, nil
+}
+
+func observedChange(name secret.Name, f readSource, before fileState) (string, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return "", statFailure(err)
+	}
+	opened := stateOf(info)
+	observed := ""
+	if changed := before.differences(opened); len(changed) > 0 {
+		observed = strings.Join(changed, ", ") + " changed"
+	}
+	switch pathInfo, err := fsaccess.Stat(name.Raw); {
+	case errors.Is(err, fs.ErrNotExist):
+		observed = "removed"
+	case err != nil:
+		return "", err
+	case !opened.sameFile(stateOf(pathInfo)):
+		observed = "replaced"
+	}
+	return observed, nil
 }
 
 func evaluatedIDs() []string {
