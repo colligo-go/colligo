@@ -525,8 +525,8 @@ type Sample struct {
 }
 
 type RunCounts struct {
-    ReadCount int64
-    BaseCount int64
+    ReadCount *int64
+    BaseCount *int64
 }
 
 type Artifact struct {
@@ -607,7 +607,7 @@ type Logger interface {
 }
 ```
 
-A `Sample` is one run. `Declared` holds the totals the source publishes for the whole run, summed over its files: `ReadCount` and `BaseCount` are not per file, and `Artifact` has no field for them. `Artifact.PairID` is the run accession when the file name carries a `_1` or `_2` mate suffix, and empty for a file without one. `Layout` is the source's own label, never verified by the adapter. `Fetch` fills `Raw` even when it also returns an error. A defective row of the response becomes a blocking `ValidationIssue` and the run is left out of `Samples`; a response that is not a table, lacks a column or lists no usable run is a `*model.SourceError`; an accession with no row is a `*model.NotFoundError`.
+A `Sample` is one run. `Declared` holds the totals the source publishes for the whole run, summed over its files: `ReadCount` and `BaseCount` are not per file, and `Artifact` has no field for them. `Artifact.PairID` is the run accession when the file name carries a `_1` or `_2` mate suffix, and empty for a file without one. `Layout` is the source's own label, never verified by the adapter. `Fetch` fills `Raw` even when it also returns an error. An empty field does not drop the run: an empty `read_count` or `base_count` is `nil`, not declared, which is not zero, so a comparison against it is skipped rather than failed; an empty `library_layout`, `status` or count is an `advisory` `ValidationIssue`; and a run whose three file columns are all empty is kept with no artifacts and its status, which is how a suppressed run must reach the source checks (`RELIABILITY.md` M16). Only an empty `run_accession`, a malformed value, misaligned file lists or file columns that are only partly empty make a row defective: a blocking `ValidationIssue`, and the run is left out of `Samples`; a response that is not a table, lacks a column or lists no usable run is a `*model.SourceError`; an accession with no row is a `*model.NotFoundError`.
 
 `SaveRawResponse` decides on its own whether to store the body or only the hash, consulting the classification. The caller has no choice.
 

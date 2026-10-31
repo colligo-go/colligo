@@ -73,12 +73,11 @@ func parseReport(body []byte) ([]run, []model.ValidationIssue, error) {
 			}
 			seen[accession] = true
 		}
-		parsed, rowIssues := parseRow(subject, fields)
-		if len(rowIssues) > 0 {
-			issues = append(issues, rowIssues...)
-			continue
+		parsed, rowIssues, usable := parseRow(subject, fields)
+		issues = append(issues, rowIssues...)
+		if usable {
+			runs = append(runs, parsed)
 		}
-		runs = append(runs, parsed)
 	}
 	return runs, issues, nil
 }
@@ -117,45 +116,32 @@ func (c columns) pick(cells []string) map[string]string {
 	return fields
 }
 
-func parseRow(subject string, fields map[string]string) (run, []model.ValidationIssue) {
-	var issues []model.ValidationIssue
-	for _, name := range requiredColumns {
+var fileColumns = []string{"fastq_ftp", "fastq_md5", "fastq_bytes"}
+
+var describingColumns = []string{"library_layout", "status", "read_count", "base_count"}
+
+func parseRow(subject string, fields map[string]string) (run, []model.ValidationIssue, bool) {
+	if fields["run_accession"] == "" {
+		return run{}, []model.ValidationIssue{blocking("empty_field", subject, "run_accession is empty")}, false
+	}
+	var notes, defects []model.ValidationIssue
+	for _, name := range describingColumns {
 		if fields[name] == "" {
-			issues = append(issues, blocking("empty_field", subject, name+" is empty"))
+			notes = append(notes, advisory("empty_field", subject, name+" is empty"))
 		}
 	}
-	if len(issues) > 0 {
-		return run{}, issues
-	}
-
-	readCount, err := parseCount(fields["read_count"])
+	readCount, err := parseDeclared(fields["read_count"])
 	if err != nil {
-		issues = append(issues, blocking("bad_number", subject, "read_count is not a non-negative integer"))
+		defects = append(defects, blocking("bad_number", subject, "read_count is not a non-negative integer"))
 	}
-	baseCount, err := parseCount(fields["base_count"])
+	baseCount, err := parseDeclared(fields["base_count"])
 	if err != nil {
-		issues = append(issues, blocking("bad_number", subject, "base_count is not a non-negative integer"))
+		defects = append(defects, blocking("bad_number", subject, "base_count is not a non-negative integer"))
 	}
-
-	urls := strings.Split(fields["fastq_ftp"], ";")
-	sums := strings.Split(fields["fastq_md5"], ";")
-	sizes := strings.Split(fields["fastq_bytes"], ";")
-	if len(urls) != len(sums) || len(urls) != len(sizes) {
-		issues = append(issues, blocking("misaligned_lists", subject, fmt.Sprintf(
-			"fastq_ftp has %d entries, fastq_md5 has %d, fastq_bytes has %d", len(urls), len(sums), len(sizes))))
-	}
-	if len(issues) > 0 {
-		return run{}, issues
-	}
-
-	artifacts := make([]model.Artifact, 0, len(urls))
-	for i := range urls {
-		artifact, artifactIssues := buildArtifact(subject, fields, urls[i], sums[i], sizes[i])
-		issues = append(issues, artifactIssues...)
-		artifacts = append(artifacts, artifact)
-	}
-	if len(issues) > 0 {
-		return run{}, issues
+	artifacts, fileDefects := parseFiles(subject, fields)
+	defects = append(defects, fileDefects...)
+	if len(defects) > 0 {
+		return run{}, append(defects, notes...), false
 	}
 	return run{
 		accession: fields["run_accession"],
@@ -163,7 +149,43 @@ func parseRow(subject string, fields map[string]string) (run, []model.Validation
 		status:    fields["status"],
 		counts:    model.RunCounts{ReadCount: readCount, BaseCount: baseCount},
 		artifacts: artifacts,
-	}, nil
+	}, notes, true
+}
+
+func parseFiles(subject string, fields map[string]string) ([]model.Artifact, []model.ValidationIssue) {
+	var empty []string
+	for _, name := range fileColumns {
+		if fields[name] == "" {
+			empty = append(empty, name)
+		}
+	}
+	switch len(empty) {
+	case len(fileColumns):
+		return nil, nil
+	case 0:
+	default:
+		return nil, []model.ValidationIssue{blocking("empty_field", subject,
+			strings.Join(empty, ", ")+" empty while the other file columns are not")}
+	}
+
+	urls := strings.Split(fields["fastq_ftp"], ";")
+	sums := strings.Split(fields["fastq_md5"], ";")
+	sizes := strings.Split(fields["fastq_bytes"], ";")
+	if len(urls) != len(sums) || len(urls) != len(sizes) {
+		return nil, []model.ValidationIssue{blocking("misaligned_lists", subject, fmt.Sprintf(
+			"fastq_ftp has %d entries, fastq_md5 has %d, fastq_bytes has %d", len(urls), len(sums), len(sizes)))}
+	}
+	var issues []model.ValidationIssue
+	artifacts := make([]model.Artifact, 0, len(urls))
+	for i := range urls {
+		artifact, artifactIssues := buildArtifact(subject, fields, urls[i], sums[i], sizes[i])
+		issues = append(issues, artifactIssues...)
+		artifacts = append(artifacts, artifact)
+	}
+	if len(issues) > 0 {
+		return nil, issues
+	}
+	return artifacts, nil
 }
 
 func buildArtifact(subject string, fields map[string]string, location, sum, size string) (model.Artifact, []model.ValidationIssue) {
@@ -209,6 +231,17 @@ func buildArtifact(subject string, fields map[string]string, location, sum, size
 	}, nil
 }
 
+func parseDeclared(text string) (*int64, error) {
+	if text == "" {
+		return nil, nil
+	}
+	n, err := parseCount(text)
+	if err != nil {
+		return nil, err
+	}
+	return &n, nil
+}
+
 func parseCount(text string) (int64, error) {
 	n, err := strconv.ParseInt(text, 10, 64)
 	if err != nil {
@@ -222,4 +255,8 @@ func parseCount(text string) (int64, error) {
 
 func blocking(code, subject, message string) model.ValidationIssue {
 	return model.ValidationIssue{Severity: model.Blocking, Code: code, Subject: subject, Message: message}
+}
+
+func advisory(code, subject, message string) model.ValidationIssue {
+	return model.ValidationIssue{Severity: model.Advisory, Code: code, Subject: subject, Message: message}
 }

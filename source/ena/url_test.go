@@ -1,16 +1,11 @@
 package ena
 
 import (
-	"net/url"
 	"testing"
 )
 
-func TestReportURLAsksForEveryDeclaredField(t *testing.T) {
-	parsed, err := url.Parse(New().reportURL("PRJEB1"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	query := parsed.Query()
+func TestReportQueryAsksForEveryDeclaredField(t *testing.T) {
+	query := reportQuery("PRJEB1")
 	want := map[string]string{
 		"accession": "PRJEB1",
 		"result":    "read_run",
@@ -22,7 +17,7 @@ func TestReportURLAsksForEveryDeclaredField(t *testing.T) {
 			t.Errorf("%s = %q, want %q", key, query.Get(key), value)
 		}
 	}
-	if parsed.Host != "www.ebi.ac.uk" || parsed.Path != "/ena/portal/api/filereport" {
-		t.Errorf("host %s path %s", parsed.Host, parsed.Path)
+	if got := New().base.Join(query, "filereport").String(); got != "https://www.ebi.ac.uk/ena/portal/api/filereport" {
+		t.Errorf("endpoint = %s", got)
 	}
 }

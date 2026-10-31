@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,7 +33,7 @@ func (f *fakeTransport) Get(_ context.Context, url secret.Endpoint, rng *transpo
 
 func respond(status int, contentType string, body []byte) *fakeTransport {
 	return &fakeTransport{response: &transport.Response{
-		StatusCode:  status,
+		Status:      status,
 		ContentType: contentType,
 		Body:        io.NopCloser(bytes.NewReader(body)),
 	}}
@@ -121,8 +122,8 @@ func TestFetchParsesRecordedRuns(t *testing.T) {
 			if sample.Accession != want.accession || sample.Layout != want.layout || sample.SourceStatus != "public" {
 				t.Errorf("sample = %+v", sample)
 			}
-			if sample.Declared.ReadCount != want.reads || sample.Declared.BaseCount != want.bases {
-				t.Errorf("declared = %+v, want reads %d bases %d", sample.Declared, want.reads, want.bases)
+			if !declared(sample.Declared.ReadCount, want.reads) || !declared(sample.Declared.BaseCount, want.bases) {
+				t.Errorf("declared = %v %v, want reads %d bases %d", shown(sample.Declared.ReadCount), shown(sample.Declared.BaseCount), want.reads, want.bases)
 			}
 			if len(sample.Artifacts) != len(want.files) {
 				t.Fatalf("got %d artifacts, want %d", len(sample.Artifacts), len(want.files))
@@ -272,7 +273,7 @@ func TestFetchAcceptsReorderedColumns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fetched.Samples[0].Declared.BaseCount != 100 || fetched.Samples[0].Artifacts[0].Name.String() != "RUN1.fastq.gz" {
+	if !declared(fetched.Samples[0].Declared.BaseCount, 100) || fetched.Samples[0].Artifacts[0].Name.String() != "RUN1.fastq.gz" {
 		t.Errorf("sample = %+v", fetched.Samples[0])
 	}
 }
@@ -286,8 +287,9 @@ func TestFetchRowDefectsBecomeIssues(t *testing.T) {
 		code string
 	}{
 		{"empty md5 list", mutate(t, good, md5a+";670182accbd67c947b86a2d4d8b3aef3", ""), "empty_field"},
-		{"empty read count", mutate(t, good, "\t13767\t", "\t\t"), "empty_field"},
-		{"empty status", mutate(t, good, "\tpublic", "\t"), "empty_field"},
+		{"empty run accession", mutate(t, good, "DRR021374\tPAIRED", "\tPAIRED"), "empty_field"},
+		{"one file column empty", mutate(t, good, "730247;935734", ""), "empty_field"},
+		{"read count not a number", mutate(t, good, "\t13767\t", "\tmany\t"), "bad_number"},
 		{"md5 list shorter than files", mutate(t, good, md5a+";670182accbd67c947b86a2d4d8b3aef3", md5a), "misaligned_lists"},
 		{"bytes list longer than files", mutate(t, good, "730247;935734", "730247;935734;1"), "misaligned_lists"},
 		{"url list shorter than md5", mutate(t, good, ";ftp.sra.ebi.ac.uk/vol1/fastq/DRR021/DRR021374/DRR021374_2.fastq.gz", ""), "misaligned_lists"},
@@ -316,6 +318,84 @@ func TestFetchRowDefectsBecomeIssues(t *testing.T) {
 				t.Errorf("issue = %+v", issue)
 			}
 		})
+	}
+}
+
+func declared(got *int64, want int64) bool {
+	return got != nil && *got == want
+}
+
+func shown(count *int64) string {
+	if count == nil {
+		return "not declared"
+	}
+	return strconv.FormatInt(*count, 10)
+}
+
+func TestFetchKeepsARunWhoseDescriptionIsEmpty(t *testing.T) {
+	good := fixture(t, "DRR021374.tsv")
+	cases := []struct {
+		name   string
+		body   []byte
+		column string
+		check  func(t *testing.T, s model.Sample)
+	}{
+		{"read count", mutate(t, good, "\t13767\t", "\t\t"), "read_count", func(t *testing.T, s model.Sample) {
+			if s.Declared.ReadCount != nil || !declared(s.Declared.BaseCount, 3454158) {
+				t.Errorf("declared = %v %v, want no reads and the bases", shown(s.Declared.ReadCount), shown(s.Declared.BaseCount))
+			}
+		}},
+		{"base count", mutate(t, good, "\t3454158\t", "\t\t"), "base_count", func(t *testing.T, s model.Sample) {
+			if s.Declared.BaseCount != nil || !declared(s.Declared.ReadCount, 13767) {
+				t.Errorf("declared = %v %v, want the reads and no bases", shown(s.Declared.ReadCount), shown(s.Declared.BaseCount))
+			}
+		}},
+		{"status", mutate(t, good, "\tpublic", "\t"), "status", func(t *testing.T, s model.Sample) {
+			if s.SourceStatus != "" || len(s.Artifacts) != 2 {
+				t.Errorf("status %q, %d artifacts", s.SourceStatus, len(s.Artifacts))
+			}
+		}},
+		{"layout", mutate(t, good, "\tPAIRED\t", "\t\t"), "library_layout", func(t *testing.T, s model.Sample) {
+			if s.Layout != "" || len(s.Artifacts) != 2 {
+				t.Errorf("layout %q, %d artifacts", s.Layout, len(s.Artifacts))
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fetched, err := newSource(respond(200, "text/plain", tc.body)).Fetch(context.Background(), "DRR021374")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(fetched.Samples) != 1 {
+				t.Fatalf("got %d samples, the run must be kept", len(fetched.Samples))
+			}
+			tc.check(t, fetched.Samples[0])
+			if len(fetched.Issues) != 1 {
+				t.Fatalf("issues = %+v", fetched.Issues)
+			}
+			issue := fetched.Issues[0]
+			if issue.Severity != model.Advisory || issue.Code != "empty_field" || issue.Subject != "DRR021374" || !strings.Contains(issue.Message, tc.column) {
+				t.Errorf("issue = %+v", issue)
+			}
+		})
+	}
+}
+
+func TestFetchKeepsARunWithoutFilesAndItsStatus(t *testing.T) {
+	good := fixture(t, "DRR021374.tsv")
+	row := "DRR021374\tPAIRED\t\t\t\t13767\t3454158\tsuppressed\n"
+	body := append(good[:bytes.IndexByte(good, '\n')+1:bytes.IndexByte(good, '\n')+1], row...)
+	fetched, err := newSource(respond(200, "text/plain", body)).Fetch(context.Background(), "DRR021374")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(fetched.Issues) != 0 || len(fetched.Samples) != 1 {
+		t.Fatalf("samples %d, issues %+v", len(fetched.Samples), fetched.Issues)
+	}
+	sample := fetched.Samples[0]
+	if sample.SourceStatus != "suppressed" || len(sample.Artifacts) != 0 || !declared(sample.Declared.BaseCount, 3454158) {
+		t.Errorf("sample = %+v", sample)
 	}
 }
 

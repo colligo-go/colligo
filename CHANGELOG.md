@@ -6,7 +6,7 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ### Added
 
-- `source/ena`: the metadata part of the ENA adapter. It reads the Portal API `filereport` for `read_run` through an injected `transport.Transport`, returns one `model.Sample` per run with one `model.Artifact` per file, declares `read_count` and `base_count` per run, and keeps the raw response. A response that is not a table, a missing column, misaligned MD5, size and URL lists, an empty field and an unknown run are typed errors or validation issues, never a silent zero value.
+- `source/ena`: the metadata part of the ENA adapter. It reads the Portal API `filereport` for `read_run` through an injected `transport.Transport`, returns one `model.Sample` per run with one `model.Artifact` per file, declares `read_count` and `base_count` per run, and keeps the raw response. A response that is not a table, a missing column, misaligned MD5, size and URL lists and an unknown run are typed errors or validation issues, never a silent zero value. An empty count is not declared (`nil`), not zero, and an empty description or file list keeps the run, so a suppressed run still carries its status.
 - `transport.Transport`, `ByteRange` and `Response`: the interface of SPEC §9 only, no implementation.
 - `model.Sample`, `Artifact`, `Experiment`, `RunCounts`, `RawResponse`, `ValidationIssue`, `SourceError` and `NotFoundError`.
 

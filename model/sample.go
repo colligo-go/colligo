@@ -6,10 +6,11 @@ type Experiment struct {
 }
 
 // RunCounts are the totals the source declares for a whole run, summed over
-// every file of the run. They are not per-file values.
+// every file of the run. They are not per-file values. A nil count is one the
+// source left empty: not declared, which is not the same as zero.
 type RunCounts struct {
-	ReadCount int64 `json:"read_count"`
-	BaseCount int64 `json:"base_count"`
+	ReadCount *int64 `json:"read_count"`
+	BaseCount *int64 `json:"base_count"`
 }
 
 // Sample is one run as the source describes it. Layout is the source's own

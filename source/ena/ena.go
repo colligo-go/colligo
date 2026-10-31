@@ -25,7 +25,7 @@ var accessionPattern = regexp.MustCompile(`^[A-Z]{2,6}[0-9]+$`)
 
 type Source struct {
 	transport   transport.Transport
-	base        string
+	base        secret.Endpoint
 	maxResponse int64
 	now         func() time.Time
 }
@@ -37,7 +37,7 @@ func WithTransport(t transport.Transport) Option {
 }
 
 func WithBaseURL(base secret.Endpoint) Option {
-	return func(s *Source) { s.base = strings.TrimRight(base.String(), "/") }
+	return func(s *Source) { s.base = base }
 }
 
 // WithMaxResponseBytes bounds how much of a response is read into memory.
@@ -51,7 +51,11 @@ func WithClock(now func() time.Time) Option {
 
 // New returns an adapter that does nothing until WithTransport is given.
 func New(opts ...Option) *Source {
-	s := &Source{base: defaultBase, maxResponse: defaultMaxResponse, now: time.Now}
+	base, err := secret.NewEndpoint(defaultBase)
+	if err != nil {
+		panic(err)
+	}
+	s := &Source{base: base, maxResponse: defaultMaxResponse, now: time.Now}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -70,12 +74,7 @@ func (s *Source) Fetch(ctx context.Context, accession string) (source.Fetched, e
 	if s.transport == nil {
 		return fetched, &model.SourceError{Source: sourceID, Kind: model.SourceNoTransport, Detail: "the adapter was built without a transport"}
 	}
-	endpoint, err := secret.NewEndpoint(s.reportURL(accession))
-	if err != nil {
-		return fetched, &model.SourceError{Source: sourceID, Kind: model.SourceInvalidAccession, Detail: "the request URL cannot be built", Err: err}
-	}
-
-	raw, err := s.get(ctx, endpoint)
+	raw, err := s.get(ctx, s.base.Join(reportQuery(accession), "filereport"))
 	if raw != nil {
 		fetched.Raw = append(fetched.Raw, *raw)
 	}
@@ -125,13 +124,13 @@ func (s *Source) Resolve(ctx context.Context, sample model.Sample) ([]model.Arti
 	return nil, &model.NotFoundError{Source: sourceID, Accession: sample.Accession}
 }
 
-func (s *Source) reportURL(accession string) string {
+func reportQuery(accession string) url.Values {
 	query := url.Values{}
 	query.Set("accession", accession)
 	query.Set("result", "read_run")
 	query.Set("fields", strings.Join(requiredColumns, ","))
 	query.Set("format", "tsv")
-	return s.base + "/filereport?" + query.Encode()
+	return query
 }
 
 func (s *Source) get(ctx context.Context, endpoint secret.Endpoint) (*model.RawResponse, error) {
@@ -152,13 +151,13 @@ func (s *Source) get(ctx context.Context, endpoint secret.Endpoint) (*model.RawR
 	raw := &model.RawResponse{
 		Source:      sourceID,
 		URL:         endpoint,
-		StatusCode:  resp.StatusCode,
+		StatusCode:  resp.Status,
 		ContentType: resp.ContentType,
 		FetchedAt:   s.now().UTC(),
 		Body:        body,
 	}
-	if resp.StatusCode != 200 {
-		return raw, &model.SourceError{Source: sourceID, Kind: model.SourceUnexpectedStatus, Detail: fmt.Sprintf("the status is %d", resp.StatusCode)}
+	if resp.Status != 200 {
+		return raw, &model.SourceError{Source: sourceID, Kind: model.SourceUnexpectedStatus, Detail: fmt.Sprintf("the status is %d", resp.Status)}
 	}
 	if strings.Contains(strings.ToLower(resp.ContentType), "html") {
 		return raw, &model.SourceError{Source: sourceID, Kind: model.SourceNotTabular, Detail: "the content type is html, expected a table"}
