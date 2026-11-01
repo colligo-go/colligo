@@ -27,6 +27,7 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 - `render/`: the presentation of a report, apart from the checks. `render/text` writes the text report, `render/json` writes the `--json` document, `render/theme` holds the symbols and colours (a colour and a colourless theme), `render/format` holds numbers, sizes, durations, tables and the terminal width, and `render/progress` draws the bar of a long read. `verifier` now produces only the report value.
 - The text report of `check`, `validate`, `check --samplesheet` and `identify` is built from separate blocks: the verdict with its exit code in the first line, a summary table when there are several runs (with the difference in percent), each problem once as Problem, Likely (marked as a hypothesis) and Do, a table of reads, bases and bases per read, what was checked and what was not, a numbered list of what to do, and a footer with counts, size and time. Without `--source`, the source comparison is listed as not checked, and file names that look like ENA runs get the suggestion `--source ena:<accession>`; nothing is queried.
+- The advisory `mate_collapsed` (RELIABILITY M15): a confirmed pair whose shorter mate averages fewer than 4 bases per read and less than 5% of the other mate's, the shortened read 2 that a check without `--source` used to pass as verified. It is dropped when `--source` compares the bases of the run.
 - `check --json` reports `reads` and `bases` for each FASTQ read whole, inside `schema_version` 2, which is not released yet. They are absent, never 0, for `--quick`, FASTA, GTF and a file that is unreadable, invalid or changed during the read. The MultiQC plugin shows them as the columns Reads and Bases of each file, and still reads the pair count for reports that lack them.
 - `--quiet`, `--verbose` and `--color=auto|always|never` for `check`, `validate` and `identify`. Colour appears only on a terminal, `NO_COLOR` turns it off and `--color` overrides both.
 - `colligo explain <id>` prints the long explanation of a diagnosis (what it means, why it happens, what to do, how to confirm), offline; every entry of the catalogue has one. An unknown id is a usage error that lists similar ids. Every text report that has a failed assertion ends with its `explain` command.
@@ -47,6 +48,7 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ### Fixed
 
+- A mate linked to the source by its MD5 (a renamed file) is no longer reported as `pair_missing`.
 - `colligo check --source`: a download the user renamed (for example `SRR10663037_1.fastq.gz` to `amostra1_R1.fastq.gz` while assembling a samplesheet) is now linked to the declared file by its MD5 and size once the files are read, instead of being reported as `source_file_missing` (blocking, exit 3) plus `source_file_unlisted`. The name still comes first, two candidates are `source_file_ambiguous`, and the report says the link was by content (`linked_by` in `--json`, a line in the text). A file both renamed and decompressed is still not linked. `linked_by` is added inside `schema_version` 2, which is not released yet.
 
 ### Changed
