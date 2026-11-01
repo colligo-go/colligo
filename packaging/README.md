@@ -2,7 +2,7 @@
 
 Two drafts that live here until they are submitted upstream. Neither is a build input of Colligo and neither has been submitted: the bioconda-recipes and nf-core/modules pull requests are separate steps.
 
-Both target `v0.2.0`, the first release with `--source` and the `schema_version` 2 report that the recipe test and the nf-core module rely on. That tag does not exist yet.
+Both target `v0.2.0`, the first release with `--source` and the `schema_version` 2 report that the recipe test and the nf-core module rely on. The tag exists since 2026-11-01, and the recipe pins its tarball.
 
 ## `bioconda/`
 
@@ -10,7 +10,7 @@ Both target `v0.2.0`, the first release with `--source` and the `schema_version`
 
 **Source: the release tarball, with its checksum.** bioconda requires a checksum for every source, so the recipe downloads the GitHub tarball of tag `v{{ version }}` and pins its `sha256`. A tarball has no `.git`, so `go build` writes no VCS stamp; `build.sh` therefore injects the version and the commit of the tag with `-ldflags -X` into `internal/buildinfo`, which uses them only when the binary has no stamp (a git checkout and `go install …@v…` keep reading the stamp). The code still holds no version constant: without stamp or injection the binary says `colligo dev (unknown)`.
 
-At release, fill the two values at the top of `meta.yaml`: `sha256` (`sha256sum` of the tarball) and `commit` (`git rev-list -n 1 v<version>`). `build.sh` refuses to build when `commit` is not a 40-character commit, and fails when `colligo version` is not exactly `colligo v<version> (<commit>)`, so a recipe with a missing or wrong value never ships a binary with a wrong version.
+At each release, fill the two values at the top of `meta.yaml`: `sha256` (`sha256sum` of the tarball) and `commit` (`git rev-list -n 1 v<version>`). For `v0.2.0` they are filled: the commit inside the GitHub tarball (`git get-tar-commit-id`) equals the commit of the tag, and `conda-build` passed against the real GitHub tarball on 2026-11-01, with the version guard of `build.sh` and the three recipe tests. `build.sh` refuses to build when `commit` is not a 40-character commit, and fails when `colligo version` is not exactly `colligo v<version> (<commit>)`, so a recipe with a missing or wrong value never ships a binary with a wrong version.
 
 Tested on 2026-10-31 with conda-build 25.7.0 and the bioconda build configuration of bioconda-utils 4.1.0, against a tarball made by `git archive` (as GitHub makes its release tarballs) of the branch, with its `sha256` and commit filled in:
 
@@ -42,8 +42,7 @@ Spec consulted on 2026-10-31: [nf-core modules specifications](https://nf-co.re/
 
 ## What is missing to submit
 
-1. Tag `v0.2.0`, then fill `sha256` and `commit` in `meta.yaml`.
-2. Open the PR to `bioconda/bioconda-recipes` with the recipe under `recipes/colligo/` (the maintainer's action), and confirm there that the bioconda CI may download Go modules during the build (otherwise vendor them).
-3. Once `colligo=0.2.0` is published, add the container lines to `main.nf`, run `nf-test` inside nf-core/modules to create `tests/main.nf.test.snap`, and run `nf-core modules lint` again.
-4. Add the `identifier` (bio.tools) to `meta.yml` once Colligo has one.
-5. Open the PR in `nf-core/modules` (the maintainer's action).
+1. Open the PR to `bioconda/bioconda-recipes` with the recipe under `recipes/colligo/` (the maintainer's action), and confirm there that the bioconda CI may download Go modules during the build (otherwise vendor them).
+2. Once `colligo=0.2.0` is published, add the container lines to `main.nf`, run `nf-test` inside nf-core/modules to create `tests/main.nf.test.snap`, and run `nf-core modules lint` again.
+3. Add the `identifier` (bio.tools) to `meta.yml` once Colligo has one.
+4. Open the PR in `nf-core/modules` (the maintainer's action).

@@ -1,8 +1,8 @@
 {% set name = "colligo" %}
 {% set version = "0.2.0" %}
 {# Filled at release, from the tag: sha256sum of the tarball below, and git rev-list -n 1 v<version>. #}
-{% set sha256 = "" %}
-{% set commit = "" %}
+{% set sha256 = "6c2bb71a1b9bb552eb2968ae18d9167a46a9e51378772d1ecbbaaaed745283fc" %}
+{% set commit = "1f8f6241e09284996b88ea124fd8ddc553ba8ccd" %}
 
 package:
   name: {{ name }}
