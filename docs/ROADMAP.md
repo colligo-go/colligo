@@ -1,13 +1,14 @@
 # Colligo — Roadmap
 
-> **Current slice: 2 — Declared against the source.** Slices 0 and 1 are closed and released as `v0.1.0`. Nothing outside Slice 2 should be built yet.
+> **Current slice: 3 — Heavy door: fetch, store and resume.** Slices 0 and 1 are closed and released as `v0.1.0`, Slice 2 as `v0.2.0`. Nothing outside Slice 3 should be built yet.
 
 The rule of this document: build a thin slice end to end before generalising in breadth.
 
-Two rules learned along the way:
+Three rules learned along the way:
 
 - **What is structural comes before what is functional — but only what cannot be fitted in later.** Types that do not leak and verification of the tool itself come first. Diagnosis, reporting and the full regime for restricted data are added later without pain, and are left for when there is a restricted source.
 - **The light door comes before the heavy one.** The first useful delivery has no database. It is what generates users and what exercises the core — extractors, validators, adapters — before persistence exists. See `DESIGN.md` §1, "Two doors".
+- **Every slice closes on real data.** Before its release, a slice runs on real public data, with an independent count to compare against, and every surprise becomes a fixture or a fix. In Slice 2 this found two bugs that no test had caught and set the threshold of a new defence from measurement instead of guesswork (`docs/VALIDATION.md`).
 
 ---
 
@@ -62,7 +63,7 @@ Definition of done:
 
 ---
 
-## Slice 2 — Declared against the source (current)
+## Slice 2 — Declared against the source (closed, `v0.2.0`)
 
 The light door starts asking the source.
 
@@ -94,7 +95,7 @@ Definition of done:
 
 ---
 
-## Slice 3 — Heavy door: fetch, store and resume
+## Slice 3 — Heavy door: fetch, store and resume (current)
 
 The acquisition core, now with persistence.
 
@@ -111,6 +112,9 @@ Scope:
 - `downloader/`: streaming to `.part` feeding the same fact extraction as Slice 1; several connections per file aligned to groups, off by default.
 - Resume with reconciliation against the disk using the Bao outboard.
 - `cmd/colligo` with `fetch`, `verify` and `status`.
+- The order of the reads of a pair: a digest of the sequence of read IDs of each mate, taken in the same read, so that two mates with the same count and the same first and last ID but reads swapped or reordered in the middle no longer pass (`RELIABILITY.md` M5). The normalisation of the IDs (`/1` and `/2`, the SRA and Illumina forms) is measured on real runs before the check is built, and its severity is decided from that measurement.
+- A `--debug` log through the typed fields of `logf`, so that a network or source failure can be investigated without leaking a path, a URL or a credential.
+- `check --source` together with `--samplesheet`, and `identify --files-from`.
 
 Definition of done:
 
@@ -123,6 +127,8 @@ Definition of done:
 - Resume property test passing.
 - `ENOSPC` injected: safe offset written before the error.
 - `go test -race -count=2` clean.
+- Two mates with the same count and ends but reads swapped in the middle are caught, with no false alarm on the real runs measured.
+- Real-data validation, as for every slice: a small ENA study fetched with `get`, including Oxford Nanopore and PacBio runs, with an independent count; long reads are the first data of this kind Colligo sees.
 
 ---
 
@@ -142,11 +148,12 @@ Scope:
 
 - `colligo recheck --upstream`: re-runs the metadata part of the adapters and compares with what was stored. M16 of `RELIABILITY.md`.
 - `source/geo/` via E-utilities; small-file path; profiles `rnaseq`, `tabular` and `singlecell`.
+- `source/encode/`: the ENCODE portal publishes an MD5 per file and marks files `revoked` or `archived`, the condemnation that `recheck --upstream` (M16) exists for.
 - Integration with Scribo (SPEC §14.1): `input_signals` signals in custody, completeness funnel with `[results]`, scrub prioritised by dependents.
 - Single-cell chemistry declared × observed (M17) and coherence of the supplementary matrix against the GSMs (M18).
 - Local Phase 1 and remote Phase 2 validation; `discrepancies` with severity; `expected_set_hash`; `status --require-complete`.
 
-Criterion: a fixture in which the run goes from public to suppressed generates a `blocking` `discrepancy`; 10x v2 data declared as v3 is `blocking`; a matrix with two columns with swapped names is `blocking`; declaring the wrong type for the pipeline in strict mode; removing a file from the fixture and the study ceasing to be complete.
+Criterion: a fixture in which the run goes from public to suppressed, and one in which an ENCODE file becomes `revoked`, each generate a `blocking` `discrepancy`; 10x v2 data declared as v3 is `blocking`; a matrix with two columns with swapped names is `blocking`; declaring the wrong type for the pipeline in strict mode; removing a file from the fixture and the study ceasing to be complete.
 
 ---
 

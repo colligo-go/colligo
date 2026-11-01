@@ -49,16 +49,16 @@ colligo/
 ├── mutants/          (planned, Slice 7) generator of silent failures for test and benchmark
 ├── diagnoses/        versioned catalogue of diagnoses: observation, probable cause, action
 ├── spec/             TLA+ models of resume, rename and the state machine
-├── tools/            independent certificate verifier and the checksum table generator (Python)
+├── tools/            independent certificate verifier, the checksum table generator and the MultiQC plugin (Python)
 ├── cmd/colligo/      CLI: light door and heavy door (§16)
-└── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest
+└── internal/         unexported helpers: noleak, fsaccess, exttool, corpus, buildinfo, archtest, drift, suggest
 ```
 
-The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `identity` (the seqcol digest of a FASTA only), `samplesheet`, `verifier`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
+The tree is the destination. The packages enter in the slices of `ROADMAP.md`: today `secret`, `logf`, `model`, `checksum`, `facts`, `format`, `identity` (the seqcol digest of a FASTA, the GENCODE GTF header and the official checksums), `samplesheet`, `request`, `verifier`, `render`, `manifest` (the certificate only), `diagnoses`, `transport` (metadata only), `source/ena` (metadata only), `tools` and `cmd/colligo` exist, with `internal/drift` for the weekly drift job. Without `mutants/`, the coverage of failure modes comes from the versioned synthetic corpus and from the tests of each defence.
 
-**Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format`, `samplesheet` and `checksum` do not import `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
+**Import graph rule, verified in test:** `model`, `store`, `downloader`, `verifier`, `facts`, `format`, `checksum`, `identity`, `samplesheet` and `request` do not import `source/*`; `request` does not import `verifier`, `facts`, `store`, `transport`, `source/*` or `render`; `transport` imports neither `store` nor `source/*`. Source registration is explicit via an option; there is no `init()` with side effects.
 
-**Two-doors rule, verified in test:** the path of `colligo check`, `validate`, `identify` and `compat` does not import `store`. `facts`, `format`, `samplesheet`, `identity`, `compat` and the metadata part of `source/*` do not depend on a database.
+**Two-doors rule, verified in test:** the path of `colligo check`, `validate`, `identify` and `compat` does not import `store`. `facts`, `format`, `samplesheet`, `request`, `identity`, `compat`, `transport` and the metadata part of `source/*` do not depend on a database.
 
 ---
 
@@ -663,7 +663,7 @@ type RangeNotImplementedError struct{ ... }
 type UnsupportedEndpointError struct{ ... }
 ```
 
-Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today only `SelfTestError` (`checksum/`) and `samplesheet.FormatError` (a samplesheet that cannot be read, a usage error) exist; the others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/` — including `RangeUnsupportedError`, `SourceError` and `ChecksumError`, which today carry `string`. Every error carries `Severity()`.
+Inspectable via `errors.As`. On the light door, the failure of a file is not one of these errors: it is an assertion of the `diagnoses/` catalogue with a severity, and `check` does not abort because of it. Today these exist: the self-tests `checksum.SelfTestError` and `identity.SelfTestError`; `identity.TableError` (an embedded checksum table that cannot be trusted); `model.SourceError` and `model.NotFoundError` (a source response that cannot be trusted, an accession with no run); the errors of `transport` (`NotFoundError`, `AuthError`, `StatusError`, `ContentTypeError`, `ResponseTooLargeError`, `RetryAfterError`, `RetryExhaustedError`, `RangeNotImplementedError`, `UnsupportedEndpointError`); `verifier.FetchError` (the source could not be queried, wrapping one of those); and the usage errors `request.UsageError` and `samplesheet.FormatError`. The others arrive with the `store` and the slices that use them. Every path, URL or credential field uses the types of `secret/`, including the planned `RangeUnsupportedError` and `ChecksumError`. Every error carries `Severity()`.
 
 ---
 

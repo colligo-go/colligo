@@ -121,6 +121,22 @@ Unlocks when: there is real, recurring demand, and the user has `ascp` configure
 
 ---
 
+## Content validation of BAM and CRAM
+
+Today a BAM or CRAM file is recognised and named (`input_alignment`), never verified, and `compat` (Slice 6) will read only its header, for the contig names. Checking the content — the records, their order, the reference a CRAM depends on — needs a full binary parser.
+
+Unlocks when: `compat` or a real user shows that a whole aligned file has to be checked, not only its header.
+
+---
+
+## Tested macOS support
+
+Colligo is built and tested on Linux only. macOS would need a CI job and a look at what the heavy door does with its filesystem (rename, `.part`, resume).
+
+Unlocks when: someone plans to run Colligo on macOS.
+
+---
+
 ## Tested native Windows support
 
 Current decision: development and testing on Linux or WSL; native Windows compiles and supports only the light door; a restricted study on native Windows is refused (`CONFIDENTIALITY.md` §5.2). This item is full support for the heavy door on native Windows.
