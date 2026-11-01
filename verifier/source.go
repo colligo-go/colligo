@@ -209,6 +209,31 @@ func linkByContent(reports []*FileReport, samples []model.Sample, claims map[int
 	}
 }
 
+func releaseMatesFoundByContent(reports []*FileReport, samples []model.Sample, claims map[int]*claim, files map[declaredRef]int) {
+	foundByContent := map[string]bool{}
+	for ref, k := range files {
+		if claims[k].byMD5 {
+			foundByContent[filepath.Base(samples[ref.sample].Artifacts[ref.artifact].Name.String())] = true
+		}
+	}
+	if len(foundByContent) == 0 {
+		return
+	}
+	for _, r := range reports {
+		kept := r.Assertions[:0:0]
+		for _, a := range r.Assertions {
+			if a.ID == diagnoses.PairMissing && !a.Passed && foundByContent[a.Declared] {
+				continue
+			}
+			kept = append(kept, a)
+		}
+		if len(kept) != len(r.Assertions) {
+			r.Assertions = kept
+			r.finalize()
+		}
+	}
+}
+
 // CheckAgainstSource checks the files and then compares them with what the
 // source declares, following RELIABILITY.md M15 and M16: the bases of every
 // file of a run are the blocking comparison, read_count is matched against
@@ -248,6 +273,7 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 	}
 	EvaluatePairs(reports)
 	linkByContent(reports, decl.Samples, claims, files, rivals)
+	releaseMatesFoundByContent(reports, decl.Samples, claims, files)
 
 	src := &SourceReport{ID: decl.Source, Accession: decl.Accession, AccessionFrom: decl.From, Assertions: issueAssertions(decl.Issues), Runs: []*RunReport{}}
 	where := decl.Source + " " + decl.Accession

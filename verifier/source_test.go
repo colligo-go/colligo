@@ -518,3 +518,35 @@ func mkdir(t *testing.T, dir string) string {
 	}
 	return dir
 }
+
+func TestSourceRenamedMateDoesNotLeaveItsPartnerMissing(t *testing.T) {
+	dir := t.TempDir()
+	d1, d2 := mates(t)
+	renamed := write(t, dir, "sample_A.fastq.gz", d1)
+	kept := write(t, dir, "SRR1_2.fastq.gz", d2)
+	rep := against(t, Declaration{Samples: []model.Sample{pairedRun(d1, d2)}}, renamed, kept)
+	for _, f := range rep.Files {
+		if has(failed(f), diagnoses.PairMissing) {
+			t.Errorf("%s says its mate is missing, but the mate is the renamed %s", f.Name, renamed)
+		}
+	}
+	if code := rep.ExitCode(false); code != ExitOK {
+		t.Fatalf("exit %d, failures %v", code, sourceFailures(rep))
+	}
+	if worst := rep.Files[1].Worst(); worst != "" {
+		t.Errorf("the kept mate carries a %s finding", worst)
+	}
+	if rep.Files[1].Status != StatusVerified {
+		t.Errorf("status %s", rep.Files[1].Status)
+	}
+}
+
+func TestSourcePartnerOfAMateWithNoLocalCopyStaysMissing(t *testing.T) {
+	dir := t.TempDir()
+	d1, d2 := mates(t)
+	lone := write(t, dir, "SRR1_2.fastq.gz", d2)
+	rep := against(t, Declaration{Samples: []model.Sample{pairedRun(d1, d2)}}, lone, write(t, dir, "other.fastq.gz", reads("X", 3, 20)))
+	if !has(failed(rep.Files[0]), diagnoses.PairMissing) {
+		t.Errorf("the lone mate lost pair_missing: %v", failed(rep.Files[0]))
+	}
+}
