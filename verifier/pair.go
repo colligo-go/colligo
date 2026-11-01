@@ -56,9 +56,6 @@ func perRead(m mate) float64 {
 	return float64(m.bases) / float64(m.records)
 }
 
-// collapsedMate returns the mate that averages fewer than collapsedMateBases
-// bases per read and less than collapsedMateRatio of the other mate, with the
-// other one. The limits come from the measurement in RELIABILITY.md M15.
 func collapsedMate(m1, m2 mate) (short, long mate, found bool) {
 	if m1.records == 0 || m1.records != m2.records {
 		return mate{}, mate{}, false

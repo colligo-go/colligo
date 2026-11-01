@@ -280,7 +280,6 @@ RECALCULATED_ASSERTIONS = {"checksum_mismatch", "size_mismatch", "count_mismatch
 
 
 def unchecked(cert):
-    """Facts and assertions the verifier did not recompute, one line each."""
     lines = []
     for fact in cert["facts"]:
         prefixes = RECALCULATED_FACTS.get(fact["kind"], ())
@@ -308,7 +307,6 @@ GZIP_TRAILER = 8
 
 
 def bgzf_block_size(f, offset, file_size):
-    """Total size of the BGZF block at offset, or None when no valid block starts there."""
     f.seek(offset)
     fixed = f.read(GZIP_FIXED_HEADER)
     if len(fixed) < GZIP_FIXED_HEADER or fixed[0] != 0x1F or fixed[1] != 0x8B or fixed[2] != 8 or not fixed[3] & 4:
@@ -331,8 +329,6 @@ def bgzf_block_size(f, offset, file_size):
 
 
 def has_bgzf_chain(path):
-    """True when the BSIZE fields chain from offset 0 to exactly the end of
-    the file and the last block is the 28-byte EOF marker."""
     file_size = os.path.getsize(path)
     offset, last = 0, None
     with open(path, "rb") as f:
