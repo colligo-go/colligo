@@ -188,3 +188,25 @@ func TestGeneratorRefusesAnMD5PublishedForTwoFiles(t *testing.T) {
 		t.Error("the generator accepted a repeated md5")
 	}
 }
+
+func TestTableErrorNamesTheEntryAndWhatIsWrongWithIt(t *testing.T) {
+	const good = `{"name":"n","file":"f.gtf.gz","md5":"0123456789abcdef0123456789abcdef","origin":"https://example.org/MD5SUMS","retrieved":"2026-10-31"}`
+	bad := strings.Replace(good, `"name":"n"`, `"name":""`, 1)
+	cases := map[string]struct {
+		table string
+		want  string
+	}{
+		"no name":      {"[" + good + "," + bad + "]", "identity: checksum table entry 1: no name"},
+		"repeated md5": {"[" + good + "," + strings.Replace(good, `"file":"f.gtf.gz"`, `"file":"g.gtf.gz"`, 1) + "]", "identity: checksum table entry 1: md5 0123456789abcdef0123456789abcdef repeats entry 0"},
+	}
+	for name, tc := range cases {
+		_, err := ParseChecksums([]byte(tc.table))
+		var tableErr *TableError
+		if !errors.As(err, &tableErr) {
+			t.Fatalf("%s: error %v", name, err)
+		}
+		if err.Error() != tc.want {
+			t.Errorf("%s: message %q, want %q", name, err.Error(), tc.want)
+		}
+	}
+}

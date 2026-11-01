@@ -106,6 +106,7 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 		rep.BLAKE3, rep.MD5, rep.SHA256 = res.RootHex(), res.MD5Hex(), res.SHA256Hex()
 	}
 	rep.Assertions = Evaluate(rep.Name, res, exp, opts.Format, !opts.Structure)
+	rep.publishCounts()
 	rep.finalize()
 	return rep, nil
 }
@@ -135,7 +136,7 @@ func evaluatedIDs() []string {
 	var ids []string
 	for _, id := range AssertionIDs() {
 		switch id {
-		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing,
+		case diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.MateCollapsed,
 			diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 			diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
 			diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed,

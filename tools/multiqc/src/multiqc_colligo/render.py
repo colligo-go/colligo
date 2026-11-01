@@ -102,21 +102,23 @@ def files_table(views):
                     esc("" if view.exit_code is None else view.exit_code),
                     badge(view.state),
                     number(f.reads),
+                    number(f.bases),
                     number(f.advisories),
                     number(f.not_checked),
                 ]
             )
         if not view.files:
             rows.append(
-                [esc(view.name), '<span class="colligo-dim">no file</span>', badge(view.state), esc(view.exit_code), badge(view.state), "–", "–", "–"]
+                [esc(view.name), '<span class="colligo-dim">no file</span>', badge(view.state), esc(view.exit_code), badge(view.state), "–", "–", "–", "–"]
             )
     return table(
-        ["Report", "File", "File status", "Exit code", "Report result", "Reads", "Advisory", "Not checked"],
+        ["Report", "File", "File status", "Exit code", "Report result", "Reads", "Bases", "Advisory", "Not checked"],
         rows,
-        numeric=(3, 5, 6, 7),
+        numeric=(3, 5, 6, 7, 8),
     ) + (
-        '<p class="colligo-dim">Reads come from the pair check and appear only for paired files. '
-        "The report does not carry per-file bases: bases appear per run in the source section.</p>"
+        '<p class="colligo-dim">Reads and Bases are what Colligo counted in the one read of each FASTQ file. '
+        "They are blank for a file that was not read whole (<code>--quick</code>), for FASTA and GTF, and for a file that was unreadable or invalid. "
+        "A report written before the report carried them shows the reads of the pair check, for paired files only.</p>"
     )
 
 
@@ -311,6 +313,7 @@ def raw_files(views):
             "status": f.status,
             "state": WORDS[f.state],
             "reads": "" if f.reads is None else f.reads,
+            "bases": "" if f.bases is None else f.bases,
         }
         for view in views
         for f in view.files

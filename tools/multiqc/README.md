@@ -31,7 +31,7 @@ The module runs before the modules of `module_order`. To put it elsewhere, list 
 ## What the report shows
 
 - **General Statistics**: three columns per Colligo report: the result (`✓ verified`, `! advisory`, `✗ failed`, `– not verified`), the source the files were compared with (`ena:DRR021374`, or `– not compared` when only the files themselves were checked), and the number of blocking problems, each counted once.
-- **Files**: one row per file with the status Colligo gave it, the exit code of the report, the result of the whole report, the number of reads, and how many advisory and not-checked assertions the file has.
+- **Files**: one row per file with the status Colligo gave it, the exit code of the report, the result of the whole report, the number of reads and bases Colligo counted in it, and how many advisory and not-checked assertions the file has.
 - **Problems**: each failed assertion once, with what Colligo observed, the likely cause (marked as a hypothesis) and what to do, and the files or runs it applies to. A failed run is one problem, not one per file.
 - **Not checked**: every comparison Colligo did not make and why, including a missing `--source`.
 - **Source: ACCESSION**, one section per report that has `source`: for each run, the declared and observed counts, the result of each comparison, the files the source lists, the local file that stands for each, and whether its MD5 was compared: `✓ matched`, `✗ differs`, or `– not compared` (a decompressed copy can never match the MD5 published for the compressed file, so it is also listed under Not checked; the MD5 of the source is shown, never as a match).
@@ -52,7 +52,7 @@ A skipped assertion, a count the source does not declare (`not declared`) and a 
 
 ### Limits
 
-- The `--json` report has no per-file reads or bases. The **Reads** column is the count of the pair check (`pair_count`), so it appears only for paired files whose check passed. Bases appear per run in the source section, as the sum Colligo observed over the run, never per file. Per-file counts need a new field in the report and a `schema_version` bump in Colligo.
+- **Reads** and **Bases** are the `reads` and `bases` of each file in the report: what Colligo counted in the one read of a FASTQ. They are blank (never 0) for a file that was not read whole (`--quick`), for FASTA and GTF, and for a file that was unreadable or invalid. A report written before the report carried them shows, for paired files only, the count of the pair check (`pair_count`) as Reads, and no Bases.
 - MultiQC skips files larger than its `log_filesize_limit` (50 MB by default).
 
 ## Plugin now, MultiQC later

@@ -3,6 +3,7 @@ package verifier
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 
 	"github.com/colligo-go/colligo/diagnoses"
 	"github.com/colligo-go/colligo/format"
@@ -26,6 +27,7 @@ func readEndsOf(r *FileReport) (readEnds, bool) {
 type mate struct {
 	report  *FileReport
 	records int64
+	bases   int64
 	ends    readEnds
 }
 
@@ -38,11 +40,46 @@ func pairable(r *FileReport) (mate, bool) {
 		return mate{}, false
 	}
 	ends, ok := readEndsOf(r)
-	return mate{report: r, records: rec.Records, ends: ends}, ok
+	return mate{report: r, records: rec.Records, bases: rec.Bases, ends: ends}, ok
 }
 
 func matesAgree(a, b mate) bool {
 	return a.records == b.records && a.ends == b.ends
+}
+
+const (
+	collapsedMateBases = 4
+	collapsedMateRatio = 0.05
+)
+
+func perRead(m mate) float64 {
+	return float64(m.bases) / float64(m.records)
+}
+
+// collapsedMate returns the mate that averages fewer than collapsedMateBases
+// bases per read and less than collapsedMateRatio of the other mate, with the
+// other one. The limits come from the measurement in RELIABILITY.md M15.
+func collapsedMate(m1, m2 mate) (short, long mate, found bool) {
+	if m1.records == 0 || m1.records != m2.records {
+		return mate{}, mate{}, false
+	}
+	short, long = m1, m2
+	if perRead(m2) < perRead(m1) {
+		short, long = m2, m1
+	}
+	collapsed := perRead(short) < collapsedMateBases && perRead(short) < collapsedMateRatio*perRead(long)
+	return short, long, collapsed
+}
+
+func flagCollapsedMate(m1, m2 mate) {
+	short, long, found := collapsedMate(m1, m2)
+	if !found {
+		return
+	}
+	short.report.Assertions = append(short.report.Assertions, newAssertion(diagnoses.MateCollapsed, false, diagnoses.Values{
+		Declared: fmt.Sprintf("%.1f bases per read in %s", perRead(long), filepath.Base(long.report.Name.String())),
+		Observed: fmt.Sprintf("%.1f bases per read", perRead(short))}))
+	short.report.finalize()
 }
 
 func comparePair(m1, m2 mate, where1, where2 string) []model.Assertion {
@@ -103,6 +140,9 @@ func EvaluatePairs(reports []*FileReport) {
 		for _, r := range []*FileReport{g[1], g[2]} {
 			r.Assertions = append(r.Assertions, as...)
 			r.finalize()
+		}
+		if matesAgree(m1, m2) {
+			flagCollapsedMate(m1, m2)
 		}
 	}
 }

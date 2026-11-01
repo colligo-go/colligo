@@ -126,6 +126,7 @@ class FileView:
     state: State
     size: object
     reads: object
+    bases: object
     note: str
     advisories: int
     not_checked: int
@@ -223,6 +224,13 @@ def assertions_of(owner):
     if not isinstance(raw, list):
         return []
     return raw
+
+
+def count_of(raw, key):
+    value = whole_number(raw.get(key))
+    if value is None or value < 0:
+        return None
+    return value
 
 
 def reads_of(assertions):
@@ -410,6 +418,7 @@ def view_of(name, doc):
         status = text(raw.get("status"))
         raw_assertions = assertions_of(raw)
         outcomes = [outcome_of(a) for a in raw_assertions]
+        reads = count_of(raw, "reads")
         for assertion in raw_assertions:
             collector.add(path, assertion)
         files.append(
@@ -418,7 +427,8 @@ def view_of(name, doc):
                 status,
                 file_state(status, outcomes),
                 whole_number(raw.get("size")),
-                reads_of(raw_assertions),
+                reads if reads is not None else reads_of(raw_assertions),
+                count_of(raw, "bases"),
                 STATUS_NOTES.get(status, "" if status in STATUS_STATES else f"status {status!r} is not one this module knows"),
                 sum(1 for o in outcomes if o is Outcome.ADVISORY),
                 sum(1 for o in outcomes if o is Outcome.SKIPPED),

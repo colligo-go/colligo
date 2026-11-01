@@ -1,0 +1,26 @@
+[33m! ADVISORY[0m  2 files pass every check run, with 1 note  [2mexit 0[0m
+
+[33m! mate_collapsed[0m[2m · advisory · M15[0m
+  [2mProblem[0m  This mate averages 1.0 bases per read, while its other mate averages 125.0 bases per read in sample_R1.fastq: one mate is almost empty.
+           [2min sample_R2.fastq[0m
+  [2mLikely [0m  (hypothesis) A mate cut to one or two bases keeps the right number of reads and a valid structure, as when an extraction or a transfer shortens the reads. A few designs do use a very short mate, a barcode or an index, but not one under four bases.
+  [2mDo     [0m  Compare the bases with the source (check --source ena:<accession>) or extract the file again. If the short mate is by design, no action is needed.
+
+[2mFile[0m             [2mReads[0m  [2mBases[0m  [2mBases/read[0m  [2mResult[0m
+sample_R1.fastq     20  2,500       125.0  [32m✓ verified[0m
+sample_R2.fastq     20     20         1.0  [33m! verified (with a note)[0m
+
+[1mChecked[0m
+  [32m✓[0m format and structure of 2 files
+  [32m✓[0m the mates among 2 files agree in read count and read names
+
+[1mNot checked[0m
+  [2m–[0m comparison with a source: not made; Colligo queries the network only when asked
+
+[1mWhat to do[0m
+  1. Compare the bases with the source (check --source ena:<accession>) or extract the file again. If the short mate is by design, no action is needed.
+
+[2m2 files: 2 verified · 5.5 kB · <time>[0m
+
+[1mExplain[0m
+  colligo explain mate_collapsed

@@ -237,6 +237,16 @@ So the rule is not "R1 plus R2 equals `read_count`": that raises a false `blocki
 
 A renamed download is not a false alarm: the local file is linked to the declared one by its computed MD5 and size when no name matches, and the report says it was linked by content (`linked_by: "md5"`). The link comes after the name and never replaces it, and two candidates are `source_file_ambiguous`, not a guess. What it cannot link is a file that was both renamed and decompressed, whose name and MD5 both fail to match: it stays `source_file_missing` (blocking) for the declared file and `source_file_unlisted` for the local one. That is an incomplete-looking run for intact data, the price of not trusting a name or a hash that the content cannot support; the user restores the name or checks the compressed original.
 
+**Without a source.** `check` with no `--source` cannot compare bases, and a read 2 cut to one base per read passes the structure and pair checks. The advisory `mate_collapsed` (never blocking) covers the extreme case. Measured on 20 real ENA pairs (2026-11-01), including seven single-cell designs:
+
+| Quantity | Legitimate pairs | The M15 case |
+|---|---|---|
+| shortest mate, mean bases per read | 17 (SRR27469745, SRR27469746) | 1 |
+| lowest ratio of the shorter to the longer mate | 0.162 | 0.008 |
+
+The advisory fires when one mate averages fewer than 4 bases per read **and** less than 5% of the other mate; both must hold. Against the measured extremes that is 4.2 times below the shortest legitimate mate and 3.2 times below the lowest legitimate ratio. A barcode or index mate is at least 6 to 8 bases, so no known design is under the limit. It does not catch a mate shortened by half; `--source` does. When `--source` compared the bases of a run, the precise blocking comparison stands and the advisory is dropped. If the source declares no `base_count`, it stays.
+
+
 Trying several readings of `read_count` is safe only because it is not the blocking comparison: with `base_count` independent and blocking, a coincidental match cannot let a shortened run through.
 
 The sample is small: Illumina only, the smallest runs of each label and file count, no long reads. The adapter records every run whose `read_count` no reading explains as a new fixture instead of widening the rule silently.

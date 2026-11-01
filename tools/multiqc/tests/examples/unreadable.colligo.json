@@ -7,6 +7,8 @@
       "container": "none",
       "content": "fastq",
       "size": 311,
+      "reads": 10,
+      "bases": 100,
       "blake3_root": "a13dcf5c6ba7506c88cccba480d2c2172bb13a7b13f566ec8033701171fa85c4",
       "md5": "e5f5d80af92306d25038970f55691170",
       "sha256": "0c4230c48ae0e0f7eba1edce4d5e77ad9a4a4cd915d01c837d7c30e90a4ffb31",

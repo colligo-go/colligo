@@ -118,7 +118,7 @@ func deduce(files []File) (SourceRef, error) {
 	}
 	switch {
 	case len(unnamed) > 0:
-		return SourceRef{}, usage("--source ena: the accession cannot be deduced because %s carries no run accession (ERR, SRR or DRR followed by digits); write --source ena:<accession>", describeNames(unnamed))
+		return SourceRef{}, usage("--source ena: the accession cannot be deduced because %s no run accession (ERR, SRR or DRR followed by digits); write --source ena:<accession>", describeNames(unnamed))
 	case len(runs) > 1:
 		return SourceRef{}, usage("--source ena: the files belong to %d runs (%s), so Colligo cannot tell which to compare them with. Write --source ena:<accession> with one run, or with the study that holds them all", len(runs), strings.Join(runs, ", "))
 	}
@@ -127,12 +127,12 @@ func deduce(files []File) (SourceRef, error) {
 
 func describeNames(names []string) string {
 	if len(names) == 1 {
-		return names[0]
+		return names[0] + " carries"
 	}
 	shown := names[:min(len(names), 3)]
 	out := strings.Join(shown, ", ")
 	if len(names) > len(shown) {
 		out += ", ..."
 	}
-	return fmt.Sprintf("%d files (%s)", len(names), out)
+	return fmt.Sprintf("%d files (%s) carry", len(names), out)
 }

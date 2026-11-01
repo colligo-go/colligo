@@ -143,19 +143,64 @@ def test_issues_are_ordered_blocking_before_advisory(example):
     assert severities.index("blocking") < severities.index("advisory")
 
 
-def test_reads_only_from_a_passed_pair_check(example):
+def without_counts(doc):
+    for f in doc["files"]:
+        f.pop("reads", None)
+        f.pop("bases", None)
+    return doc
+
+
+def test_reads_and_bases_come_from_the_fields_of_each_file(example):
     view = view_of(example("verified"))
-    assert [f.reads for f in view.files] == [20, 20]
-    doc = example("verified")
+    assert [(f.reads, f.bases) for f in view.files] == [(20, 200), (20, 200)]
+
+
+def test_a_report_without_the_fields_falls_back_to_a_passed_pair_check(example):
+    view = view_of(without_counts(example("verified")))
+    assert [(f.reads, f.bases) for f in view.files] == [(20, None), (20, None)]
+    doc = without_counts(example("verified"))
     for a in doc["files"][0]["assertions"]:
         if a["id"] == "pair_count":
             a.update(passed=False, severity="blocking", observed="19")
     assert view_of(doc).files[0].reads is None
 
 
-def test_unpaired_file_has_no_reads(example):
-    view = view_of(example("quick"))
-    assert view.files[0].reads is None
+def test_the_field_wins_over_the_pair_check(example):
+    doc = example("verified")
+    doc["files"][0]["reads"] = 7
+    assert view_of(doc).files[0].reads == 7
+
+
+@pytest.mark.parametrize("bad", ["12", 1.5, True, -3, None, [1]])
+def test_a_count_that_is_not_a_whole_non_negative_number_is_not_shown(example, bad):
+    doc = without_counts(example("verified"))
+    doc["files"][0]["reads"] = bad
+    doc["files"][0]["bases"] = bad
+    for a in doc["files"][0]["assertions"]:
+        if a["id"] == "pair_count":
+            a.update(passed=False, severity="blocking")
+    view = view_of(doc).files[0]
+    assert view.reads is None
+    assert view.bases is None
+
+
+def test_zero_is_shown_as_zero_and_not_as_absent(example):
+    doc = example("verified")
+    doc["files"][0]["reads"] = 0
+    doc["files"][0]["bases"] = 0
+    view = view_of(doc).files[0]
+    assert (view.reads, view.bases) == (0, 0)
+
+
+def test_a_file_that_was_not_read_whole_has_neither(example):
+    for f in view_of(example("quick")).files:
+        assert (f.reads, f.bases) == (None, None)
+    for f in view_of(example("unreadable")).files:
+        if f.status == "unreadable":
+            assert (f.reads, f.bases) == (None, None)
+    for f in view_of(example("permissive-invalid")).files:
+        assert f.status == "invalid"
+        assert (f.reads, f.bases) == (None, None)
 
 
 def test_unsupported_schema_version_is_rejected_with_a_reason(example):

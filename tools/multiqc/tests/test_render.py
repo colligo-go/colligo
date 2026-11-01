@@ -1,4 +1,5 @@
 import json
+import re
 
 from multiqc_colligo import render
 from multiqc_colligo.report import State, label, parse
@@ -151,3 +152,23 @@ def test_data_files_are_flat(example):
     for table in (render.raw_data(views), render.raw_files(views)):
         for row in table.values():
             assert all(not isinstance(v, (dict, list)) for v in row.values()), row
+
+
+def test_the_files_table_has_reads_and_bases_columns(example):
+    html = render.files_table(views_of(example, ["verified"]))
+    assert "<th" in html and "Bases" in html and "Reads" in html
+    assert "200" in html
+
+
+def test_an_absent_count_is_a_dash_never_a_zero(example):
+    html = render.files_table(views_of(example, ["quick"]))
+    cells = re.findall(r"<td[^>]*>(.*?)</td>", html)
+    assert cells[5:7] == ["–", "–"]
+
+
+def test_the_data_table_of_files_carries_reads_and_bases(example):
+    rows = render.raw_files(views_of(example, ["verified", "quick"]))
+    verified = [r for k, r in rows.items() if k.startswith("verified")]
+    assert [(r["reads"], r["bases"]) for r in verified] == [(20, 200), (20, 200)]
+    quick = [r for k, r in rows.items() if k.startswith("quick")]
+    assert [(r["reads"], r["bases"]) for r in quick] == [("", "")]

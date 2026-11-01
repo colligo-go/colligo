@@ -171,7 +171,9 @@ func (s *sheetRun) evaluateMates() {
 		}
 		if !matesAgree(m1, m2) {
 			disagreeing = append(disagreeing, declaredPair{entry: i, first: m1, other: m2})
+			continue
 		}
+		flagCollapsedMate(m1, m2)
 	}
 	for i, a := range disagreeing {
 		for _, b := range disagreeing[i+1:] {

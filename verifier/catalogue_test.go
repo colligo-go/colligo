@@ -77,6 +77,11 @@ func TestEveryCatalogueEntryFiresFromAConstructedFile(t *testing.T) {
 				write(t, dir, "lonely_R1.fastq", reads(5)),
 				write(t, dir, "other.fastq", reads(5)))
 		},
+		diagnoses.MateCollapsed: func() Report {
+			return run(t, Options{},
+				write(t, dir, "collapsed_R1.fastq", fastqText("SRR1", 10, strings.Repeat("ACGT", 30))),
+				write(t, dir, "collapsed_R2.fastq", fastqText("SRR1", 10, "A")))
+		},
 		diagnoses.ExtensionMismatch: func() Report {
 			return run(t, Options{}, write(t, dir, "genome.fasta", reads(5)))
 		},

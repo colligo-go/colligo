@@ -27,6 +27,7 @@ const (
 	PairCount          = "pair_count"
 	PairIDs            = "pair_ids"
 	PairMissing        = "pair_missing"
+	MateCollapsed      = "mate_collapsed"
 	ExtensionMismatch  = "extension_mismatch"
 	TrailingBlankLines = "trailing_blank_lines"
 	SheetRemotePath    = "sheet_remote_path"
@@ -168,6 +169,12 @@ var catalogue = []Entry{
 		Observation: "The name says this file is one mate of a pair, but its other mate {declared} is not among the files checked.",
 		Cause:       "The other mate was left out of the command or is in another directory, or the data is single-end and the name carries a mate suffix.",
 		Action:      "Add the other mate to the same run so the pair can be confirmed; if the data is single-end, no action is needed.",
+	},
+	{
+		ID: MateCollapsed, Mode: "M15", Severity: model.Advisory,
+		Observation: "This mate averages {observed}, while its other mate averages {declared}: one mate is almost empty.",
+		Cause:       "A mate cut to one or two bases keeps the right number of reads and a valid structure, as when an extraction or a transfer shortens the reads. A few designs do use a very short mate, a barcode or an index, but not one under four bases.",
+		Action:      "Compare the bases with the source (check --source ena:<accession>) or extract the file again. If the short mate is by design, no action is needed.",
 	},
 	{
 		ID: ExtensionMismatch, Mode: "M4", Severity: model.Advisory,

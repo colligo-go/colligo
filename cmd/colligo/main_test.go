@@ -249,3 +249,11 @@ func TestFatalInOneFileStillChecksTheOthers(t *testing.T) {
 		t.Fatalf("the healthy file must still be checked and reported:\n%s", out)
 	}
 }
+
+func fastqOfLength(prefix string, reads, length int) []byte {
+	var b bytes.Buffer
+	for i := 0; i < reads; i++ {
+		fmt.Fprintf(&b, "@%s.%d/1\n%s\n+\n%s\n", prefix, i+1, strings.Repeat("A", length), strings.Repeat("F", length))
+	}
+	return b.Bytes()
+}

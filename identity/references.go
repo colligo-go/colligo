@@ -11,7 +11,11 @@ type Reference struct {
 // Known returns the embedded table. Every entry must have been checked
 // against an official seqcol or refget server, with the origin in Source.
 func Known() []Reference {
-	return nil
+	return []Reference{{
+		Label:  "GRCh38 primary assembly, GENCODE human 50",
+		Digest: "tmnbiAyj2fke68d_TYjq2g487US8C15r",
+		Source: "computed by colligo from GRCh38.primary_assembly.genome.fa.gz, whose MD5 matched https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/MD5SUMS on 2026-11-01; the same digest, with the same names, lengths and sequences attributes, is served by https://seqcolapi.databio.org/collection/tmnbiAyj2fke68d_TYjq2g487US8C15r on 2026-11-01",
+	}}
 }
 
 // Recognize returns the reference whose digest equals the given one.

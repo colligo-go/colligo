@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -157,5 +158,43 @@ func TestIdentifyWithTheEmbeddedTableRecognisesAnOfficialChecksum(t *testing.T) 
 	code, out, _ := invoke("identify", path)
 	if code != verifier.ExitOK || !strings.Contains(out, "says it is GENCODE 44") || strings.Contains(out, "IDENTIFIED") {
 		t.Errorf("a look-alike must stay declared, exit %d:\n%s", code, out)
+	}
+}
+
+func TestIdentifyRecognizesARecompressedAndRewrappedCopyBySeqcolDespiteAnotherMD5(t *testing.T) {
+	dir := t.TempDir()
+	original := put(t, dir, "ref.fa.gz", gz([]byte(cliFasta)))
+	rewrapped := strings.NewReplacer("ACGTACGT\nacgtNN", "ACGT\nACGTa\ncgtN\nN", "GGGGCCCC", "gggg\nCCCC").Replace(cliFasta)
+	copyPath := put(t, dir, "copy.fa", []byte(rewrapped))
+	sum := func(p string) string {
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := md5.Sum(raw)
+		return hex.EncodeToString(s[:])
+	}
+	if sum(original) == sum(copyPath) {
+		t.Fatal("the copy must have another MD5")
+	}
+	for _, p := range []string{original, copyPath} {
+		code, out, _ := invokeIdentify(cliReferences, p)
+		if code != verifier.ExitOK || !strings.Contains(out, "is tiny") {
+			t.Errorf("%s: exit %d\n%s", p, code, out)
+		}
+	}
+}
+
+func TestEmbeddedReferenceCarriesAVerifiableSource(t *testing.T) {
+	known := identity.Known()
+	if len(known) == 0 {
+		t.Fatal("the table of known references is empty")
+	}
+	for _, r := range known {
+		for _, want := range []string{"computed by colligo from", "whose MD5 matched https://", "MD5SUMS on 20"} {
+			if !strings.Contains(r.Source, want) {
+				t.Errorf("source of %s lacks %q: %s", r.Label, want, r.Source)
+			}
+		}
 	}
 }
