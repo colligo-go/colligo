@@ -59,6 +59,6 @@ Exit codes: 0 verified, 1 usage error, 2 fatal, 3 blocking problem pending, 4 in
 - **verify** — it is whole, and it is what the source and you declared
 - **watch** — it still holds, on disk and at the source
 
-Status: early development. `v0.1.0` closes slice 1, the light door (`check` and `validate`); while the major version is 0, any minor release may change the interface. See `CHANGELOG.md` and `docs/ROADMAP.md`.
+Status: early development. `v0.2.0` closes slice 2: `check` compares the files with what ENA declares (`--source`) and checks nf-core samplesheets, and `identify` names a FASTA or a GTF by its content and by official checksums; slice 1 (`v0.1.0`) was the light door, `check` and `validate`. While the major version is 0, any minor release may change the interface. See `CHANGELOG.md` and `docs/ROADMAP.md`.
 
 License: MIT.

@@ -4,6 +4,10 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-31
+
+Slice 2: the light door asks the source. `check --source ena` compares the files with what ENA declares, `check --samplesheet` checks an nf-core samplesheet, `identify` names FASTA and GTF files by their content and by official checksums, the text report is new and the input is friendlier, and a MultiQC plugin, a weekly drift job and packaging drafts come with it. Validated on 28 real ENA runs and on the GENCODE 50 files (`docs/VALIDATION.md`).
+
 ### Added
 
 - `transport`: an HTTP client for metadata with a per-domain rate limit, retry with exponential backoff and jitter, `Retry-After`, a per-attempt timeout, a bound on the response size and a typed error for an unexpected content type. Byte ranges are refused until the resume slice.
@@ -80,5 +84,6 @@ First release: slices 0 and 1, the light door. One command, no database, no conf
 - A performance baseline on a documented reference machine: a full `check` of a `.fastq.gz` at 106% of pure-Go gunzip (target 110%), and the three hashes at 110% of the slowest one alone (target 120%), measured as the median of 5 runs under recorded conditions.
 - Continuous integration on every pull request (gitleaks, gofmt, vet, `noleak`, `go test -race` with the Python verifier and `b3sum` required) plus a weekly job with the slow tests and 30 minutes of fuzzing per target.
 
-[Unreleased]: https://github.com/colligo-go/colligo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/colligo-go/colligo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/colligo-go/colligo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/colligo-go/colligo/releases/tag/v0.1.0
