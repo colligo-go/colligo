@@ -127,6 +127,7 @@ Definition of done:
 - Resume property test passing.
 - `ENOSPC` injected: safe offset written before the error.
 - `go test -race -count=2` clean.
+- A `tool_runs` created by Scribo is accepted and a `tool_runs` with a divergent schema is refused with `contract_mismatch`, the mirror of Scribo's Slice 1 criterion: the contract of `CONTRACT.md` is tested across the two implementations in both directions, since the two tools live in separate repositories and share no code.
 - Two mates with the same count and ends but reads swapped in the middle are caught, with no false alarm on the real runs measured.
 - Real-data validation, as for every slice: a small ENA study fetched with `get`, including Oxford Nanopore and PacBio runs, with an independent count; long reads are the first data of this kind Colligo sees.
 
