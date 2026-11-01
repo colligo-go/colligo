@@ -106,6 +106,7 @@ func checkSource(ctx context.Context, rep *FileReport, f readSource, opts Option
 		rep.BLAKE3, rep.MD5, rep.SHA256 = res.RootHex(), res.MD5Hex(), res.SHA256Hex()
 	}
 	rep.Assertions = Evaluate(rep.Name, res, exp, opts.Format, !opts.Structure)
+	rep.publishCounts()
 	rep.finalize()
 	return rep, nil
 }

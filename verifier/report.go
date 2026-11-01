@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/colligo-go/colligo/facts"
+	"github.com/colligo-go/colligo/format"
 	"github.com/colligo-go/colligo/model"
 	"github.com/colligo-go/colligo/secret"
 )
@@ -34,6 +35,8 @@ type FileReport struct {
 	Container  string            `json:"container,omitempty"`
 	Content    string            `json:"content,omitempty"`
 	Size       int64             `json:"size"`
+	Reads      *int64            `json:"reads,omitempty"`
+	Bases      *int64            `json:"bases,omitempty"`
 	BLAKE3     string            `json:"blake3_root,omitempty"`
 	MD5        string            `json:"md5,omitempty"`
 	SHA256     string            `json:"sha256,omitempty"`
@@ -52,8 +55,17 @@ func (r *FileReport) Worst() model.Severity { return worstOf(r.Assertions) }
 // Records returns the reads and bases counted in the single read of the
 // file. ok is false when the file has no FASTQ records to count.
 func (r *FileReport) Records() (reads, bases int64, ok bool) {
+	if r.Result.Content != format.ContentFastq {
+		return 0, 0, false
+	}
 	rec, ok := recordsOf(r.Result)
 	return rec.Records, rec.Bases, ok
+}
+
+func (r *FileReport) publishCounts() {
+	if reads, bases, ok := r.Records(); ok {
+		r.Reads, r.Bases = &reads, &bases
+	}
 }
 
 func worstOf(as []model.Assertion) model.Severity {
