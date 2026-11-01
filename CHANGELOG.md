@@ -4,6 +4,10 @@ All notable changes to Colligo. The format follows [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed
+
+- The bioconda recipe draft pins the `v0.2.0` release tarball by its `sha256` and the commit of the tag; `conda-build` passes against the real GitHub tarball.
+
 ## [0.2.0] - 2026-11-01
 
 Slice 2: the light door asks the source. `check --source ena` compares the files with what ENA declares, `check --samplesheet` checks an nf-core samplesheet, `identify` names FASTA and GTF files by their content and by official checksums, the text report is new and the input is friendlier, and a MultiQC plugin, a weekly drift job and packaging drafts come with it. Validated on 28 real ENA runs and on the GENCODE 50 files (`docs/VALIDATION.md`).
