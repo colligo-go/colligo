@@ -75,6 +75,11 @@ func goldenCases() []goldenCase {
 			put(t, dir, "sample_R2.fastq", fastq("S", 20))
 			return checkRun([]string{dir}, nil)
 		}},
+		{"mate-collapsed", func(t *testing.T, dir string) goldenRun {
+			put(t, dir, "sample_R1.fastq", fastqOfLength("S", 20, 125))
+			put(t, dir, "sample_R2.fastq", fastqOfLength("S", 20, 1))
+			return checkRun([]string{dir}, nil)
+		}},
 		{"source-verified", sourceCase("DRR021374", nil, nil)},
 		{"source-link", sourceFlagCase("DRR021374", "https://www.ebi.ac.uk/ena/browser/view/DRR021374", nil, nil)},
 		{"source-deduced", sourceFlagCase("DRR021374", "ena", nil, nil)},

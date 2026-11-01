@@ -209,6 +209,28 @@ func linkByContent(reports []*FileReport, samples []model.Sample, claims map[int
 	}
 }
 
+func basesWereCompared(content []model.Assertion) bool {
+	for _, a := range content {
+		if a.ID == diagnoses.CountMismatch {
+			return !a.Skipped
+		}
+	}
+	return false
+}
+
+func dropAssertion(r *FileReport, id string) {
+	kept := r.Assertions[:0:0]
+	for _, a := range r.Assertions {
+		if a.ID != id {
+			kept = append(kept, a)
+		}
+	}
+	if len(kept) != len(r.Assertions) {
+		r.Assertions = kept
+		r.finalize()
+	}
+}
+
 func releaseMatesFoundByContent(reports []*FileReport, samples []model.Sample, claims map[int]*claim, files map[declaredRef]int) {
 	foundByContent := map[string]bool{}
 	for ref, k := range files {
@@ -325,6 +347,13 @@ func CheckAgainstSource(ctx context.Context, names []secret.Name, decl Declarati
 		}
 		run.Assertions = append([]model.Assertion{statusAssertion(s)}, run.Assertions...)
 		content, totals := contentAssertions(s, linked, blocker)
+		if basesWereCompared(content) {
+			for _, f := range linked {
+				if f != nil {
+					dropAssertion(f, diagnoses.MateCollapsed)
+				}
+			}
+		}
 		run.Assertions = append(run.Assertions, content...)
 		run.Measured = totals
 		condemn(s.Accession, run.Assertions, linked)

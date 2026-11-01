@@ -29,7 +29,7 @@ func AssertionIDs() []string {
 		diagnoses.ReadFailed, diagnoses.ChangedDuringRead, diagnoses.HTMLBody, diagnoses.MagicMismatch,
 		diagnoses.ChecksumMismatch, diagnoses.SizeMismatch, diagnoses.StructureInvalid,
 		diagnoses.FormatUnknown, diagnoses.FormatDeclared, diagnoses.InputSRA, diagnoses.InputAlignment, diagnoses.InputArchive, diagnoses.CountMismatch,
-		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
+		diagnoses.PairCount, diagnoses.PairIDs, diagnoses.PairMissing, diagnoses.MateCollapsed, diagnoses.ExtensionMismatch, diagnoses.TrailingBlankLines,
 		diagnoses.SheetRemotePath, diagnoses.SheetSharedFile, diagnoses.SheetDuplicateRow, diagnoses.SheetMatesSwapped,
 		diagnoses.SourceStatus, diagnoses.SourceFileMissing, diagnoses.SourceFileUnlisted, diagnoses.SourceFileAmbiguous,
 		diagnoses.ReadCountUnexplained, diagnoses.LayoutMismatch, diagnoses.SourceRowRejected, diagnoses.SourceFieldEmpty, diagnoses.SourceRunFailed,

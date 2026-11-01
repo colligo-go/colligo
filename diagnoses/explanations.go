@@ -117,6 +117,12 @@ var explanations = map[string]Explanation{
 		Do:      "Add the other mate to the check so Colligo can confirm the pair. If the data is single-end, ignore this note.",
 		Confirm: "List the folder with 'ls' and look for the same name with _2 or _R2.",
 	},
+	MateCollapsed: {
+		Means:   "One mate of a pair averages fewer than four bases per read, and less than a twentieth of the length of the other mate, although both files hold the same reads.",
+		Why:     "A read 2 cut to one base per read is still a valid FASTQ with the right number of reads and the right names, so the structure and the pair checks pass. It happens when an extraction or a copy shortens the reads. Colligo cannot tell this from a design with a tiny mate, but no design measured by Colligo has a mate under 17 bases on average, and a barcode or index mate is at least 6 to 8.",
+		Do:      "Compare with the source: colligo check --source ena:<accession> sums the bases of the run and fails when they differ from what the archive declares. Without a source, extract the file again. If the short mate is by design, ignore this note.",
+		Confirm: "Count the bases per read of each mate: zcat R2.fastq.gz | awk 'NR % 4 == 2 { n += length($0); r++ } END { print n / r }'. A value near 1 against a hundred or more for the other mate confirms it.",
+	},
 	ExtensionMismatch: {
 		Means:   "The name of the file suggests one format, but its content is another.",
 		Why:     "The file was renamed or saved with a misleading extension.",

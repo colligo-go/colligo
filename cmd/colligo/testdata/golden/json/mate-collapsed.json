@@ -1,0 +1,157 @@
+{
+  "schema_version": 2,
+  "files": [
+    {
+      "path": "<dir>/sample_R1.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 5231,
+      "reads": 20,
+      "bases": 2500,
+      "blake3_root": "5c47171e2942aabe31bfe831854775ac962787e08b35b6f284c9b680c50b4ccc",
+      "md5": "cb2892286e130b22d8bf8fefb8b70e59",
+      "sha256": "5dc7639c58d415c49152326804b33d7a96a3e0c58abccebbc88d6c1155d19983",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "20",
+          "observed": "20"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=S.1 last=S.20",
+          "observed": "first=S.1 last=S.20"
+        }
+      ]
+    },
+    {
+      "path": "<dir>/sample_R2.fastq",
+      "status": "verified",
+      "container": "none",
+      "content": "fastq",
+      "size": 271,
+      "reads": 20,
+      "bases": 20,
+      "blake3_root": "f2b157b36bd79241f6fe221e5f2b6dc6638d166e7086bc4baf0c1aa4fcc42659",
+      "md5": "79b315a5e3ca93906aeb1ca0987896cc",
+      "sha256": "6ef61f63fb8ab1e975dcdcb39160904efd9418c8961802caa1580c2c399abcb5",
+      "assertions": [
+        {
+          "id": "html_body",
+          "mode": "M3",
+          "severity": "fatal",
+          "passed": true,
+          "declared": "data",
+          "observed": "data"
+        },
+        {
+          "id": "structure_invalid",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "valid",
+          "observed": "valid"
+        },
+        {
+          "id": "trailing_blank_lines",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "0",
+          "observed": "0"
+        },
+        {
+          "id": "format_unknown",
+          "mode": "M4",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "",
+          "observed": "fastq"
+        },
+        {
+          "id": "extension_mismatch",
+          "mode": "M4",
+          "severity": "advisory",
+          "passed": true,
+          "declared": "fastq",
+          "observed": "fastq"
+        },
+        {
+          "id": "pair_count",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "20",
+          "observed": "20"
+        },
+        {
+          "id": "pair_ids",
+          "mode": "M5",
+          "severity": "blocking",
+          "passed": true,
+          "declared": "first=S.1 last=S.20",
+          "observed": "first=S.1 last=S.20"
+        },
+        {
+          "id": "mate_collapsed",
+          "mode": "M15",
+          "severity": "advisory",
+          "passed": false,
+          "declared": "125.0 bases per read in sample_R1.fastq",
+          "observed": "1.0 bases per read",
+          "observation": "This mate averages 1.0 bases per read, while its other mate averages 125.0 bases per read in sample_R1.fastq: one mate is almost empty.",
+          "probable_cause": "A mate cut to one or two bases keeps the right number of reads and a valid structure, as when an extraction or a transfer shortens the reads. A few designs do use a very short mate, a barcode or an index, but not one under four bases.",
+          "suggested_action": "Compare the bases with the source (check --source ena:\u003caccession\u003e) or extract the file again. If the short mate is by design, no action is needed."
+        }
+      ]
+    }
+  ],
+  "exit_code": 0
+}
