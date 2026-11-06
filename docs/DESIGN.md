@@ -386,7 +386,7 @@ Colligo guarantees the inputs before the pipeline; Scribo observes the results a
 - **Scrub priority and `gc` with provenance** (postponed, `BACKLOG.md`), from `result_inputs`.
 - **Corpus of real failures**, from the signals and violations recorded.
 
-**Shape:** proposal of one module with two binaries and a common core (`facts`, `runs`, `store/open`), decided in Scribo's Slice 0. Until then, the contract guarantees the conversation without sharing code.
+**Shape:** decided in Scribo's Slice 0 (2026-11-01): separate repositories, each with its own code, sharing only `CONTRACT.md`. The two tools meet in the database, not in code.
 
 ---
 
