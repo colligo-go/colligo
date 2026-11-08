@@ -2,6 +2,7 @@ package checksum
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/colligo-go/colligo/model"
@@ -32,5 +33,11 @@ func TestVerifyDetectsSabotage(t *testing.T) {
 	}
 	if selfTest.Severity() != model.Fatal {
 		t.Errorf("Severity() = %q, want %q", selfTest.Severity(), model.Fatal)
+	}
+	msg := err.Error()
+	for _, part := range []string{sabotaged[0].algorithm, sabotaged[0].want, selfTest.Got, "vector mismatch"} {
+		if part == "" || !strings.Contains(msg, part) {
+			t.Errorf("message %q does not name %q", msg, part)
+		}
 	}
 }

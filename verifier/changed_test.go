@@ -173,3 +173,27 @@ func TestFileThatDoesNotChangeIsNeverInvalidated(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryFieldOfTheFileStateIsNamedWhenItChanges(t *testing.T) {
+	base := fileState{size: 1, mtime: 2, ctime: 3, inode: 4, dev: 5}
+	cases := []struct {
+		change func(*fileState)
+		want   string
+	}{
+		{func(s *fileState) { s.size++ }, "size"},
+		{func(s *fileState) { s.mtime++ }, "modification time"},
+		{func(s *fileState) { s.ctime++ }, "change time"},
+		{func(s *fileState) { s.inode++ }, "inode"},
+		{func(s *fileState) { s.dev++ }, "inode"},
+	}
+	for _, tc := range cases {
+		other := base
+		tc.change(&other)
+		if got := base.differences(other); len(got) != 1 || got[0] != tc.want {
+			t.Errorf("want [%s], got %v", tc.want, got)
+		}
+	}
+	if got := base.differences(base); len(got) != 0 {
+		t.Errorf("an unchanged state reports %v", got)
+	}
+}

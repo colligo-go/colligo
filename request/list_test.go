@@ -132,3 +132,12 @@ func TestAnEmptyListIsAUsageErrorNotAnEmptySuccess(t *testing.T) {
 	_, err = request.Resolve(context.Background(), request.Inputs{ListStdin: strings.NewReader("")})
 	usageMessage(t, err)
 }
+
+func TestAListWithALineAboveOneMebibyteIsRefusedAsNotAList(t *testing.T) {
+	data := "a.fastq\n" + strings.Repeat("x", 1<<20+1) + "\n"
+	list := put(t, t.TempDir(), "list.txt", []byte(data))
+	_, err := resolveList(t, list)
+	if msg := usageMessage(t, err); !strings.Contains(msg, "longer than 1048576 bytes") || !strings.Contains(msg, "not a list of paths") {
+		t.Errorf("message %q", msg)
+	}
+}

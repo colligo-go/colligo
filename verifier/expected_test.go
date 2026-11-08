@@ -58,3 +58,35 @@ func TestParseExpectedAcceptsHashesOfAnyCase(t *testing.T) {
 		t.Fatalf("%+v %v", exp, err)
 	}
 }
+
+func TestParseExpectedReadsEveryCountKey(t *testing.T) {
+	exp, err := ParseExpected([]string{"size=10", "reads=0", "bases=1234567890123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exp.Size == nil || *exp.Size != 10 || exp.Reads == nil || *exp.Reads != 0 || exp.Bases == nil || *exp.Bases != 1234567890123 {
+		t.Fatalf("%+v", exp)
+	}
+}
+
+func TestParseExpectedRejectsWhatIsNotACount(t *testing.T) {
+	for _, pair := range []string{"bases=-1", "reads=1.5", "size=10k", "bases=99999999999999999999", "reads= 3"} {
+		if _, err := ParseExpected([]string{pair}); err == nil || !strings.Contains(err.Error(), "is not a count") {
+			t.Errorf("%q: %v", pair, err)
+		}
+	}
+}
+
+func TestParseExpectedNamesTheKnownKeysOnAnUnknownOne(t *testing.T) {
+	for _, pair := range []string{"sha1=abc", "read=3", "crc=1"} {
+		_, err := ParseExpected([]string{pair})
+		if err == nil || !strings.Contains(err.Error(), "unknown key") || !strings.Contains(err.Error(), "bases") {
+			t.Errorf("%q: %v", pair, err)
+		}
+	}
+	for _, pair := range []string{"md5", "md5=", "=abc"} {
+		if _, err := ParseExpected([]string{pair}); err == nil || !strings.Contains(err.Error(), "want key=value") && !strings.Contains(err.Error(), "unknown key") {
+			t.Errorf("%q: %v", pair, err)
+		}
+	}
+}

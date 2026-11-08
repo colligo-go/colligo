@@ -300,6 +300,8 @@ func TestFetchRowDefectsBecomeIssues(t *testing.T) {
 		{"base count not a number", mutate(t, good, "3454158", "many"), "bad_number"},
 		{"empty entry in url list", mutate(t, good, "DRR021374_1.fastq.gz;", "DRR021374_1.fastq.gz; ;"), "misaligned_lists"},
 		{"ragged row", mutate(t, good, "\tpublic", "\tpublic\textra"), "ragged_row"},
+		{"blank entry in url list", mutate(t, good, ";ftp.sra.ebi.ac.uk/vol1/fastq/DRR021/DRR021374/DRR021374_2.fastq.gz", "; "), "empty_field"},
+		{"url entry that does not parse", mutate(t, good, "DRR021374_2.fastq.gz", "DRR021374_%zz.fastq.gz"), "bad_url"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -547,5 +549,14 @@ func TestBaseURLOption(t *testing.T) {
 	}
 	if got := f.requests[0].String(); got != "https://mirror.example/api/filereport" {
 		t.Errorf("endpoint = %s", got)
+	}
+}
+
+func TestResolveRunAbsentFromTheResponseIsNotFound(t *testing.T) {
+	body := fixture(t, "DRR021374.tsv")
+	artifacts, err := newSource(respond(200, "text/plain", body)).Resolve(context.Background(), model.Sample{Accession: "DRR021375"})
+	var notFound *model.NotFoundError
+	if !errors.As(err, &notFound) || notFound.Accession != "DRR021375" || artifacts != nil {
+		t.Fatalf("artifacts %+v, err %v", artifacts, err)
 	}
 }
