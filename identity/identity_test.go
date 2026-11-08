@@ -310,7 +310,24 @@ func TestVerifyPassesAndFailsLoudlyWhenSabotaged(t *testing.T) {
 	vectors[1].want = strings.Repeat("A", 32)
 	defer func() { vectors[1].want = saved }()
 	var selfTest *SelfTestError
-	if err := Verify(); !errors.As(err, &selfTest) || selfTest.Input != "ACGT" || selfTest.Severity() != model.Fatal {
-		t.Errorf("Verify() = %v", err)
+	err := Verify()
+	if !errors.As(err, &selfTest) || selfTest.Input != "ACGT" || selfTest.Severity() != model.Fatal {
+		t.Fatalf("Verify() = %v", err)
+	}
+	for _, part := range []string{`"ACGT"`, strings.Repeat("A", 32), selfTest.Got, "vector mismatch"} {
+		if !strings.Contains(err.Error(), part) {
+			t.Errorf("message %q does not name %q", err.Error(), part)
+		}
+	}
+}
+
+func TestCanonicalStringEscapesEveryControlCharacterAsRFC8785(t *testing.T) {
+	got, err := canonicalStrings([]string{"\x00\x01\b\t\n\x0b\f\r\x1f\"\\é/<\x7f"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `["\u0000\u0001\b\t\n\u000b\f\r\u001f\"\\é/<` + "\x7f" + `"]`
+	if string(got) != want {
+		t.Fatalf("canonical form\n got %q\nwant %q", got, want)
 	}
 }
